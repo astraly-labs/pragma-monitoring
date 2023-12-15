@@ -1,11 +1,11 @@
 groups:
-- name: example
-  rules:
-  - alert: TimeSinceLastUpdateTooHigh
-    expr: time_since_last_update_seconds > 1200 
-    for: 5m  
-    labels:
-      severity: critical
-    annotations:
-      summary: "Time since the last update is too high"
-      description: "The time since the last update of {{ $labels.pair }} from {{ $labels.source }} has exceeded 1200 seconds."
+  - name: example
+    rules:
+      - alert: TimeSinceLastUpdateTooHigh
+        expr: time_since_last_update_seconds > 1200
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Time since the last update is too high"
+          description: "The time since the last update of {{ $labels.pair }} from {{ $labels.source }} has exceeded 1200 seconds."
