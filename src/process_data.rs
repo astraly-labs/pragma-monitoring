@@ -16,6 +16,8 @@ use diesel_async::pooled_connection::AsyncDieselConnectionManager;
 use diesel_async::AsyncPgConnection;
 use diesel_async::RunQueryDsl;
 use lazy_static::lazy_static;
+use prometheus::register_int_gauge_vec;
+use prometheus::IntGaugeVec;
 use prometheus::{opts, register_gauge_vec, GaugeVec};
 
 lazy_static! {
@@ -66,6 +68,17 @@ lazy_static! {
             "Price deviation from the reference price."
         ),
         &["source"]
+    )
+    .unwrap();
+}
+
+lazy_static! {
+    static ref NUM_SOURCES: IntGaugeVec = register_int_gauge_vec!(
+        opts!(
+            "num_sources",
+            "Number of sources that have published data for a pair."
+        ),
+        &["pair"]
     )
     .unwrap();
 }
@@ -142,6 +155,7 @@ pub async fn process_data_by_pair_and_source(
             let price_labels = PAIR_PRICE.with_label_values(&[pair, src]);
             let deviation_labels = PRICE_DEVIATION.with_label_values(&[pair, src]);
             let source_deviation_labels = PRICE_DEVIATION_SOURCE.with_label_values(&[src]);
+            let num_sources_labels = NUM_SOURCES.with_label_values(&[pair]);
 
             let price_as_f64 = data.price.to_f64().ok_or(MonitoringError::Price(
                 "Failed to convert price to f64".to_string(),
@@ -149,12 +163,14 @@ pub async fn process_data_by_pair_and_source(
             let normalized_price = price_as_f64 / (10_u64.pow(decimals)) as f64;
 
             let deviation = price_deviation(&data).await?;
-            let source_deviation = source_deviation(&data, config.clone()).await?;
+            let (source_deviation, num_sources_aggregated) =
+                source_deviation(&data, config.clone()).await?;
 
             price_labels.set(normalized_price);
             time_labels.set(time as f64);
             deviation_labels.set(deviation);
             source_deviation_labels.set(source_deviation);
+            num_sources_labels.set(num_sources_aggregated as i64);
 
             Ok(time)
         }
