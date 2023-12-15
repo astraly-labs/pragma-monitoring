@@ -146,7 +146,7 @@ pub async fn process_data_by_pair_and_source(
         .map_err(|_| MonitoringError::Connection("Failed to get connection".to_string()))?;
 
     let filtered_by_source_result: Result<SpotEntry, _> = spot_entry
-        .filter(pair_id.eq(pair.clone()))
+        .filter(pair_id.eq(pair))
         .filter(source.eq(src))
         .order(block_timestamp.desc())
         .first(&mut conn)
