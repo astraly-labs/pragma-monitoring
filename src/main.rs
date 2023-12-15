@@ -30,6 +30,8 @@ mod constants;
 
 #[tokio::main]
 async fn main() {
+    env_logger::init();
+
     // Load environment variables from .env file
     dotenv().ok();
 
@@ -85,8 +87,8 @@ async fn main() {
         // Process or output the results
         for result in &results {
             match result {
-                Ok(data) => println!("Task succeeded with data: {:?}", data),
-                Err(e) => eprintln!("Task failed with error: {:?}", e),
+                Ok(data) => log::info!("Task succeeded with data: {:?}", data),
+                Err(e) => log::error!("Task failed with error: {:?}", e),
             }
         }
     }

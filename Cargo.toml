@@ -12,17 +12,17 @@ chrono = "0.4"
 bigdecimal = "0.4.1"
 num-bigint = "0.4"
 diesel = { version = "2.1.0", features = [
-    "postgres",
-    "numeric",
-    "chrono",
-    "uuid",
-    "serde_json",
+  "postgres",
+  "numeric",
+  "chrono",
+  "uuid",
+  "serde_json",
 ] }
 diesel-async = { version = "0.4.1", features = [
-    "async-connection-wrapper",
-    "deadpool",
-    "postgres",
-    "tokio",
+  "async-connection-wrapper",
+  "deadpool",
+  "postgres",
+  "tokio",
 ] }
 dotenv = "0.15.0"
 diesel_derives = "1.4.0"
@@ -40,3 +40,5 @@ url = "2.5.0"
 strum = { version = "0.25.0", features = ["derive"] }
 coingecko = "1.0.1"
 phf = { version = "0.11", features = ["macros"] }
+log = "0.4.20"
+env_logger = "0.10.1"

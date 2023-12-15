@@ -1,5 +1,6 @@
 use axum::{routing::get, Router};
 use hyper::Server;
+use log::info;
 use prometheus::{Encoder, TextEncoder};
 use std::net::SocketAddr;
 
@@ -10,7 +11,7 @@ pub async fn run_metrics_server() {
 
     let addr = SocketAddr::from(([0, 0, 0, 0], 8080));
 
-    println!("Listening on http://{}", addr);
+    info!("Server Started, listening on http://{}", addr);
 
     Server::bind(&addr)
         .serve(app.into_make_service())
