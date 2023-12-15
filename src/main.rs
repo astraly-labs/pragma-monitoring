@@ -72,7 +72,7 @@ async fn main() {
                         pool.clone(),
                         pair.clone(),
                         sources,
-                        *monitoring_config.decimals.get(&pair.clone()).unwrap(),
+                        monitoring_config.clone(),
                     ))),
                 ]
             })

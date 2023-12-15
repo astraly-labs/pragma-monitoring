@@ -1,10 +1,12 @@
 extern crate diesel;
 extern crate dotenv;
 
+use crate::config::Config;
 use crate::diesel::QueryDsl;
 use crate::error::MonitoringError;
 use crate::models::SpotEntry;
 use crate::monitoring::price_deviation::price_deviation;
+use crate::monitoring::source_deviation::source_deviation;
 use crate::monitoring::time_since_last_update::time_since_last_update;
 use crate::schema::spot_entry::dsl::*;
 
@@ -57,6 +59,17 @@ lazy_static! {
     .unwrap();
 }
 
+lazy_static! {
+    static ref PRICE_DEVIATION_SOURCE: GaugeVec = register_gauge_vec!(
+        opts!(
+            "price_deviation_source",
+            "Price deviation from the reference price."
+        ),
+        &["source"]
+    )
+    .unwrap();
+}
+
 pub async fn process_data_by_pair(
     pool: deadpool::managed::Pool<AsyncDieselConnectionManager<AsyncPgConnection>>,
     pair: String,
@@ -89,12 +102,15 @@ pub async fn process_data_by_pair_and_sources(
     pool: deadpool::managed::Pool<AsyncDieselConnectionManager<AsyncPgConnection>>,
     pair: String,
     sources: Vec<String>,
-    decimals: u32,
+    config: Config,
 ) -> Result<u64, MonitoringError> {
     let mut timestamps = Vec::new();
 
+    let decimals = *config.decimals.get(&pair.clone()).unwrap();
+
     for src in sources {
-        let res = process_data_by_pair_and_source(pool.clone(), &pair, &src, decimals).await?;
+        let res =
+            process_data_by_pair_and_source(pool.clone(), &pair, &src, decimals, &config).await?;
         timestamps.push(res);
     }
 
@@ -106,6 +122,7 @@ pub async fn process_data_by_pair_and_source(
     pair: &str,
     src: &str,
     decimals: u32,
+    config: &Config,
 ) -> Result<u64, MonitoringError> {
     let mut conn = pool
         .get()
@@ -124,6 +141,7 @@ pub async fn process_data_by_pair_and_source(
             let time_labels = TIME_SINCE_LAST_UPDATE_SOURCE.with_label_values(&[src]);
             let price_labels = PAIR_PRICE.with_label_values(&[pair, src]);
             let deviation_labels = PRICE_DEVIATION.with_label_values(&[pair, src]);
+            let source_deviation_labels = PRICE_DEVIATION_SOURCE.with_label_values(&[src]);
 
             let price_as_f64 = data.price.to_f64().ok_or(MonitoringError::Price(
                 "Failed to convert price to f64".to_string(),
@@ -131,10 +149,12 @@ pub async fn process_data_by_pair_and_source(
             let normalized_price = price_as_f64 / (10_u64.pow(decimals)) as f64;
 
             let deviation = price_deviation(&data).await?;
+            let source_deviation = source_deviation(&data, config.clone()).await?;
 
             price_labels.set(normalized_price);
             time_labels.set(time as f64);
             deviation_labels.set(deviation);
+            source_deviation_labels.set(source_deviation);
 
             Ok(time)
         }
