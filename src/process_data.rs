@@ -4,6 +4,7 @@ extern crate dotenv;
 use crate::diesel::QueryDsl;
 use crate::error::MonitoringError;
 use crate::models::SpotEntry;
+use crate::monitoring::price_deviation::price_deviation;
 use crate::monitoring::time_since_last_update::time_since_last_update;
 use crate::schema::spot_entry::dsl::*;
 
@@ -12,27 +13,48 @@ use diesel::ExpressionMethods;
 use diesel_async::pooled_connection::AsyncDieselConnectionManager;
 use diesel_async::AsyncPgConnection;
 use diesel_async::RunQueryDsl;
+use lazy_static::lazy_static;
 use prometheus::{opts, register_gauge_vec, GaugeVec};
 
-lazy_static::lazy_static! {
+lazy_static! {
     static ref TIME_SINCE_LAST_UPDATE_SOURCE: GaugeVec = register_gauge_vec!(
-        opts!("time_since_last_update_seconds", "Time since the last update in seconds."),
+        opts!(
+            "time_since_last_update_seconds",
+            "Time since the last update in seconds."
+        ),
         &["source"]
-    ).unwrap();
+    )
+    .unwrap();
 }
 
-lazy_static::lazy_static! {
+lazy_static! {
     static ref PAIR_PRICE: GaugeVec = register_gauge_vec!(
         opts!("pair_price", "Price of the pair from the source."),
         &["pair", "source"]
-    ).unwrap();
+    )
+    .unwrap();
 }
 
-lazy_static::lazy_static! {
+lazy_static! {
     static ref TIME_SINCE_LAST_UPDATE_PAIR_ID: GaugeVec = register_gauge_vec!(
-        opts!("time_since_last_update_pair_id", "Time since the last update in seconds."),
+        opts!(
+            "time_since_last_update_pair_id",
+            "Time since the last update in seconds."
+        ),
         &["pair"]
-    ).unwrap();
+    )
+    .unwrap();
+}
+
+lazy_static! {
+    static ref PRICE_DEVIATION: GaugeVec = register_gauge_vec!(
+        opts!(
+            "price_deviation",
+            "Price deviation from the reference price."
+        ),
+        &["pair", "source"]
+    )
+    .unwrap();
 }
 
 pub async fn process_data_by_pair(
@@ -101,13 +123,18 @@ pub async fn process_data_by_pair_and_source(
 
             let time_labels = TIME_SINCE_LAST_UPDATE_SOURCE.with_label_values(&[src]);
             let price_labels = PAIR_PRICE.with_label_values(&[pair, src]);
+            let deviation_labels = PRICE_DEVIATION.with_label_values(&[pair, src]);
 
             let price_as_f64 = data.price.to_f64().ok_or(MonitoringError::Price(
                 "Failed to convert price to f64".to_string(),
             ))?;
+            let normalized_price = price_as_f64 / (10_u64.pow(decimals)) as f64;
 
-            price_labels.set(price_as_f64 / (10_u64.pow(decimals)) as f64);
+            let deviation = price_deviation(&data).await?;
+
+            price_labels.set(normalized_price);
             time_labels.set(time as f64);
+            deviation_labels.set(deviation);
 
             Ok(time)
         }

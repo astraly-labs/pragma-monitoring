@@ -5,6 +5,7 @@ pub enum MonitoringError {
     Price(String),
     Database(diesel::result::Error),
     Connection(String),
+    Api(String),
 }
 
 impl StdError for MonitoringError {}
@@ -15,6 +16,7 @@ impl fmt::Display for MonitoringError {
             MonitoringError::Price(e) => write!(f, "Price Error: {}", e),
             MonitoringError::Database(e) => write!(f, "Database Error: {}", e),
             MonitoringError::Connection(e) => write!(f, "Connection Error: {}", e),
+            MonitoringError::Api(e) => write!(f, "API Error: {}", e),
         }
     }
 }

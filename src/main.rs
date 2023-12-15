@@ -25,6 +25,8 @@ mod process_data;
 mod server;
 // Database schema
 mod schema;
+// Constants
+mod constants;
 
 #[tokio::main]
 async fn main() {
