@@ -816,19 +816,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "coingecko"
-version = "1.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b24c2d346c689c0b8a27d4c921a35d8cac68cc266130bc82ba879155ca828da0"
-dependencies = [
- "chrono",
- "reqwest",
- "serde",
- "serde_json",
- "tokio",
-]
-
-[[package]]
 name = "colored"
 version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2042,7 +2029,6 @@ dependencies = [
  "axum-macros",
  "bigdecimal 0.4.2",
  "chrono",
- "coingecko",
  "deadpool",
  "diesel",
  "diesel-async",
@@ -2057,6 +2043,8 @@ dependencies = [
  "num-bigint",
  "phf",
  "prometheus",
+ "reqwest",
+ "serde",
  "starknet",
  "starknet_api",
  "strum",

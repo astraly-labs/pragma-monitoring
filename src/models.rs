@@ -9,9 +9,9 @@ use diesel::{Queryable, QueryableByName, Selectable};
 #[diesel(table_name = crate::schema::spot_entry)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct SpotEntry {
-    pub data_id: String,
     pub network: String,
     pub pair_id: String,
+    pub data_id: String,
     pub block_hash: String,
     pub block_number: i64,
     pub block_timestamp: Option<NaiveDateTime>,
@@ -28,9 +28,9 @@ pub struct SpotEntry {
 #[diesel(table_name = crate::schema::future_entry)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct FutureEntry {
-    pub data_id: String,
     pub network: String,
     pub pair_id: String,
+    pub data_id: String,
     pub block_hash: String,
     pub block_number: i64,
     pub block_timestamp: Option<NaiveDateTime>,

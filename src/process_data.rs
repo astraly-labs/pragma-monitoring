@@ -98,6 +98,8 @@ pub async fn process_data_by_pair(
         .first(&mut conn)
         .await;
 
+    log::info!("Processing data for pair: {}", pair);
+
     match result {
         Ok(data) => {
             let seconds_since_last_publish = time_since_last_update(&data);
@@ -122,6 +124,7 @@ pub async fn process_data_by_pair_and_sources(
     let decimals = *config.decimals.get(&pair.clone()).unwrap();
 
     for src in sources {
+        log::info!("Processing data for pair: {} and source: {}", pair, src);
         let res =
             process_data_by_pair_and_source(pool.clone(), &pair, &src, decimals, &config).await?;
         timestamps.push(res);
@@ -141,7 +144,9 @@ pub async fn process_data_by_pair_and_source(
         .get()
         .await
         .map_err(|_| MonitoringError::Connection("Failed to get connection".to_string()))?;
+
     let filtered_by_source_result: Result<SpotEntry, _> = spot_entry
+        .filter(pair_id.eq(pair.clone()))
         .filter(source.eq(src))
         .order(block_timestamp.desc())
         .first(&mut conn)

@@ -3,7 +3,7 @@ use std::{collections::HashMap, sync::Arc};
 use starknet::{
     core::{
         types::{BlockId, BlockTag, FieldElement, FunctionCall},
-        utils::cairo_short_string_to_felt,
+        utils::{cairo_short_string_to_felt, parse_cairo_short_string},
     },
     macros::selector,
     providers::{jsonrpc::HttpTransport, JsonRpcClient, Provider},
@@ -123,7 +123,7 @@ async fn init_oracle_config(
         .unwrap();
 
     // Fetch publishers
-    let publishers = rpc_client
+    let publishers: Vec<String> = rpc_client
         .call(
             FunctionCall {
                 contract_address: publisher_registry_address,
@@ -135,8 +135,10 @@ async fn init_oracle_config(
         .await
         .expect("failed to get publishers")
         .into_iter()
-        .map(|publisher| publisher.to_string())
+        .map(|publisher| parse_cairo_short_string(&publisher).unwrap())
         .collect();
+
+    let publishers = publishers[1..].to_vec();
 
     let mut sources: HashMap<String, Vec<String>> = HashMap::new();
     let mut decimals: HashMap<String, u32> = HashMap::new();
@@ -189,7 +191,7 @@ async fn init_oracle_config(
             .await
             .expect("failed to get pair sources");
 
-        let future_pair_sources = rpc_client
+        let _future_pair_sources = rpc_client
             .call(
                 FunctionCall {
                     contract_address: oracle_address,
@@ -203,9 +205,15 @@ async fn init_oracle_config(
 
         // Store all sources for the given pair
         let mut pair_sources = Vec::new();
-        for source in [spot_pair_sources, future_pair_sources].concat() {
-            if !pair_sources.contains(&source.to_string()) {
-                pair_sources.push(source.to_string());
+
+        // Remove first elements of sources' arrays
+        let spot_pair_sources = spot_pair_sources[1..].to_vec();
+        // let future_pair_sources = future_pair_sources[1..].to_vec();
+
+        for source in spot_pair_sources {
+            let source = parse_cairo_short_string(&source).unwrap();
+            if !pair_sources.contains(&source) {
+                pair_sources.push(source);
             }
         }
 

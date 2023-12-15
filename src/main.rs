@@ -47,6 +47,8 @@ async fn main() {
     )
     .await;
 
+    log::info!("Successfully fetched config: {:?}", monitoring_config);
+
     tokio::spawn(server::run_metrics_server());
 
     let database_url: String = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
