@@ -167,9 +167,9 @@ pub async fn process_data_by_pair_and_source(
             ))?;
             let normalized_price = price_as_f64 / (10_u64.pow(decimals)) as f64;
 
-            let deviation = price_deviation(&data).await?;
+            let deviation = price_deviation(&data, normalized_price).await?;
             let (source_deviation, num_sources_aggregated) =
-                source_deviation(&data, config.clone()).await?;
+                source_deviation(&data, normalized_price, config.clone()).await?;
 
             price_labels.set(normalized_price);
             time_labels.set(time as f64);

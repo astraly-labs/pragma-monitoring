@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 
 use crate::{constants::COINGECKO_IDS, error::MonitoringError, models::SpotEntry};
-use bigdecimal::ToPrimitive;
 
 /// Data Transfer Object for Defillama API
 /// e.g
@@ -30,7 +29,10 @@ struct CoinPriceDTO {
 }
 
 /// Calculates the deviation of the price from a trusted API (Coingecko)
-pub async fn price_deviation(query: &SpotEntry) -> Result<f64, MonitoringError> {
+pub async fn price_deviation(
+    query: &SpotEntry,
+    normalized_price: f64,
+) -> Result<f64, MonitoringError> {
     let ids = &COINGECKO_IDS;
 
     let pair_id = query.pair_id.to_string();
@@ -52,10 +54,6 @@ pub async fn price_deviation(query: &SpotEntry) -> Result<f64, MonitoringError> 
 
     // TODO: Check returned timestamp
 
-    let published_price = query.price.to_f64().ok_or(MonitoringError::Conversion(
-        "Failed to convert price to f64".to_string(),
-    ))?;
-
     let api_id = format!("coingecko:{}", coingecko_id);
 
     let reference_price = coins_prices
@@ -67,5 +65,5 @@ pub async fn price_deviation(query: &SpotEntry) -> Result<f64, MonitoringError> 
         )))?
         .price;
 
-    Ok((published_price - reference_price) / reference_price)
+    Ok((normalized_price - reference_price) / reference_price)
 }

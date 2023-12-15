@@ -1,5 +1,4 @@
 use bigdecimal::ToPrimitive;
-use num_bigint::ToBigInt;
 use starknet::{
     core::{
         types::{BlockId, BlockTag, FieldElement, FunctionCall},
@@ -15,6 +14,7 @@ use crate::{config::Config, error::MonitoringError, models::SpotEntry};
 /// Returns the deviation and the number of sources aggregated
 pub async fn source_deviation(
     query: &SpotEntry,
+    normalized_price: f64,
     config: Config,
 ) -> Result<(f64, u32), MonitoringError> {
     let client = config.network.provider;
@@ -37,14 +37,10 @@ pub async fn source_deviation(
         .first()
         .unwrap()
         .to_big_decimal(*decimals)
-        .to_bigint()
-        .unwrap();
-
-    let published_price = query.price.to_bigint().unwrap();
-
-    let deviation = ((published_price - on_chain_price.clone()) / on_chain_price.clone())
         .to_f64()
         .unwrap();
+
+    let deviation = (normalized_price - on_chain_price) / on_chain_price;
     let num_sources_aggregated = (*data.get(3).unwrap()).try_into().map_err(|e| {
         MonitoringError::Conversion(format!("Failed to convert num sources {:?}", e))
     })?;
