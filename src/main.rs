@@ -1,11 +1,18 @@
 extern crate diesel;
 extern crate dotenv;
 
+use config::parse_pairs;
+use config::Config;
+use config::NetworkName;
 use diesel_async::pooled_connection::deadpool::*;
 use diesel_async::pooled_connection::AsyncDieselConnectionManager;
 use dotenv::dotenv;
+use starknet::core::types::FieldElement;
 use std::env;
+use std::str::FromStr;
 
+// Configuration
+mod config;
 // Error handling
 mod error;
 // Database models
@@ -25,20 +32,16 @@ async fn main() {
     dotenv().ok();
 
     // Define the pairs to monitor
-    let pairs = vec![
-        ("BTC/USD", "CEX", 8),
-        ("ETH/USD", "CEX", 8),
-        ("BTC/USD", "COINBASE", 8),
-        ("ETH/USD", "COINBASE", 8),
-        ("BTC/USD", "BITSTAMP", 8),
-        ("ETH/USD", "BITSTAMP", 8),
-        ("BTC/USD", "OKX", 8),
-        ("ETH/USD", "OKX", 8),
-        ("BTC/USD", "GECKOTERMINAL", 8),
-        ("ETH/USD", "GECKOTERMINAL", 8),
-        ("BTC/USD", "KAIKO", 8),
-        ("ETH/USD", "KAIKO", 8),
-    ];
+    let network = std::env::var("NETWORK").expect("NETWORK must be set");
+    let oracle_address = std::env::var("ORACLE_ADDRESS").expect("ORACLE_ADDRESS must be set");
+    let pairs = std::env::var("PAIRS").expect("PAIRS must be set");
+
+    let monitoring_config = Config::new(
+        NetworkName::from_str(&network).expect("Invalid network name"),
+        FieldElement::from_hex_be(&oracle_address).expect("Invalid oracle address"),
+        parse_pairs(&pairs),
+    )
+    .await;
 
     tokio::spawn(server::run_metrics_server());
 
@@ -51,21 +54,21 @@ async fn main() {
     loop {
         interval.tick().await; // Wait for the next tick
 
-        let tasks: Vec<_> = pairs
+        let tasks: Vec<_> = monitoring_config
             .clone()
+            .sources
             .into_iter()
-            .flat_map(|(pair, srce, decimals)| {
+            .flat_map(|(pair, sources)| {
                 vec![
                     tokio::spawn(Box::pin(process_data::process_data_by_pair(
                         pool.clone(),
-                        pair,
-                        decimals,
+                        pair.clone(),
                     ))),
-                    tokio::spawn(Box::pin(process_data::process_data_by_pair_and_source(
+                    tokio::spawn(Box::pin(process_data::process_data_by_pair_and_sources(
                         pool.clone(),
-                        pair,
-                        srce,
-                        decimals,
+                        pair.clone(),
+                        sources,
+                        *monitoring_config.decimals.get(&pair.clone()).unwrap(),
                     ))),
                 ]
             })

@@ -11,7 +11,13 @@ axum-macros = "0.3"
 chrono = "0.4"
 bigdecimal = "0.4.1"
 num-bigint = "0.4"
-diesel = { version = "2.1.0", features = ["postgres" , "numeric", "chrono","uuid", "serde_json"] }
+diesel = { version = "2.1.0", features = [
+    "postgres",
+    "numeric",
+    "chrono",
+    "uuid",
+    "serde_json",
+] }
 diesel-async = { version = "0.4.1", features = [
     "async-connection-wrapper",
     "deadpool",
@@ -24,9 +30,11 @@ diesel_migrations = "2"
 uuid = { version = "1.4", features = ["fast-rng", "v4", "serde"] }
 tokio = { version = "1", features = ["full"] }
 starknet_api = "0.4.1"
-starknet = "0.6.0"
+starknet = "0.8.0"
 deadpool = { version = "0.9.3", features = ["managed"] }
 futures = "0.3.28"
 prometheus = "0.13.3"
 lazy_static = "1.4.0"
 hyper = "0.14.27"
+url = "2.5.0"
+strum = { version = "0.25.0", features = ["derive"] }

@@ -26,6 +26,7 @@ async fn metrics_handler() -> hyper::Response<hyper::Body> {
     let mut buffer = vec![];
     let encoder = TextEncoder::new();
     let metric_families = prometheus::gather();
+
     encoder.encode(&metric_families, &mut buffer).unwrap();
 
     hyper::Response::builder()
