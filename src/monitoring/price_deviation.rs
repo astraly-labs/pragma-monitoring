@@ -16,16 +16,19 @@ pub async fn price_deviation(query: &SpotEntry) -> Result<f64, MonitoringError> 
         .await
         .map_err(|e| MonitoringError::Api(e.to_string()))?;
 
-    let published_price = query
-        .price
-        .to_f64()
-        .expect("Failed to convert price to f64");
+    // TODO: Check returned timestamp
+
+    let published_price = query.price.to_f64().ok_or(MonitoringError::Conversion(
+        "Failed to convert price to f64".to_string(),
+    ))?;
 
     let reference_price = coingecko_price
         .get(coingecko_id)
         .expect("Failed to get coingecko price")
         .usd
-        .expect("Failed to get usd price");
+        .ok_or(MonitoringError::Conversion(
+            "Failed get usd price".to_string(),
+        ))?;
 
     Ok((published_price - reference_price) / reference_price)
 }

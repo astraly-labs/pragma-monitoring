@@ -30,7 +30,7 @@ pub async fn source_deviation(
             BlockId::Tag(BlockTag::Latest),
         )
         .await
-        .expect("failed to get median price");
+        .map_err(|e| MonitoringError::OnChain(e.to_string()))?;
 
     let decimals = config.decimals.get(&query.pair_id).unwrap();
     let on_chain_price = data
@@ -45,7 +45,9 @@ pub async fn source_deviation(
     let deviation = ((published_price - on_chain_price.clone()) / on_chain_price.clone())
         .to_f64()
         .unwrap();
-    let num_sources_aggregated = (*data.get(3).unwrap()).try_into().unwrap();
+    let num_sources_aggregated = (*data.get(3).unwrap()).try_into().map_err(|e| {
+        MonitoringError::Conversion(format!("Failed to convert num sources {:?}", e))
+    })?;
 
     Ok((deviation, num_sources_aggregated))
 }

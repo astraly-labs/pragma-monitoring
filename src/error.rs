@@ -6,6 +6,8 @@ pub enum MonitoringError {
     Database(diesel::result::Error),
     Connection(String),
     Api(String),
+    Conversion(String),
+    OnChain(String),
 }
 
 impl StdError for MonitoringError {}
@@ -17,6 +19,8 @@ impl fmt::Display for MonitoringError {
             MonitoringError::Database(e) => write!(f, "Database Error: {}", e),
             MonitoringError::Connection(e) => write!(f, "Connection Error: {}", e),
             MonitoringError::Api(e) => write!(f, "API Error: {}", e),
+            MonitoringError::Conversion(e) => write!(f, "Conversion Error: {}", e),
+            MonitoringError::OnChain(e) => write!(f, "OnChain Error: {}", e),
         }
     }
 }
