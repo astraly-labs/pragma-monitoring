@@ -9,7 +9,9 @@ pub async fn run_metrics_server() {
         .route("/metrics", get(metrics_handler));
 
     let addr = SocketAddr::from(([0, 0, 0, 0], 8080));
+
     println!("Listening on http://{}", addr);
+
     Server::bind(&addr)
         .serve(app.into_make_service())
         .await
