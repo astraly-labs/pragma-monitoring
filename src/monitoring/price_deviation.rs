@@ -39,7 +39,8 @@ pub async fn price_deviation(
     let coingecko_id = *ids.get(&pair_id).expect("Failed to get coingecko id");
 
     let request_url = format!(
-        "https://coins.llama.fi/prices/current/coingecko:{id}",
+        "https://coins.llama.fi/prices/historical/{timestamp}/coingecko:{id}",
+        timestamp = query.timestamp.unwrap().timestamp(),
         id = coingecko_id,
     );
 
@@ -51,8 +52,6 @@ pub async fn price_deviation(
         .json()
         .await
         .map_err(|e| MonitoringError::Api(e.to_string()))?;
-
-    // TODO: Check returned timestamp
 
     let api_id = format!("coingecko:{}", coingecko_id);
 

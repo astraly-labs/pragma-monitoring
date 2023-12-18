@@ -1,7 +1,7 @@
 use bigdecimal::ToPrimitive;
 use starknet::{
     core::{
-        types::{BlockId, BlockTag, FieldElement, FunctionCall},
+        types::{BlockId, FieldElement, FunctionCall},
         utils::cairo_short_string_to_felt,
     },
     macros::selector,
@@ -27,7 +27,7 @@ pub async fn source_deviation(
                 entry_point_selector: selector!("get_data_median"),
                 calldata: vec![FieldElement::ZERO, field_pair],
             },
-            BlockId::Tag(BlockTag::Latest),
+            BlockId::Number(query.block_number.try_into().unwrap()),
         )
         .await
         .map_err(|e| MonitoringError::OnChain(e.to_string()))?;
