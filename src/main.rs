@@ -6,10 +6,13 @@ use config::Config;
 use config::NetworkName;
 use diesel_async::pooled_connection::deadpool::*;
 use diesel_async::pooled_connection::AsyncDieselConnectionManager;
+
 use dotenv::dotenv;
 use starknet::core::types::FieldElement;
 use std::env;
 use std::str::FromStr;
+
+use crate::process_data::is_syncing;
 
 // Configuration
 mod config;
@@ -59,6 +62,16 @@ async fn main() {
 
     loop {
         interval.tick().await; // Wait for the next tick
+
+        // Skip if indexer is still syncing
+        if let Some(blocks_left) =
+            is_syncing(pool.clone(), monitoring_config.network.provider.clone())
+                .await
+                .unwrap()
+        {
+            log::info!("Indexer is still syncing ♻️ blocks left: {}", blocks_left);
+            continue;
+        }
 
         let tasks: Vec<_> = monitoring_config
             .clone()

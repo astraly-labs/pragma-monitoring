@@ -1,5 +1,7 @@
 use std::{error::Error as StdError, fmt};
 
+use starknet::providers::ProviderError;
+
 #[derive(Debug)]
 pub enum MonitoringError {
     Price(String),
@@ -8,6 +10,7 @@ pub enum MonitoringError {
     Api(String),
     Conversion(String),
     OnChain(String),
+    Provider(ProviderError),
 }
 
 impl StdError for MonitoringError {}
@@ -21,6 +24,7 @@ impl fmt::Display for MonitoringError {
             MonitoringError::Api(e) => write!(f, "API Error: {}", e),
             MonitoringError::Conversion(e) => write!(f, "Conversion Error: {}", e),
             MonitoringError::OnChain(e) => write!(f, "OnChain Error: {}", e),
+            MonitoringError::Provider(e) => write!(f, "Provider Error: {}", e),
         }
     }
 }

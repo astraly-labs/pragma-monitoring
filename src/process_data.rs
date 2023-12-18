@@ -1,6 +1,8 @@
 extern crate diesel;
 extern crate dotenv;
 
+use std::sync::Arc;
+
 use crate::config::Config;
 use crate::diesel::QueryDsl;
 use crate::error::MonitoringError;
@@ -19,6 +21,9 @@ use lazy_static::lazy_static;
 use prometheus::register_int_gauge_vec;
 use prometheus::IntGaugeVec;
 use prometheus::{opts, register_gauge_vec, GaugeVec};
+use starknet::providers::jsonrpc::HttpTransport;
+use starknet::providers::JsonRpcClient;
+use starknet::providers::Provider;
 
 lazy_static! {
     static ref TIME_SINCE_LAST_UPDATE_SOURCE: GaugeVec = register_gauge_vec!(
@@ -154,14 +159,15 @@ pub async fn process_data_by_pair_and_source(
 
     match filtered_by_source_result {
         Ok(data) => {
-            let time = time_since_last_update(&data);
-
+            // Get the labels
             let time_labels = TIME_SINCE_LAST_UPDATE_SOURCE.with_label_values(&[src]);
             let price_labels = PAIR_PRICE.with_label_values(&[pair, src]);
             let deviation_labels = PRICE_DEVIATION.with_label_values(&[pair, src]);
             let source_deviation_labels = PRICE_DEVIATION_SOURCE.with_label_values(&[src]);
             let num_sources_labels = NUM_SOURCES.with_label_values(&[pair]);
 
+            // Compute metrics
+            let time = time_since_last_update(&data);
             let price_as_f64 = data.price.to_f64().ok_or(MonitoringError::Price(
                 "Failed to convert price to f64".to_string(),
             ))?;
@@ -171,6 +177,7 @@ pub async fn process_data_by_pair_and_source(
             let (source_deviation, num_sources_aggregated) =
                 source_deviation(&data, normalized_price, config.clone()).await?;
 
+            // Set the metrics
             price_labels.set(normalized_price);
             time_labels.set(time as f64);
             deviation_labels.set(deviation);
@@ -180,5 +187,38 @@ pub async fn process_data_by_pair_and_source(
             Ok(time)
         }
         Err(e) => Err(e.into()),
+    }
+}
+
+/// Checks if the indexer is still syncing.
+/// Returns the number of blocks left to sync if it is still syncing.
+pub async fn is_syncing(
+    pool: deadpool::managed::Pool<AsyncDieselConnectionManager<AsyncPgConnection>>,
+    provider: Arc<JsonRpcClient<HttpTransport>>,
+) -> Result<Option<u64>, MonitoringError> {
+    let mut conn = pool
+        .get()
+        .await
+        .map_err(|_| MonitoringError::Connection("Failed to get connection".to_string()))?;
+
+    let latest_entry: Result<SpotEntry, _> = spot_entry
+        .order(block_timestamp.desc())
+        .first(&mut conn)
+        .await;
+
+    match latest_entry {
+        Ok(entry) => {
+            let block_n = entry.block_number as u64;
+            let current_block = provider
+                .block_number()
+                .await
+                .map_err(MonitoringError::Provider)?;
+            if block_n < current_block {
+                Ok(Some(current_block - block_n))
+            } else {
+                Ok(None)
+            }
+        }
+        Err(_) => Ok(None),
     }
 }
