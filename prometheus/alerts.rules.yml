@@ -1,11 +1,35 @@
 groups:
-  - name: example
+  - name: Oracle
     rules:
       - alert: TimeSinceLastUpdateTooHigh
         expr: time_since_last_update_seconds > 1200
         for: 5m
         labels:
-          severity: critical
+          severity: warning
         annotations:
           summary: "Time since the last update is too high"
-          description: "The time since the last update of {{ $labels.pair }} from {{ $labels.source }} has exceeded 1200 seconds."
+          description: "The time since the last update from {{ $labels.publisher }} has exceeded 1200 seconds."
+      - alert: WrongPrice
+        expr: price_deviation > 0.02
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Price deviation is too high"
+          description: "The price deviation of {{ $labels.pair }} from {{ $labels.source }} has exceeded 5%."
+      - alert: TooFewSources
+        expr: num_sources < 5
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Too few sources"
+          description: "The number of sources for {{ $labels.pair }} has fallen below 5."
+      - alert: SourceDeviation
+        expr: price_deviation_source > 0.02
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Source deviation is too high"
+          description: "The source deviation of {{ $labels.pair }} from {{ $labels.source }} has exceeded 5%."

@@ -4,6 +4,12 @@ extern crate dotenv;
 use std::sync::Arc;
 
 use crate::config::Config;
+use crate::constants::NUM_SOURCES;
+use crate::constants::PAIR_PRICE;
+use crate::constants::PRICE_DEVIATION;
+use crate::constants::PRICE_DEVIATION_SOURCE;
+use crate::constants::TIME_SINCE_LAST_UPDATE_PAIR_ID;
+use crate::constants::TIME_SINCE_LAST_UPDATE_PUBLISHER;
 use crate::diesel::QueryDsl;
 use crate::error::MonitoringError;
 use crate::models::SpotEntry;
@@ -17,76 +23,9 @@ use diesel::ExpressionMethods;
 use diesel_async::pooled_connection::AsyncDieselConnectionManager;
 use diesel_async::AsyncPgConnection;
 use diesel_async::RunQueryDsl;
-use lazy_static::lazy_static;
-use prometheus::register_int_gauge_vec;
-use prometheus::IntGaugeVec;
-use prometheus::{opts, register_gauge_vec, GaugeVec};
 use starknet::providers::jsonrpc::HttpTransport;
 use starknet::providers::JsonRpcClient;
 use starknet::providers::Provider;
-
-lazy_static! {
-    static ref TIME_SINCE_LAST_UPDATE_SOURCE: GaugeVec = register_gauge_vec!(
-        opts!(
-            "time_since_last_update_seconds",
-            "Time since the last update in seconds."
-        ),
-        &["source"]
-    )
-    .unwrap();
-}
-
-lazy_static! {
-    static ref PAIR_PRICE: GaugeVec = register_gauge_vec!(
-        opts!("pair_price", "Price of the pair from the source."),
-        &["pair", "source"]
-    )
-    .unwrap();
-}
-
-lazy_static! {
-    static ref TIME_SINCE_LAST_UPDATE_PAIR_ID: GaugeVec = register_gauge_vec!(
-        opts!(
-            "time_since_last_update_pair_id",
-            "Time since the last update in seconds."
-        ),
-        &["pair"]
-    )
-    .unwrap();
-}
-
-lazy_static! {
-    static ref PRICE_DEVIATION: GaugeVec = register_gauge_vec!(
-        opts!(
-            "price_deviation",
-            "Price deviation from the reference price."
-        ),
-        &["pair", "source"]
-    )
-    .unwrap();
-}
-
-lazy_static! {
-    static ref PRICE_DEVIATION_SOURCE: GaugeVec = register_gauge_vec!(
-        opts!(
-            "price_deviation_source",
-            "Price deviation from the reference price."
-        ),
-        &["source"]
-    )
-    .unwrap();
-}
-
-lazy_static! {
-    static ref NUM_SOURCES: IntGaugeVec = register_int_gauge_vec!(
-        opts!(
-            "num_sources",
-            "Number of sources that have published data for a pair."
-        ),
-        &["pair"]
-    )
-    .unwrap();
-}
 
 pub async fn process_data_by_pair(
     pool: deadpool::managed::Pool<AsyncDieselConnectionManager<AsyncPgConnection>>,
@@ -160,10 +99,11 @@ pub async fn process_data_by_pair_and_source(
     match filtered_by_source_result {
         Ok(data) => {
             // Get the labels
-            let time_labels = TIME_SINCE_LAST_UPDATE_SOURCE.with_label_values(&[src]);
+            let time_labels =
+                TIME_SINCE_LAST_UPDATE_PUBLISHER.with_label_values(&[&data.publisher]);
             let price_labels = PAIR_PRICE.with_label_values(&[pair, src]);
             let deviation_labels = PRICE_DEVIATION.with_label_values(&[pair, src]);
-            let source_deviation_labels = PRICE_DEVIATION_SOURCE.with_label_values(&[src]);
+            let source_deviation_labels = PRICE_DEVIATION_SOURCE.with_label_values(&[pair, src]);
             let num_sources_labels = NUM_SOURCES.with_label_values(&[pair]);
 
             // Compute metrics
