@@ -43,3 +43,6 @@ strum = { version = "0.25.0", features = ["derive"] }
 tokio = { version = "1", features = ["full"] }
 url = "2.5.0"
 uuid = { version = "1.4", features = ["fast-rng", "v4", "serde"] }
+
+[dev-dependencies]
+rstest = "0.18.2"

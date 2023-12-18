@@ -40,7 +40,7 @@ pub async fn price_deviation(
 
     let request_url = format!(
         "https://coins.llama.fi/prices/historical/{timestamp}/coingecko:{id}",
-        timestamp = query.timestamp.unwrap().timestamp(),
+        timestamp = query.timestamp.timestamp(),
         id = coingecko_id,
     );
 
