@@ -12,5 +12,6 @@ receivers:
   - name: "main-telegram"
     telegram_configs:
       - bot_token: '${TELEGRAM_BOT_TOKEN}'
-        chat_id: '-1001904637278'
+        chat_id: -1001904637278
+        parse_mode: ''
 
