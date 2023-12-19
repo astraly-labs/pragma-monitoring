@@ -75,7 +75,6 @@ pub(crate) async fn monitor(
 ) {
     loop {
         interval.tick().await; // Wait for the next tick
-        println!("Tick");
 
         // Skip if indexer is still syncing
         if wait_for_syncing {
