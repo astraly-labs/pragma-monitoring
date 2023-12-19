@@ -21,6 +21,8 @@ pub enum NetworkName {
     Mainnet,
     #[strum(ascii_case_insensitive)]
     Testnet,
+    #[strum(ascii_case_insensitive)]
+    Katana,
 }
 
 #[derive(Debug, Clone)]
@@ -87,6 +89,26 @@ impl Config {
                     decimals,
                     network: Network {
                         name: "testnet".to_string(),
+                        provider: Arc::new(rpc_client),
+                        oracle_address,
+                        publisher_registry_address,
+                    },
+                }
+            }
+            NetworkName::Katana => {
+                let url = Url::parse("http://localhost:5050").expect("Invalid JSON RPC URL");
+                let rpc_client = JsonRpcClient::new(HttpTransport::new(url)); // Katana URL
+
+                let (decimals, sources, publishers, publisher_registry_address) =
+                    init_oracle_config(&rpc_client, oracle_address, pairs.clone()).await;
+
+                Self {
+                    pairs,
+                    sources,
+                    publishers,
+                    decimals,
+                    network: Network {
+                        name: "katana".to_string(),
                         provider: Arc::new(rpc_client),
                         oracle_address,
                         publisher_registry_address,
