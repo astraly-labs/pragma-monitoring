@@ -52,9 +52,3 @@ OPSGENIE_API_KEY=
 In order for the full flow to work you will need to have tables following the table schemas defined <a href="src/schema.rs">here</a>.
 
 You can use our [indexer service](https://github.com/Astraly-Labs/indexer-service) on this repository to spin off your indexer in a few commands very easily.
-
-
-
-
-
-

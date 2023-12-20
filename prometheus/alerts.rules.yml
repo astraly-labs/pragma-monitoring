@@ -1,9 +1,8 @@
 groups:
-
-  - name: Oracle - Mainnet
+  - name: Oracle
     rules:
       - alert: TimeSinceLastUpdateTooHigh
-        expr: time_since_last_update_seconds{network="mainnet"} > 1200
+        expr: time_since_last_update_seconds > 1200
         for: 5m
         labels:
           severity: critical
@@ -11,7 +10,7 @@ groups:
           summary: "Time since the last update is too high"
           description: "The time since the last update from {{ $labels.publisher }} has exceeded 1200 seconds."
       - alert: WrongPrice
-        expr: price_deviation{network="mainnet"} > 0.02
+        expr: price_deviation > 0.02
         for: 5m
         labels:
           severity: critical
@@ -19,7 +18,7 @@ groups:
           summary: "Price deviation is too high"
           description: "The price deviation of {{ $labels.pair }} from {{ $labels.source }} has exceeded 5%."
       - alert: TooFewSources
-        expr: num_sources{network="mainnet"} < 5
+        expr: num_sources < 5
         for: 5m
         labels:
           severity: critical
@@ -27,42 +26,7 @@ groups:
           summary: "Too few sources"
           description: "The number of sources for {{ $labels.pair }} has fallen below 5."
       - alert: SourceDeviation
-        expr: price_deviation_source{network="mainnet"} > 0.02
-        for: 5m
-        labels:
-          severity: critical
-        annotations:
-          summary: "Source deviation is too high"
-          description: "The source deviation of {{ $labels.pair }} from {{ $labels.source }} has exceeded 5%."
-
-  - name: Oracle - Testnet
-    rules:
-      - alert: TimeSinceLastUpdateTooHigh
-        expr: time_since_last_update_seconds{network="testnet"} > 1200
-        for: 5m
-        labels:
-          severity: warning
-        annotations:
-          summary: "Time since the last update is too high"
-          description: "The time since the last update from {{ $labels.publisher }} has exceeded 1200 seconds."
-      - alert: WrongPrice
-        expr: price_deviation{network="testnet"} > 0.02
-        for: 5m
-        labels:
-          severity: critical
-        annotations:
-          summary: "Price deviation is too high"
-          description: "The price deviation of {{ $labels.pair }} from {{ $labels.source }} has exceeded 5%."
-      - alert: TooFewSources
-        expr: num_sources{network="testnet"} < 5
-        for: 5m
-        labels:
-          severity: critical
-        annotations:
-          summary: "Too few sources"
-          description: "The number of sources for {{ $labels.pair }} has fallen below 5."
-      - alert: SourceDeviation
-        expr: price_deviation_source{network="testnet"} > 0.02
+        expr: price_deviation_source > 0.02
         for: 5m
         labels:
           severity: critical
