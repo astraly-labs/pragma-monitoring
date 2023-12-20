@@ -9,7 +9,7 @@ pub async fn run_metrics_server() {
         .route("/", get(root_handler))
         .route("/metrics", get(metrics_handler));
 
-    let addr = SocketAddr::from(([0, 0, 0, 0], 8081));
+    let addr = SocketAddr::from(([0, 0, 0, 0], 8080));
 
     info!("Server Started, listening on http://{}", addr);
 

@@ -30,6 +30,13 @@ services:
       - alertmanager-data:/data
     command: --config.file=/config/alertmanager.yml --log.level=debug 
 
+  monitoring:
+    build: .
+    env_file: 
+      - .env
+    ports:
+      - 8080:8080
+
 
 volumes:
   prometheus-data:
