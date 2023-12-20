@@ -9,7 +9,7 @@
 
 ARG RUST_VERSION=1.72.0
 ARG APP_NAME=monitoring
-FROM rust:${RUST_VERSION}-slim-buster AS build
+FROM rust:${RUST_VERSION}-slim-bullseye AS build
 ARG APP_NAME
 WORKDIR /app
 
