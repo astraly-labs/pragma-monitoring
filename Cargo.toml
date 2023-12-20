@@ -6,6 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+arc-swap = "1.6.0"
 axum = { version = "0.6", features = ["macros", "multipart"] }
 axum-macros = "0.3"
 bigdecimal = "0.4.1"
@@ -42,7 +43,6 @@ strum = { version = "0.25.0", features = ["derive"] }
 tokio = { version = "1", features = ["full"] }
 url = "2.5.0"
 uuid = { version = "1.4", features = ["fast-rng", "v4", "serde"] }
-arc-swap = "1.6.0"
 
 [dev-dependencies]
 rstest = "0.18.2"
