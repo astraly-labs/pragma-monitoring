@@ -1,5 +1,6 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::HashMap, str::FromStr, sync::Arc};
 
+use arc_swap::{ArcSwap, Guard};
 use starknet::{
     core::{
         types::{BlockId, BlockTag, FieldElement, FunctionCall},
@@ -9,6 +10,7 @@ use starknet::{
     providers::{jsonrpc::HttpTransport, JsonRpcClient, Provider},
 };
 use strum::EnumString;
+use tokio::sync::OnceCell;
 use url::Url;
 
 // https://blastapi.io/public-api/starknet
@@ -34,21 +36,23 @@ pub struct Network {
 }
 
 #[derive(Debug, Clone)]
+#[allow(unused)]
 pub struct Config {
-    pub pairs: Vec<String>,
-    pub sources: HashMap<String, Vec<String>>, // Mapping from pair to sources
-    pub decimals: HashMap<String, u32>,        // Mapping from pair to decimals
-    pub publishers: Vec<String>,
-    pub network: Network,
+    pairs: Vec<String>,
+    sources: HashMap<String, Vec<String>>, // Mapping from pair to sources
+    decimals: HashMap<String, u32>,        // Mapping from pair to decimals
+    publishers: Vec<String>,
+    network: Network,
 }
 
+/// We are using `ArcSwap` as it allow us to replace the new `Config` with
+/// a new one which is required when running test cases. This approach was
+/// inspired from here - https://github.com/matklad/once_cell/issues/127
+pub static CONFIG: OnceCell<ArcSwap<Config>> = OnceCell::const_new();
+
 impl Config {
-    pub async fn new(
-        network: NetworkName,
-        oracle_address: FieldElement,
-        pairs: Vec<String>,
-    ) -> Self {
-        match network {
+    pub async fn new(config_input: ConfigInput) -> Self {
+        match config_input.network {
             NetworkName::Mainnet => {
                 // Create RPC Client
                 let rpc_url =
@@ -57,17 +61,22 @@ impl Config {
                     JsonRpcClient::new(HttpTransport::new(Url::parse(&rpc_url).unwrap()));
 
                 let (decimals, sources, publishers, publisher_registry_address) =
-                    init_oracle_config(&rpc_client, oracle_address, pairs.clone()).await;
+                    init_oracle_config(
+                        &rpc_client,
+                        config_input.oracle_address,
+                        config_input.pairs.clone(),
+                    )
+                    .await;
 
                 Self {
-                    pairs,
+                    pairs: config_input.pairs,
                     sources,
                     publishers,
                     decimals,
                     network: Network {
                         name: "mainnet".to_string(),
                         provider: Arc::new(rpc_client),
-                        oracle_address,
+                        oracle_address: config_input.oracle_address,
                         publisher_registry_address,
                     },
                 }
@@ -80,17 +89,22 @@ impl Config {
                     JsonRpcClient::new(HttpTransport::new(Url::parse(&rpc_url).unwrap()));
 
                 let (decimals, sources, publishers, publisher_registry_address) =
-                    init_oracle_config(&rpc_client, oracle_address, pairs.clone()).await;
+                    init_oracle_config(
+                        &rpc_client,
+                        config_input.oracle_address,
+                        config_input.pairs.clone(),
+                    )
+                    .await;
 
                 Self {
-                    pairs,
+                    pairs: config_input.pairs,
                     sources,
                     publishers,
                     decimals,
                     network: Network {
                         name: "testnet".to_string(),
                         provider: Arc::new(rpc_client),
-                        oracle_address,
+                        oracle_address: config_input.oracle_address,
                         publisher_registry_address,
                     },
                 }
@@ -100,23 +114,88 @@ impl Config {
                 let rpc_client = JsonRpcClient::new(HttpTransport::new(url)); // Katana URL
 
                 let (decimals, sources, publishers, publisher_registry_address) =
-                    init_oracle_config(&rpc_client, oracle_address, pairs.clone()).await;
+                    init_oracle_config(
+                        &rpc_client,
+                        config_input.oracle_address,
+                        config_input.pairs.clone(),
+                    )
+                    .await;
 
                 Self {
-                    pairs,
+                    pairs: config_input.pairs,
                     sources,
                     publishers,
                     decimals,
                     network: Network {
                         name: "katana".to_string(),
                         provider: Arc::new(rpc_client),
-                        oracle_address,
+                        oracle_address: config_input.oracle_address,
                         publisher_registry_address,
                     },
                 }
             }
         }
     }
+
+    pub fn sources(&self) -> &HashMap<String, Vec<String>> {
+        &self.sources
+    }
+
+    pub fn decimals(&self) -> &HashMap<String, u32> {
+        &self.decimals
+    }
+
+    pub fn network(&self) -> &Network {
+        &self.network
+    }
+}
+
+#[derive(Debug)]
+pub struct ConfigInput {
+    pub network: NetworkName,
+    pub oracle_address: FieldElement,
+    pub pairs: Vec<String>,
+}
+
+pub async fn get_config(config_input: Option<ConfigInput>) -> Guard<Arc<Config>> {
+    let cfg = CONFIG
+        .get_or_init(|| async {
+            match config_input {
+                Some(config_input) => ArcSwap::from_pointee(Config::new(config_input).await),
+                None => {
+                    let network = std::env::var("NETWORK").expect("NETWORK must be set");
+                    let oracle_address =
+                        std::env::var("ORACLE_ADDRESS").expect("ORACLE_ADDRESS must be set");
+                    let pairs = std::env::var("PAIRS").expect("PAIRS must be set");
+
+                    ArcSwap::from_pointee(
+                        Config::new(ConfigInput {
+                            network: NetworkName::from_str(&network).expect("Invalid network name"),
+                            oracle_address: FieldElement::from_hex_be(&oracle_address)
+                                .expect("Invalid oracle address"),
+                            pairs: parse_pairs(&pairs),
+                        })
+                        .await,
+                    )
+                }
+            }
+        })
+        .await;
+    cfg.load()
+}
+
+/// OnceCell only allows us to initialize the config once and that's how it should be on production.
+/// However, when running tests, we often want to reinitialize because we want to clear the DB and
+/// set it up again for reuse in new tests. By calling `config_force_init` we replace the already
+/// stored config inside `ArcSwap` with the new configuration and pool settings.
+#[cfg(test)]
+pub async fn config_force_init(config_input: ConfigInput) {
+    match CONFIG.get() {
+        Some(arc) => arc.store(Arc::new(Config::new(config_input).await)),
+        None => {
+            get_config(Some(config_input)).await;
+        }
+    };
 }
 
 async fn init_oracle_config(

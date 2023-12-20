@@ -8,22 +8,23 @@ use starknet::{
     providers::Provider,
 };
 
-use crate::{config::Config, error::MonitoringError, models::SpotEntry};
+use crate::{config::get_config, error::MonitoringError, models::SpotEntry};
 
 /// Calculates the deviation from the on-chain price
 /// Returns the deviation and the number of sources aggregated
 pub async fn source_deviation(
     query: &SpotEntry,
     normalized_price: f64,
-    config: Config,
 ) -> Result<(f64, u32), MonitoringError> {
-    let client = config.network.provider;
+    let config = get_config(None).await;
+
+    let client = &config.network().provider;
     let field_pair = cairo_short_string_to_felt(&query.pair_id).expect("failed to convert pair id");
 
     let data = client
         .call(
             FunctionCall {
-                contract_address: config.network.oracle_address,
+                contract_address: config.network().oracle_address,
                 entry_point_selector: selector!("get_data_median"),
                 calldata: vec![FieldElement::ZERO, field_pair],
             },
@@ -33,7 +34,7 @@ pub async fn source_deviation(
         .map_err(|e| MonitoringError::OnChain(e.to_string()))?;
 
     let decimals = config
-        .decimals
+        .decimals()
         .get(&query.pair_id)
         .ok_or(MonitoringError::OnChain(format!(
             "Failed to get decimals for pair {:?}",

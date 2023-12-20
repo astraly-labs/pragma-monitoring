@@ -38,11 +38,11 @@ prometheus = "0.13.3"
 reqwest = { version = "0.11.22", features = ["json"] }
 serde = { version = "1.0.130", features = ["derive"] }
 starknet = "0.8.0"
-starknet_api = "0.4.1"
 strum = { version = "0.25.0", features = ["derive"] }
 tokio = { version = "1", features = ["full"] }
 url = "2.5.0"
 uuid = { version = "1.4", features = ["fast-rng", "v4", "serde"] }
+arc-swap = "1.6.0"
 
 [dev-dependencies]
 rstest = "0.18.2"

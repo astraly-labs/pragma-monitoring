@@ -1,17 +1,13 @@
 extern crate diesel;
 extern crate dotenv;
 
-use config::parse_pairs;
-use config::Config;
-use config::NetworkName;
+use config::get_config;
 use diesel_async::pooled_connection::deadpool::*;
 use diesel_async::pooled_connection::AsyncDieselConnectionManager;
 use diesel_async::AsyncPgConnection;
 
 use dotenv::dotenv;
-use starknet::core::types::FieldElement;
 use std::env;
-use std::str::FromStr;
 
 use crate::process_data::is_syncing;
 
@@ -43,16 +39,8 @@ async fn main() {
     dotenv().ok();
 
     // Define the pairs to monitor
-    let network = std::env::var("NETWORK").expect("NETWORK must be set");
-    let oracle_address = std::env::var("ORACLE_ADDRESS").expect("ORACLE_ADDRESS must be set");
-    let pairs = std::env::var("PAIRS").expect("PAIRS must be set");
 
-    let monitoring_config = Config::new(
-        NetworkName::from_str(&network).expect("Invalid network name"),
-        FieldElement::from_hex_be(&oracle_address).expect("Invalid oracle address"),
-        parse_pairs(&pairs),
-    )
-    .await;
+    let monitoring_config = get_config(None).await;
 
     log::info!("Successfully fetched config: {:?}", monitoring_config);
 
@@ -64,22 +52,23 @@ async fn main() {
 
     let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(5));
 
-    monitor(&pool, monitoring_config, &mut interval, true).await;
+    monitor(&pool, &mut interval, true).await;
 }
 
 pub(crate) async fn monitor(
     pool: &deadpool::managed::Pool<AsyncDieselConnectionManager<AsyncPgConnection>>,
-    monitoring_config: Config,
     interval: &mut tokio::time::Interval,
     wait_for_syncing: bool,
 ) {
+    let monitoring_config = get_config(None).await;
+
     loop {
         interval.tick().await; // Wait for the next tick
 
         // Skip if indexer is still syncing
         if wait_for_syncing {
             if let Some(blocks_left) =
-                is_syncing(pool.clone(), monitoring_config.network.provider.clone())
+                is_syncing(pool.clone(), monitoring_config.network().provider.clone())
                     .await
                     .unwrap()
             {
@@ -89,9 +78,8 @@ pub(crate) async fn monitor(
         }
 
         let tasks: Vec<_> = monitoring_config
-            .clone()
-            .sources
-            .into_iter()
+            .sources()
+            .iter()
             .flat_map(|(pair, sources)| {
                 vec![
                     tokio::spawn(Box::pin(process_data::process_data_by_pair(
@@ -101,8 +89,7 @@ pub(crate) async fn monitor(
                     tokio::spawn(Box::pin(process_data::process_data_by_pair_and_sources(
                         pool.clone(),
                         pair.clone(),
-                        sources,
-                        monitoring_config.clone(),
+                        sources.to_vec(),
                     ))),
                 ]
             })

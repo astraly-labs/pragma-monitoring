@@ -8,6 +8,7 @@ use crate::{
         utils::{publish_data, wait_for_expect},
     },
 };
+use arc_swap::Guard;
 use deadpool::managed::Pool;
 use diesel_async::pooled_connection::AsyncDieselConnectionManager;
 use rstest::rstest;
@@ -18,7 +19,7 @@ use tokio::sync::Mutex;
 #[ignore = "Blocked by #002"]
 async fn detects_publisher_down(
     database: Pool<AsyncDieselConnectionManager<diesel_async::AsyncPgConnection>>,
-    #[future] test_config: Config,
+    #[future] test_config: Guard<Arc<Config>>,
 ) {
     let mut _conn = database.get().await.unwrap();
     let config = test_config.await;
@@ -26,14 +27,15 @@ async fn detects_publisher_down(
     let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(5));
     let database = Arc::new(Mutex::new(database));
     let db_clone = database.clone();
-    let config_clone = config.clone();
+
+    // Spawn non-blocking monitor
     let monitor_handle = tokio::spawn(async move {
         let db = db_clone.lock().await;
-        monitor(&db, config_clone, &mut interval, false).await;
+        monitor(&db, &mut interval, false).await;
     });
 
     // Publish a wrong price
-    let provider = config.network.provider;
+    let provider = &config.network().provider;
 
     // Publish 0 for the price of BTC/USD pair
     let pair_id = "BTC/USD";
@@ -43,8 +45,8 @@ async fn detects_publisher_down(
     let publisher = "PRAGMA";
 
     publish_data(
-        &provider,
-        config.network.oracle_address,
+        provider,
+        config.network().oracle_address,
         pair_id,
         timestamp,
         price,

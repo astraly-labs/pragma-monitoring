@@ -3,7 +3,7 @@ extern crate dotenv;
 
 use std::sync::Arc;
 
-use crate::config::Config;
+use crate::config::get_config;
 use crate::constants::NUM_SOURCES;
 use crate::constants::PAIR_PRICE;
 use crate::constants::PRICE_DEVIATION;
@@ -44,10 +44,14 @@ pub async fn process_data_by_pair(
 
     log::info!("Processing data for pair: {}", pair);
 
+    let config = get_config(None).await;
+
     match result {
         Ok(data) => {
+            let network_env = &config.network().name;
             let seconds_since_last_publish = time_since_last_update(&data);
-            let time_labels = TIME_SINCE_LAST_UPDATE_PAIR_ID.with_label_values(&[&pair]);
+            let time_labels =
+                TIME_SINCE_LAST_UPDATE_PAIR_ID.with_label_values(&[network_env, &pair]);
 
             time_labels.set(seconds_since_last_publish as f64);
 
@@ -61,16 +65,16 @@ pub async fn process_data_by_pair_and_sources(
     pool: deadpool::managed::Pool<AsyncDieselConnectionManager<AsyncPgConnection>>,
     pair: String,
     sources: Vec<String>,
-    config: Config,
 ) -> Result<u64, MonitoringError> {
     let mut timestamps = Vec::new();
 
-    let decimals = *config.decimals.get(&pair.clone()).unwrap();
+    let config = get_config(None).await;
+
+    let decimals = *config.decimals().get(&pair.clone()).unwrap();
 
     for src in sources {
         log::info!("Processing data for pair: {} and source: {}", pair, src);
-        let res =
-            process_data_by_pair_and_source(pool.clone(), &pair, &src, decimals, &config).await?;
+        let res = process_data_by_pair_and_source(pool.clone(), &pair, &src, decimals).await?;
         timestamps.push(res);
     }
 
@@ -82,7 +86,6 @@ pub async fn process_data_by_pair_and_source(
     pair: &str,
     src: &str,
     decimals: u32,
-    config: &Config,
 ) -> Result<u64, MonitoringError> {
     let mut conn = pool
         .get()
@@ -96,15 +99,20 @@ pub async fn process_data_by_pair_and_source(
         .first(&mut conn)
         .await;
 
+    let config = get_config(None).await;
+
     match filtered_by_source_result {
         Ok(data) => {
+            let network_env = &config.network().name;
+
             // Get the labels
             let time_labels =
-                TIME_SINCE_LAST_UPDATE_PUBLISHER.with_label_values(&[&data.publisher]);
-            let price_labels = PAIR_PRICE.with_label_values(&[pair, src]);
-            let deviation_labels = PRICE_DEVIATION.with_label_values(&[pair, src]);
-            let source_deviation_labels = PRICE_DEVIATION_SOURCE.with_label_values(&[pair, src]);
-            let num_sources_labels = NUM_SOURCES.with_label_values(&[pair]);
+                TIME_SINCE_LAST_UPDATE_PUBLISHER.with_label_values(&[network_env, &data.publisher]);
+            let price_labels = PAIR_PRICE.with_label_values(&[network_env, pair, src]);
+            let deviation_labels = PRICE_DEVIATION.with_label_values(&[network_env, pair, src]);
+            let source_deviation_labels =
+                PRICE_DEVIATION_SOURCE.with_label_values(&[network_env, pair, src]);
+            let num_sources_labels = NUM_SOURCES.with_label_values(&[network_env, pair]);
 
             // Compute metrics
             let time = time_since_last_update(&data);
@@ -115,7 +123,7 @@ pub async fn process_data_by_pair_and_source(
 
             let deviation = price_deviation(&data, normalized_price).await?;
             let (source_deviation, num_sources_aggregated) =
-                source_deviation(&data, normalized_price, config.clone()).await?;
+                source_deviation(&data, normalized_price).await?;
 
             // Set the metrics
             price_labels.set(normalized_price);
