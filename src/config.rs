@@ -9,15 +9,11 @@ use starknet::{
     macros::selector,
     providers::{jsonrpc::HttpTransport, JsonRpcClient, Provider},
 };
-use strum::EnumString;
+use strum::{EnumString, IntoStaticStr};
 use tokio::sync::OnceCell;
 use url::Url;
 
-// https://blastapi.io/public-api/starknet
-const DEFAULT_MAINNET_RPC_URL: &str = "https://starknet-mainnet.public.blastapi.io";
-const DEFAULT_TESTNET_RPC_URL: &str = "https://starknet-sepolia.public.blastapi.io";
-
-#[derive(Debug, EnumString)]
+#[derive(Debug, EnumString, IntoStaticStr)]
 pub enum NetworkName {
     #[strum(ascii_case_insensitive)]
     Mainnet,
@@ -52,88 +48,30 @@ pub static CONFIG: OnceCell<ArcSwap<Config>> = OnceCell::const_new();
 
 impl Config {
     pub async fn new(config_input: ConfigInput) -> Self {
-        match config_input.network {
-            NetworkName::Mainnet => {
-                // Create RPC Client
-                let rpc_url =
-                    std::env::var("MAINNET_RPC_URL").unwrap_or(DEFAULT_MAINNET_RPC_URL.to_string());
-                let rpc_client =
-                    JsonRpcClient::new(HttpTransport::new(Url::parse(&rpc_url).unwrap()));
+        // Create RPC Client
+        let rpc_url = std::env::var("RPC_URL").expect("RPC_URL must be set");
+        let rpc_client = JsonRpcClient::new(HttpTransport::new(Url::parse(&rpc_url).unwrap()));
 
-                let (decimals, sources, publishers, publisher_registry_address) =
-                    init_oracle_config(
-                        &rpc_client,
-                        config_input.oracle_address,
-                        config_input.pairs.clone(),
-                    )
-                    .await;
+        let (decimals, sources, publishers, publisher_registry_address) = init_oracle_config(
+            &rpc_client,
+            config_input.oracle_address,
+            config_input.pairs.clone(),
+        )
+        .await;
 
-                Self {
-                    pairs: config_input.pairs,
-                    sources,
-                    publishers,
-                    decimals,
-                    network: Network {
-                        name: "mainnet".to_string(),
-                        provider: Arc::new(rpc_client),
-                        oracle_address: config_input.oracle_address,
-                        publisher_registry_address,
-                    },
-                }
-            }
-            NetworkName::Testnet => {
-                // Create RPC Client
-                let rpc_url =
-                    std::env::var("TESTNET_RPC_URL").unwrap_or(DEFAULT_TESTNET_RPC_URL.to_string());
-                let rpc_client =
-                    JsonRpcClient::new(HttpTransport::new(Url::parse(&rpc_url).unwrap()));
+        let network_name: &str = config_input.network.into();
 
-                let (decimals, sources, publishers, publisher_registry_address) =
-                    init_oracle_config(
-                        &rpc_client,
-                        config_input.oracle_address,
-                        config_input.pairs.clone(),
-                    )
-                    .await;
-
-                Self {
-                    pairs: config_input.pairs,
-                    sources,
-                    publishers,
-                    decimals,
-                    network: Network {
-                        name: "testnet".to_string(),
-                        provider: Arc::new(rpc_client),
-                        oracle_address: config_input.oracle_address,
-                        publisher_registry_address,
-                    },
-                }
-            }
-            NetworkName::Katana => {
-                let url = Url::parse("http://localhost:5050").expect("Invalid JSON RPC URL");
-                let rpc_client = JsonRpcClient::new(HttpTransport::new(url)); // Katana URL
-
-                let (decimals, sources, publishers, publisher_registry_address) =
-                    init_oracle_config(
-                        &rpc_client,
-                        config_input.oracle_address,
-                        config_input.pairs.clone(),
-                    )
-                    .await;
-
-                Self {
-                    pairs: config_input.pairs,
-                    sources,
-                    publishers,
-                    decimals,
-                    network: Network {
-                        name: "katana".to_string(),
-                        provider: Arc::new(rpc_client),
-                        oracle_address: config_input.oracle_address,
-                        publisher_registry_address,
-                    },
-                }
-            }
+        Self {
+            pairs: config_input.pairs,
+            sources,
+            publishers,
+            decimals,
+            network: Network {
+                name: network_name.to_string(),
+                provider: Arc::new(rpc_client),
+                oracle_address: config_input.oracle_address,
+                publisher_registry_address,
+            },
         }
     }
 
