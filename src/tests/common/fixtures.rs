@@ -22,7 +22,7 @@ pub fn database() -> Pool<AsyncDieselConnectionManager<diesel_async::AsyncPgConn
 #[fixture]
 pub async fn test_config() -> Guard<Arc<Config>> {
     config_force_init(ConfigInput {
-        network: NetworkName::Katana,
+        network: NetworkName::Testnet,
         oracle_address: FieldElement::from_hex_be(
             "0x06df335982dddce41008e4c03f2546fa27276567b5274c7d0c1262f3c2b5d167",
         )

@@ -4,6 +4,7 @@ extern crate dotenv;
 use std::sync::Arc;
 
 use crate::config::get_config;
+use crate::config::NetworkName;
 use crate::constants::NUM_SOURCES;
 use crate::constants::PAIR_PRICE;
 use crate::constants::PRICE_DEVIATION;
@@ -13,10 +14,10 @@ use crate::constants::TIME_SINCE_LAST_UPDATE_PUBLISHER;
 use crate::diesel::QueryDsl;
 use crate::error::MonitoringError;
 use crate::models::SpotEntry;
-use crate::monitoring::price_deviation::price_deviation;
-use crate::monitoring::source_deviation::source_deviation;
-use crate::monitoring::time_since_last_update::time_since_last_update;
-use crate::schema::spot_entry::dsl::*;
+use crate::monitoring::{price_deviation, source_deviation, time_since_last_update};
+
+use crate::schema::mainnet_spot_entry::dsl as mainnet_dsl;
+use crate::schema::spot_entry::dsl as testnet_dsl;
 
 use bigdecimal::ToPrimitive;
 use diesel::ExpressionMethods;
@@ -36,11 +37,24 @@ pub async fn process_data_by_pair(
         .await
         .map_err(|_| MonitoringError::Connection("Failed to get connection".to_string()))?;
 
-    let result: Result<SpotEntry, _> = spot_entry
-        .filter(pair_id.eq(pair.clone()))
-        .order(block_timestamp.desc())
-        .first(&mut conn)
-        .await;
+    let config = get_config(None).await;
+
+    let result: Result<SpotEntry, _> = match config.network().name {
+        NetworkName::Testnet => {
+            testnet_dsl::spot_entry
+                .filter(testnet_dsl::pair_id.eq(pair.clone()))
+                .order(testnet_dsl::block_timestamp.desc())
+                .first(&mut conn)
+                .await
+        }
+        NetworkName::Mainnet => {
+            mainnet_dsl::mainnet_spot_entry
+                .filter(mainnet_dsl::pair_id.eq(pair.clone()))
+                .order(mainnet_dsl::block_timestamp.desc())
+                .first(&mut conn)
+                .await
+        }
+    };
 
     log::info!("Processing data for pair: {}", pair);
 
@@ -48,7 +62,7 @@ pub async fn process_data_by_pair(
 
     match result {
         Ok(data) => {
-            let network_env = &config.network().name;
+            let network_env = &config.network_str();
             let seconds_since_last_publish = time_since_last_update(&data);
             let time_labels =
                 TIME_SINCE_LAST_UPDATE_PAIR_ID.with_label_values(&[network_env, &pair]);
@@ -92,18 +106,30 @@ pub async fn process_data_by_pair_and_source(
         .await
         .map_err(|_| MonitoringError::Connection("Failed to get connection".to_string()))?;
 
-    let filtered_by_source_result: Result<SpotEntry, _> = spot_entry
-        .filter(pair_id.eq(pair))
-        .filter(source.eq(src))
-        .order(block_timestamp.desc())
-        .first(&mut conn)
-        .await;
-
     let config = get_config(None).await;
+
+    let filtered_by_source_result: Result<SpotEntry, _> = match config.network().name {
+        NetworkName::Testnet => {
+            testnet_dsl::spot_entry
+                .filter(testnet_dsl::pair_id.eq(pair))
+                .filter(testnet_dsl::source.eq(src))
+                .order(testnet_dsl::block_timestamp.desc())
+                .first(&mut conn)
+                .await
+        }
+        NetworkName::Mainnet => {
+            mainnet_dsl::mainnet_spot_entry
+                .filter(mainnet_dsl::pair_id.eq(pair))
+                .filter(mainnet_dsl::source.eq(src))
+                .order(mainnet_dsl::block_timestamp.desc())
+                .first(&mut conn)
+                .await
+        }
+    };
 
     match filtered_by_source_result {
         Ok(data) => {
-            let network_env = &config.network().name;
+            let network_env = &config.network_str();
 
             // Get the labels
             let time_labels =
@@ -149,10 +175,22 @@ pub async fn is_syncing(
         .await
         .map_err(|_| MonitoringError::Connection("Failed to get connection".to_string()))?;
 
-    let latest_entry: Result<SpotEntry, _> = spot_entry
-        .order(block_timestamp.desc())
-        .first(&mut conn)
-        .await;
+    let config = get_config(None).await;
+
+    let latest_entry: Result<SpotEntry, _> = match config.network().name {
+        NetworkName::Testnet => {
+            testnet_dsl::spot_entry
+                .order(testnet_dsl::block_timestamp.desc())
+                .first(&mut conn)
+                .await
+        }
+        NetworkName::Mainnet => {
+            mainnet_dsl::mainnet_spot_entry
+                .order(mainnet_dsl::block_timestamp.desc())
+                .first(&mut conn)
+                .await
+        }
+    };
 
     match latest_entry {
         Ok(entry) => {

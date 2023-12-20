@@ -13,19 +13,25 @@ use strum::{EnumString, IntoStaticStr};
 use tokio::sync::OnceCell;
 use url::Url;
 
-#[derive(Debug, EnumString, IntoStaticStr)]
+#[derive(Debug, Clone, EnumString, IntoStaticStr)]
 pub enum NetworkName {
     #[strum(ascii_case_insensitive)]
     Mainnet,
     #[strum(ascii_case_insensitive)]
     Testnet,
+}
+
+#[derive(Debug, EnumString, IntoStaticStr)]
+pub enum DataType {
     #[strum(ascii_case_insensitive)]
-    Katana,
+    Spot,
+    #[strum(ascii_case_insensitive)]
+    Future,
 }
 
 #[derive(Debug, Clone)]
 pub struct Network {
-    pub name: String,
+    pub name: NetworkName,
     pub provider: Arc<JsonRpcClient<HttpTransport>>,
     pub oracle_address: FieldElement,
     pub publisher_registry_address: FieldElement,
@@ -59,15 +65,13 @@ impl Config {
         )
         .await;
 
-        let network_name: &str = config_input.network.into();
-
         Self {
             pairs: config_input.pairs,
             sources,
             publishers,
             decimals,
             network: Network {
-                name: network_name.to_string(),
+                name: config_input.network,
                 provider: Arc::new(rpc_client),
                 oracle_address: config_input.oracle_address,
                 publisher_registry_address,
@@ -85,6 +89,10 @@ impl Config {
 
     pub fn network(&self) -> &Network {
         &self.network
+    }
+
+    pub fn network_str(&self) -> &str {
+        self.network.name.clone().into()
     }
 }
 

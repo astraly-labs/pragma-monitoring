@@ -55,25 +55,25 @@ diesel::table! {
 diesel::table! {
     mainnet_spot_entry (data_id) {
         #[max_length = 255]
-        network -> Nullable<Varchar>,
+        network -> Varchar,
         #[max_length = 255]
-        pair_id -> Nullable<Varchar>,
+        pair_id -> Varchar,
         #[max_length = 255]
         data_id -> Varchar,
         #[max_length = 255]
-        block_hash -> Nullable<Varchar>,
-        block_number -> Nullable<Int8>,
-        block_timestamp -> Nullable<Timestamp>,
+        block_hash -> Varchar,
+        block_number -> Int8,
+        block_timestamp -> Timestamp,
         #[max_length = 255]
-        transaction_hash -> Nullable<Varchar>,
-        price -> Nullable<Numeric>,
-        timestamp -> Nullable<Timestamp>,
+        transaction_hash -> Varchar,
+        price -> Numeric,
+        timestamp -> Timestamp,
         #[max_length = 255]
-        publisher -> Nullable<Varchar>,
+        publisher -> Varchar,
         #[max_length = 255]
-        source -> Nullable<Varchar>,
-        volume -> Nullable<Numeric>,
-        _cursor -> Nullable<Int8>,
+        source -> Varchar,
+        volume -> Numeric,
+        _cursor -> Int8,
     }
 }
 
