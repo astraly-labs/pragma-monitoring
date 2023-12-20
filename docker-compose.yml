@@ -1,4 +1,4 @@
-version: '3'
+version: "3"
 
 services:
   prometheus:
@@ -9,7 +9,6 @@ services:
       - ./prometheus:/etc/prometheus
       - prometheus-data:/prometheus
     command: --web.enable-lifecycle  --config.file=/etc/prometheus/prometheus.yml
-
 
   grafana:
     image: grafana/grafana:8.2.2
@@ -28,15 +27,14 @@ services:
     volumes:
       - "./prometheus:/config"
       - alertmanager-data:/data
-    command: --config.file=/config/alertmanager.yml --log.level=debug 
+    command: --config.file=/config/alertmanager.yml --log.level=debug
 
   monitoring:
     build: .
-    env_file: 
+    env_file:
       - .env
     ports:
       - 8080:8080
-
 
 volumes:
   prometheus-data:
