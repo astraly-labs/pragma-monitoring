@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::{constants::COINGECKO_IDS, error::MonitoringError, models::SpotEntry};
+use crate::{constants::COINGECKO_IDS, error::MonitoringError, types::Entry};
 
 /// Data Transfer Object for Defillama API
 /// e.g
@@ -29,18 +29,18 @@ struct CoinPriceDTO {
 }
 
 /// Calculates the deviation of the price from a trusted API (Coingecko)
-pub async fn price_deviation(
-    query: &SpotEntry,
+pub async fn price_deviation<T: Entry>(
+    query: &T,
     normalized_price: f64,
 ) -> Result<f64, MonitoringError> {
     let ids = &COINGECKO_IDS;
 
-    let pair_id = query.pair_id.to_string();
+    let pair_id = query.pair_id().to_string();
     let coingecko_id = *ids.get(&pair_id).expect("Failed to get coingecko id");
 
     let request_url = format!(
         "https://coins.llama.fi/prices/historical/{timestamp}/coingecko:{id}",
-        timestamp = query.timestamp.timestamp(),
+        timestamp = query.timestamp().timestamp(),
         id = coingecko_id,
     );
 

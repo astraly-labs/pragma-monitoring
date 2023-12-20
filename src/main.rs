@@ -9,7 +9,7 @@ use diesel_async::AsyncPgConnection;
 use dotenv::dotenv;
 use std::env;
 
-use crate::process_data::is_syncing;
+use crate::processing::spot::is_syncing;
 
 // Configuration
 mod config;
@@ -20,13 +20,15 @@ mod models;
 // Monitoring functions
 mod monitoring;
 // Processing functions
-mod process_data;
+mod processing;
 // Server
 mod server;
 // Database schema
 mod schema;
 // Constants
 mod constants;
+// Types
+mod types;
 
 #[cfg(test)]
 mod tests;
@@ -82,15 +84,28 @@ pub(crate) async fn monitor(
             .iter()
             .flat_map(|(pair, sources)| {
                 vec![
-                    tokio::spawn(Box::pin(process_data::process_data_by_pair(
+                    tokio::spawn(Box::pin(processing::spot::process_data_by_pair(
                         pool.clone(),
                         pair.clone(),
                     ))),
-                    tokio::spawn(Box::pin(process_data::process_data_by_pair_and_sources(
+                    tokio::spawn(Box::pin(
+                        processing::spot::process_data_by_pair_and_sources(
+                            pool.clone(),
+                            pair.clone(),
+                            sources.to_vec(),
+                        ),
+                    )),
+                    tokio::spawn(Box::pin(processing::future::process_data_by_pair(
                         pool.clone(),
                         pair.clone(),
-                        sources.to_vec(),
                     ))),
+                    tokio::spawn(Box::pin(
+                        processing::future::process_data_by_pair_and_sources(
+                            pool.clone(),
+                            pair.clone(),
+                            sources.to_vec(),
+                        ),
+                    )),
                 ]
             })
             .collect();

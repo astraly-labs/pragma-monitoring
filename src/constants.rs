@@ -20,12 +20,12 @@ lazy_static! {
             "time_since_last_update_seconds",
             "Time since the last update in seconds."
         ),
-        &["network", "publisher"]
+        &["network", "publisher", "type"]
     )
     .unwrap();
     pub static ref PAIR_PRICE: GaugeVec = register_gauge_vec!(
         opts!("pair_price", "Price of the pair from the source."),
-        &["network", "pair", "source"]
+        &["network", "pair", "source", "type"]
     )
     .unwrap();
     pub static ref TIME_SINCE_LAST_UPDATE_PAIR_ID: GaugeVec = register_gauge_vec!(
@@ -33,7 +33,7 @@ lazy_static! {
             "time_since_last_update_pair_id",
             "Time since the last update in seconds."
         ),
-        &["network", "pair"]
+        &["network", "pair", "type"]
     )
     .unwrap();
     pub static ref PRICE_DEVIATION: GaugeVec = register_gauge_vec!(
@@ -41,7 +41,7 @@ lazy_static! {
             "price_deviation",
             "Price deviation from the reference price."
         ),
-        &["network", "pair", "source"]
+        &["network", "pair", "source", "type"]
     )
     .unwrap();
     pub static ref PRICE_DEVIATION_SOURCE: GaugeVec = register_gauge_vec!(
@@ -49,7 +49,7 @@ lazy_static! {
             "price_deviation_source",
             "Price deviation from the reference price."
         ),
-        &["network", "pair", "source"]
+        &["network", "pair", "source", "type"]
     )
     .unwrap();
     pub static ref NUM_SOURCES: IntGaugeVec = register_int_gauge_vec!(
@@ -57,7 +57,7 @@ lazy_static! {
             "num_sources",
             "Number of sources that have published data for a pair."
         ),
-        &["network", "pair"]
+        &["network", "pair", "type"]
     )
     .unwrap();
 }

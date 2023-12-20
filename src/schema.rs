@@ -47,7 +47,7 @@ diesel::table! {
         #[max_length = 255]
         source -> Varchar,
         volume -> Numeric,
-        expiration_timestamp -> Timestamp,
+        expiration_timestamp -> Nullable<Timestamp>,
         _cursor -> Int8,
     }
 }

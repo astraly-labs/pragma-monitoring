@@ -63,9 +63,11 @@ pub async fn process_data_by_pair(
     match result {
         Ok(data) => {
             let network_env = &config.network_str();
+            let data_type = "spot";
+
             let seconds_since_last_publish = time_since_last_update(&data);
             let time_labels =
-                TIME_SINCE_LAST_UPDATE_PAIR_ID.with_label_values(&[network_env, &pair]);
+                TIME_SINCE_LAST_UPDATE_PAIR_ID.with_label_values(&[network_env, &pair, data_type]);
 
             time_labels.set(seconds_since_last_publish as f64);
 
@@ -130,15 +132,20 @@ pub async fn process_data_by_pair_and_source(
     match filtered_by_source_result {
         Ok(data) => {
             let network_env = &config.network_str();
+            let data_type = "spot";
 
             // Get the labels
-            let time_labels =
-                TIME_SINCE_LAST_UPDATE_PUBLISHER.with_label_values(&[network_env, &data.publisher]);
-            let price_labels = PAIR_PRICE.with_label_values(&[network_env, pair, src]);
-            let deviation_labels = PRICE_DEVIATION.with_label_values(&[network_env, pair, src]);
+            let time_labels = TIME_SINCE_LAST_UPDATE_PUBLISHER.with_label_values(&[
+                network_env,
+                &data.publisher,
+                data_type,
+            ]);
+            let price_labels = PAIR_PRICE.with_label_values(&[network_env, pair, src, data_type]);
+            let deviation_labels =
+                PRICE_DEVIATION.with_label_values(&[network_env, pair, src, data_type]);
             let source_deviation_labels =
-                PRICE_DEVIATION_SOURCE.with_label_values(&[network_env, pair, src]);
-            let num_sources_labels = NUM_SOURCES.with_label_values(&[network_env, pair]);
+                PRICE_DEVIATION_SOURCE.with_label_values(&[network_env, pair, src, data_type]);
+            let num_sources_labels = NUM_SOURCES.with_label_values(&[network_env, pair, data_type]);
 
             // Compute metrics
             let time = time_since_last_update(&data);
