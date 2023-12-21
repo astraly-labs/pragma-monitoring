@@ -1,8 +1,6 @@
 extern crate diesel;
 extern crate dotenv;
 
-use std::sync::Arc;
-
 use crate::config::get_config;
 use crate::config::NetworkName;
 use crate::constants::NUM_SOURCES;
@@ -24,9 +22,6 @@ use diesel::ExpressionMethods;
 use diesel_async::pooled_connection::AsyncDieselConnectionManager;
 use diesel_async::AsyncPgConnection;
 use diesel_async::RunQueryDsl;
-use starknet::providers::jsonrpc::HttpTransport;
-use starknet::providers::JsonRpcClient;
-use starknet::providers::Provider;
 
 pub async fn process_data_by_pair(
     pool: deadpool::managed::Pool<AsyncDieselConnectionManager<AsyncPgConnection>>,
@@ -168,50 +163,5 @@ pub async fn process_data_by_pair_and_source(
             Ok(time)
         }
         Err(e) => Err(e.into()),
-    }
-}
-
-/// Checks if the indexer is still syncing.
-/// Returns the number of blocks left to sync if it is still syncing.
-pub async fn _is_syncing_future(
-    pool: deadpool::managed::Pool<AsyncDieselConnectionManager<AsyncPgConnection>>,
-    provider: Arc<JsonRpcClient<HttpTransport>>,
-) -> Result<Option<u64>, MonitoringError> {
-    let mut conn = pool
-        .get()
-        .await
-        .map_err(|_| MonitoringError::Connection("Failed to get connection".to_string()))?;
-
-    let config = get_config(None).await;
-
-    let latest_entry: Result<FutureEntry, _> = match config.network().name {
-        NetworkName::Testnet => {
-            testnet_dsl::future_entry
-                .order(testnet_dsl::block_timestamp.desc())
-                .first(&mut conn)
-                .await
-        }
-        NetworkName::Mainnet => {
-            mainnet_dsl::mainnet_future_entry
-                .order(mainnet_dsl::block_timestamp.desc())
-                .first(&mut conn)
-                .await
-        }
-    };
-
-    match latest_entry {
-        Ok(entry) => {
-            let block_n = entry.block_number as u64;
-            let current_block = provider
-                .block_number()
-                .await
-                .map_err(MonitoringError::Provider)?;
-            if block_n < current_block {
-                Ok(Some(current_block - block_n))
-            } else {
-                Ok(None)
-            }
-        }
-        Err(_) => Ok(None),
     }
 }

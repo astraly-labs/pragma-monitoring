@@ -9,7 +9,7 @@ use diesel_async::AsyncPgConnection;
 use dotenv::dotenv;
 use std::env;
 
-use crate::processing::spot::is_syncing;
+use crate::processing::common::is_syncing;
 
 // Configuration
 mod config;
@@ -69,12 +69,8 @@ pub(crate) async fn monitor(
 
         // Skip if indexer is still syncing
         if wait_for_syncing {
-            if let Some(blocks_left) =
-                is_syncing(pool.clone(), monitoring_config.network().provider.clone())
-                    .await
-                    .unwrap()
-            {
-                log::info!("Indexer is still syncing ♻️ blocks left: {}", blocks_left);
+            if is_syncing().await.unwrap() {
+                log::info!("Indexers are still syncing ♻️");
                 continue;
             }
         }
