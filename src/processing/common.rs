@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use starknet::providers::{jsonrpc::HttpTransport, JsonRpcClient, Provider};
 
-use crate::{config::get_config, error::MonitoringError};
+use crate::{config::get_config, constants::INDEXER_BLOCKS_LEFT, error::MonitoringError};
 
 #[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize)]
 pub struct IndexerServerStatus {
@@ -40,6 +40,11 @@ pub async fn is_syncing() -> Result<bool, MonitoringError> {
             Ok(status) => {
                 let blocks_left = blocks_left(&status, provider).await?;
                 blocks_left_vec.push(blocks_left);
+
+                // Update the prometheus metric
+                INDEXER_BLOCKS_LEFT
+                    .with_label_values(&[(&config.network().name).into(), "indexer"])
+                    .set(blocks_left.unwrap_or(0) as i64);
             }
             Err(e) => return Err(e), // If any error, return immediately
         }

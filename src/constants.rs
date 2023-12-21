@@ -60,4 +60,12 @@ lazy_static! {
         &["network", "pair", "type"]
     )
     .unwrap();
+    pub static ref INDEXER_BLOCKS_LEFT: IntGaugeVec = register_int_gauge_vec!(
+        opts!(
+            "indexer_blocks_left",
+            "Number of blocks left to index for a give indexer."
+        ),
+        &["network", "type"]
+    )
+    .unwrap();
 }
