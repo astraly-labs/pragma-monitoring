@@ -68,11 +68,9 @@ pub(crate) async fn monitor(
         interval.tick().await; // Wait for the next tick
 
         // Skip if indexer is still syncing
-        if wait_for_syncing {
-            if is_syncing().await.unwrap() {
-                log::info!("Indexers are still syncing ♻️");
-                continue;
-            }
+        if wait_for_syncing && is_syncing().await.unwrap() {
+            log::info!("Indexers are still syncing ♻️");
+            continue;
         }
 
         let tasks: Vec<_> = monitoring_config

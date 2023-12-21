@@ -24,7 +24,7 @@ pub async fn is_syncing() -> Result<bool, MonitoringError> {
     let statuses = futures::future::join_all(
         sink_ids
             .iter()
-            .map(|sink_id| get_sink_status(sink_id, &config.indexer_url())),
+            .map(|sink_id| get_sink_status(sink_id, config.indexer_url())),
     )
     .await;
 
@@ -38,7 +38,7 @@ pub async fn is_syncing() -> Result<bool, MonitoringError> {
     for status in statuses {
         match status {
             Ok(status) => {
-                let blocks_left = blocks_left(&status, &provider).await?;
+                let blocks_left = blocks_left(&status, provider).await?;
                 blocks_left_vec.push(blocks_left);
             }
             Err(e) => return Err(e), // If any error, return immediately
