@@ -18,13 +18,18 @@ pub struct IndexerServerStatus {
 pub async fn is_syncing() -> Result<bool, MonitoringError> {
     let config = get_config(None).await;
 
-    // TODO: add real values
-    let sink_ids = vec!["0", "1", "2", "3"];
+    // TODO: Add this to the config
+    let table_names = vec![
+        "spot_entry",
+        "mainnet_spot_entry",
+        "future_entry",
+        "mainnet_future_entry",
+    ];
 
     let statuses = futures::future::join_all(
-        sink_ids
+        table_names
             .iter()
-            .map(|sink_id| get_sink_status(sink_id, config.indexer_url())),
+            .map(|table_name| get_sink_status(table_name, config.indexer_url())),
     )
     .await;
 
@@ -56,14 +61,20 @@ pub async fn is_syncing() -> Result<bool, MonitoringError> {
         .any(|blocks_left| blocks_left.is_some()))
 }
 
+/// Returns the status of the indexer
+///
+/// # Arguments
+///
+/// * `table_name` - The name of the table to check
+/// * `base_url` - The base url of the indexer server
 async fn get_sink_status(
-    sink_id: &str,
+    table_name: &str,
     base_url: &str,
 ) -> Result<IndexerServerStatus, MonitoringError> {
     let request_url = format!(
-        "{base_url}/status/{sink_id}",
+        "{base_url}/status/table/{table_name}",
         base_url = base_url,
-        sink_id = sink_id
+        table_name = table_name
     );
 
     let response = reqwest::get(&request_url)
@@ -78,6 +89,13 @@ async fn get_sink_status(
     Ok(status)
 }
 
+/// Returns the number of blocks left to sync
+/// Returns None if the indexer is synced
+///
+/// # Arguments
+///
+/// * `sink_status` - The status of the indexer
+/// * `provider` - The provider to check the current block number
 async fn blocks_left(
     sink_status: &IndexerServerStatus,
     provider: &JsonRpcClient<HttpTransport>,
