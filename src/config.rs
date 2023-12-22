@@ -55,7 +55,8 @@ pub static CONFIG: OnceCell<ArcSwap<Config>> = OnceCell::const_new();
 
 impl Config {
     pub async fn new(config_input: ConfigInput) -> Self {
-        let indexer_url = std::env::var("INDEXER_URL").expect("INDEXER_URL must be set");
+        let indexer_url =
+            std::env::var("INDEXER_SERVICE_URL").expect("INDEXER_SERVICE_URL must be set");
 
         // Create RPC Client
         let rpc_url = std::env::var("RPC_URL").expect("RPC_URL must be set");
