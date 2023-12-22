@@ -19,7 +19,7 @@ pub async fn is_syncing() -> Result<bool, MonitoringError> {
     let config = get_config(None).await;
 
     // TODO: Add this to the config
-    let table_names = vec![
+    let table_names = [
         "spot_entry",
         "mainnet_spot_entry",
         "future_entry",
