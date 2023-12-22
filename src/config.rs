@@ -343,7 +343,7 @@ async fn init_future_config(
                 FunctionCall {
                     contract_address: oracle_address,
                     entry_point_selector: selector!("get_all_sources"),
-                    calldata: vec![FieldElement::ZERO, field_pair],
+                    calldata: vec![FieldElement::ONE, field_pair, FieldElement::ZERO],
                 },
                 BlockId::Tag(BlockTag::Latest),
             )

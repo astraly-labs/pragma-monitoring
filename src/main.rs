@@ -141,16 +141,15 @@ pub(crate) async fn monitor(
             })
             .collect();
 
-        let results: Vec<_> = futures::future::join_all(tasks)
-            .await
-            .into_iter()
-            .map(|task| task.unwrap()) // task.unwrap() is used to get the Result returned by process_data
-            .collect();
+        let results: Vec<_> = futures::future::join_all(tasks).await;
 
         // Process or output the results
         for result in &results {
             match result {
-                Ok(data) => log::info!("[{data_type}] Task succeeded with data: {:?}", data),
+                Ok(data) => match data {
+                    Ok(_) => log::info!("[{data_type}] Task finished successfully",),
+                    Err(e) => log::error!("[{data_type}] Task failed with error: {:?}", e),
+                },
                 Err(e) => log::error!("[{data_type}] Task failed with error: {:?}", e),
             }
         }

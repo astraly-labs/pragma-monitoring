@@ -59,7 +59,7 @@ pub async fn process_data_by_pair(
     match result {
         Ok(data) => {
             let network_env = &config.network_str();
-            let data_type = "spot";
+            let data_type = "future";
 
             let seconds_since_last_publish = time_since_last_update(&data);
             let time_labels =
@@ -131,7 +131,7 @@ pub async fn process_data_by_pair_and_source(
     match filtered_by_source_result {
         Ok(data) => {
             let network_env = &config.network_str();
-            let data_type = "spot";
+            let data_type = "future";
 
             // Get the labels
             let time_labels = TIME_SINCE_LAST_UPDATE_PUBLISHER.with_label_values(&[
