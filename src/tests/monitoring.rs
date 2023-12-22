@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use crate::{
-    config::Config,
+    config::{Config, DataType},
     monitor,
     tests::common::{
         fixtures::{database, test_config},
@@ -24,14 +24,13 @@ async fn detects_publisher_down(
     let mut _conn = database.get().await.unwrap();
     let config = test_config.await;
 
-    let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(5));
     let database = Arc::new(Mutex::new(database));
     let db_clone = database.clone();
 
     // Spawn non-blocking monitor
     let monitor_handle = tokio::spawn(async move {
         let db = db_clone.lock().await;
-        monitor(&db, &mut interval, false).await;
+        monitor(db.clone(), false, &DataType::Spot).await;
     });
 
     // Publish a wrong price

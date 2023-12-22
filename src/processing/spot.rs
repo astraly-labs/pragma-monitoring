@@ -2,6 +2,7 @@ extern crate diesel;
 extern crate dotenv;
 
 use crate::config::get_config;
+use crate::config::DataType;
 use crate::config::NetworkName;
 use crate::constants::NUM_SOURCES;
 use crate::constants::PAIR_PRICE;
@@ -81,7 +82,7 @@ pub async fn process_data_by_pair_and_sources(
 
     let config = get_config(None).await;
 
-    let decimals = *config.decimals().get(&pair.clone()).unwrap();
+    let decimals = *config.decimals(DataType::Spot).get(&pair.clone()).unwrap();
 
     for src in sources {
         log::info!("Processing data for pair: {} and source: {}", pair, src);

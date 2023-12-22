@@ -35,7 +35,7 @@ pub async fn source_deviation<T: Entry>(
         .map_err(|e| MonitoringError::OnChain(e.to_string()))?;
 
     let decimals = config
-        .decimals()
+        .decimals(query.data_type())
         .get(query.pair_id())
         .ok_or(MonitoringError::OnChain(format!(
             "Failed to get decimals for pair {:?}",

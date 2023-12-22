@@ -1,7 +1,11 @@
 use serde::{Deserialize, Serialize};
 use starknet::providers::{jsonrpc::HttpTransport, JsonRpcClient, Provider};
 
-use crate::{config::get_config, constants::INDEXER_BLOCKS_LEFT, error::MonitoringError};
+use crate::{
+    config::{get_config, DataType},
+    constants::INDEXER_BLOCKS_LEFT,
+    error::MonitoringError,
+};
 
 #[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize)]
 pub struct IndexerServerStatus {
@@ -13,46 +17,26 @@ pub struct IndexerServerStatus {
     pub reason_: Option<String>,
 }
 
-/// Checks if all the indexers are synced
+/// Checks if indexers of the given data type are still syncing
 /// Returns true if any of the indexers is still syncing
-pub async fn is_syncing() -> Result<bool, MonitoringError> {
+pub async fn is_syncing(data_type: &DataType) -> Result<bool, MonitoringError> {
     let config = get_config(None).await;
 
-    let table_names = config.table_names();
+    let table_name = config.table_name(data_type.clone());
 
-    let statuses = futures::future::join_all(
-        table_names
-            .iter()
-            .map(|table_name| get_sink_status(table_name, config.indexer_url())),
-    )
-    .await;
+    let status = get_sink_status(table_name, config.indexer_url()).await?;
 
     let provider = &config.network().provider;
 
-    // Process only the successful statuses
-    // Initialize a vector to store the blocks left for each status
-    let mut blocks_left_vec = Vec::new();
+    let blocks_left = blocks_left(&status, provider).await?;
 
-    // Iterate over statuses and process each
-    for status in statuses {
-        match status {
-            Ok(status) => {
-                let blocks_left = blocks_left(&status, provider).await?;
-                blocks_left_vec.push(blocks_left);
-
-                // Update the prometheus metric
-                INDEXER_BLOCKS_LEFT
-                    .with_label_values(&[(&config.network().name).into(), "indexer"])
-                    .set(blocks_left.unwrap_or(0) as i64);
-            }
-            Err(e) => return Err(e), // If any error, return immediately
-        }
-    }
+    // Update the prometheus metric
+    INDEXER_BLOCKS_LEFT
+        .with_label_values(&[(&config.network().name).into(), "indexer"])
+        .set(blocks_left.unwrap_or(0) as i64);
 
     // Check if any indexer is still syncing
-    Ok(blocks_left_vec
-        .iter()
-        .any(|blocks_left| blocks_left.is_some()))
+    Ok(blocks_left.is_some())
 }
 
 /// Returns the status of the indexer
