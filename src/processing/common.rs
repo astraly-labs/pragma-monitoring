@@ -100,7 +100,8 @@ async fn blocks_left(
     sink_status: &IndexerServerStatus,
     provider: &JsonRpcClient<HttpTransport>,
 ) -> Result<Option<u64>, MonitoringError> {
-    let block_n = sink_status.head_block.unwrap();
+    // Safe to unwrap as defined by apibara spec
+    let block_n = sink_status.current_block.unwrap();
     let current_block = provider
         .block_number()
         .await
