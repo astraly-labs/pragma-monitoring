@@ -40,12 +40,14 @@ pub struct Network {
 #[derive(Debug, Clone)]
 #[allow(unused)]
 pub struct Config {
-    pairs: Vec<String>,
+    spot_pairs: Vec<String>,
+    future_pairs: Vec<String>,
     sources: HashMap<String, Vec<String>>, // Mapping from pair to sources
     decimals: HashMap<String, u32>,        // Mapping from pair to decimals
     publishers: Vec<String>,
     network: Network,
     indexer_url: String,
+    table_names: Vec<String>,
 }
 
 /// We are using `ArcSwap` as it allow us to replace the new `Config` with
@@ -65,13 +67,23 @@ impl Config {
         let (decimals, sources, publishers, publisher_registry_address) = init_oracle_config(
             &rpc_client,
             config_input.oracle_address,
-            config_input.pairs.clone(),
+            config_input.spot_pairs.clone(),
+            config_input.future_pairs.clone(),
         )
         .await;
 
+        let table_names = match config_input.network {
+            NetworkName::Mainnet => vec![
+                "mainnet_spot_entry".to_string(),
+                "mainnet_future_entry".to_string(),
+            ],
+            NetworkName::Testnet => vec!["spot_entry".to_string(), "future_entry".to_string()],
+        };
+
         Self {
             indexer_url,
-            pairs: config_input.pairs,
+            spot_pairs: config_input.spot_pairs,
+            future_pairs: config_input.future_pairs,
             sources,
             publishers,
             decimals,
@@ -81,6 +93,7 @@ impl Config {
                 oracle_address: config_input.oracle_address,
                 publisher_registry_address,
             },
+            table_names,
         }
     }
 
@@ -103,13 +116,18 @@ impl Config {
     pub fn indexer_url(&self) -> &str {
         &self.indexer_url
     }
+
+    pub fn table_names(&self) -> &Vec<String> {
+        &self.table_names
+    }
 }
 
 #[derive(Debug)]
 pub struct ConfigInput {
     pub network: NetworkName,
     pub oracle_address: FieldElement,
-    pub pairs: Vec<String>,
+    pub spot_pairs: Vec<String>,
+    pub future_pairs: Vec<String>,
 }
 
 pub async fn get_config(config_input: Option<ConfigInput>) -> Guard<Arc<Config>> {
@@ -121,14 +139,17 @@ pub async fn get_config(config_input: Option<ConfigInput>) -> Guard<Arc<Config>>
                     let network = std::env::var("NETWORK").expect("NETWORK must be set");
                     let oracle_address =
                         std::env::var("ORACLE_ADDRESS").expect("ORACLE_ADDRESS must be set");
-                    let pairs = std::env::var("PAIRS").expect("PAIRS must be set");
+                    let spot_pairs = std::env::var("SPOT_PAIRS").expect("SPOT_PAIRS must be set");
+                    let future_pairs =
+                        std::env::var("FUTURE_PAIRS").expect("FUTURE_PAIRS must be set");
 
                     ArcSwap::from_pointee(
                         Config::new(ConfigInput {
                             network: NetworkName::from_str(&network).expect("Invalid network name"),
                             oracle_address: FieldElement::from_hex_be(&oracle_address)
                                 .expect("Invalid oracle address"),
-                            pairs: parse_pairs(&pairs),
+                            spot_pairs: parse_pairs(&spot_pairs),
+                            future_pairs: parse_pairs(&future_pairs),
                         })
                         .await,
                     )
@@ -156,7 +177,8 @@ pub async fn config_force_init(config_input: ConfigInput) {
 async fn init_oracle_config(
     rpc_client: &JsonRpcClient<HttpTransport>,
     oracle_address: FieldElement,
-    pairs: Vec<String>,
+    spot_pairs: Vec<String>,
+    future_pairs: Vec<String>,
 ) -> (
     HashMap<String, u32>,
     HashMap<String, Vec<String>>,
@@ -217,7 +239,7 @@ async fn init_oracle_config(
         .map(|source| source.to_string())
         .collect::<Vec<String>>();
 
-    for pair in &pairs {
+    for pair in &[spot_pairs, future_pairs].concat() {
         let field_pair = cairo_short_string_to_felt(pair).unwrap();
 
         // Fetch decimals

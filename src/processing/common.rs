@@ -18,13 +18,7 @@ pub struct IndexerServerStatus {
 pub async fn is_syncing() -> Result<bool, MonitoringError> {
     let config = get_config(None).await;
 
-    // TODO: Add this to the config
-    let table_names = [
-        "spot_entry",
-        "mainnet_spot_entry",
-        "future_entry",
-        "mainnet_future_entry",
-    ];
+    let table_names = config.table_names();
 
     let statuses = futures::future::join_all(
         table_names
