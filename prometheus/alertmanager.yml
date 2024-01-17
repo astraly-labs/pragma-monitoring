@@ -58,4 +58,4 @@ receivers:
 
 # The directory from which notification templates are read.
 templates:
-  - '/etc/alertmanager/template/*.tmpl'
+  - "/etc/alertmanager/template/*.tmpl"
