@@ -34,6 +34,9 @@ Make sure to first fill the envirronement file with your own config parameters:
 # The database URL the application will use to connect to the database.
 DATABASE_URL='postgres://postgres:postgres@localhost:5432/postgres'
 
+# (Optional) Defillama API Key
+DEFILLAMA_API_KEY=
+
 # RPC URL
 RPC_URL=
 

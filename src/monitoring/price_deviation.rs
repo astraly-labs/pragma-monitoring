@@ -38,11 +38,22 @@ pub async fn price_deviation<T: Entry>(
     let pair_id = query.pair_id().to_string();
     let coingecko_id = *ids.get(&pair_id).expect("Failed to get coingecko id");
 
-    let request_url = format!(
-        "https://coins.llama.fi/prices/historical/{timestamp}/coingecko:{id}",
-        timestamp = query.timestamp().timestamp(),
-        id = coingecko_id,
-    );
+    let api_key = std::env::var("DEFILLAMA_API_KEY");
+
+    let request_url = if let Ok(api_key) = api_key {
+        format!(
+            "https://coins.llama.fi/prices/historical/{timestamp}/coingecko:{id}?apikey={apikey}",
+            timestamp = query.timestamp().timestamp(),
+            id = coingecko_id,
+            apikey = api_key
+        )
+    } else {
+        format!(
+            "https://coins.llama.fi/prices/historical/{timestamp}/coingecko:{id}",
+            timestamp = query.timestamp().timestamp(),
+            id = coingecko_id,
+        )
+    };
 
     let response = reqwest::get(&request_url)
         .await
