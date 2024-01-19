@@ -114,11 +114,10 @@ pub struct PragmaDataDTO {
 }
 
 /// Queries Pragma API
-pub async fn query_pragma_api(pair: &str) -> Result<PragmaDataDTO, MonitoringError> {
-    let config = get_config(None).await;
-
-    let network_env = config.network_str();
-
+pub async fn query_pragma_api(
+    pair: &str,
+    network_env: &str,
+) -> Result<PragmaDataDTO, MonitoringError> {
     let request_url = match network_env {
         "testnet" => format!(
             "https://api.dev.pragma.build/node/v1/data/{pair}?routing=true",

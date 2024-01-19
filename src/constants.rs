@@ -73,7 +73,15 @@ lazy_static! {
             "api_price_deviation",
             "Price deviation from the reference price."
         ),
-        &["pair"]
+        &["network", "pair"]
+    )
+    .unwrap();
+    pub static ref API_TIME_SINCE_LAST_UPDATE: GaugeVec = register_gauge_vec!(
+        opts!(
+            "api_time_since_last_update",
+            "Time since the last update in seconds."
+        ),
+        &["network", "pair"]
     )
     .unwrap();
 }

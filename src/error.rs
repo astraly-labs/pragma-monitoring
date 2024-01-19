@@ -11,6 +11,7 @@ pub enum MonitoringError {
     Conversion(String),
     OnChain(String),
     Provider(ProviderError),
+    InvalidTimestamp(u64),
 }
 
 impl StdError for MonitoringError {}
@@ -25,6 +26,7 @@ impl fmt::Display for MonitoringError {
             MonitoringError::Conversion(e) => write!(f, "Conversion Error: {}", e),
             MonitoringError::OnChain(e) => write!(f, "OnChain Error: {}", e),
             MonitoringError::Provider(e) => write!(f, "Provider Error: {}", e),
+            MonitoringError::InvalidTimestamp(e) => write!(f, "Invalid Timestamp: {}", e),
         }
     }
 }
