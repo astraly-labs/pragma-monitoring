@@ -1,6 +1,14 @@
+use bigdecimal::ToPrimitive;
+use starknet::{
+    core::types::{BlockId, BlockTag},
+    providers::SequencerGatewayProvider,
+};
+
 use crate::{
     config::get_config,
-    constants::{API_NUM_SOURCES, API_PRICE_DEVIATION, API_TIME_SINCE_LAST_UPDATE},
+    constants::{
+        API_NUM_SOURCES, API_PRICE_DEVIATION, API_SEQUENCER_DEVIATION, API_TIME_SINCE_LAST_UPDATE,
+    },
     error::MonitoringError,
     monitoring::{
         price_deviation::raw_price_deviation, time_since_last_update::raw_time_since_last_update,
@@ -32,6 +40,28 @@ pub async fn process_data_by_pair(pair: String) -> Result<f64, MonitoringError> 
     API_NUM_SOURCES
         .with_label_values(&[network_env, &pair])
         .set(result.num_sources_aggregated as i64);
+
+    if pair == "ETH/STRK" {
+        // Query the feeder gateway gas price
+        let provider = SequencerGatewayProvider::starknet_alpha_goerli();
+        #[allow(deprecated)]
+        let block = provider
+            .get_block(BlockId::Tag(BlockTag::Pending).into())
+            .await
+            .map_err(MonitoringError::Provider)?;
+
+        let eth = block.eth_l1_gas_price.to_big_decimal(18);
+        let strk = block.strk_l1_gas_price.to_big_decimal(18);
+
+        let expected_price = (eth / strk).to_f64().ok_or(MonitoringError::Conversion(
+            "Failed to convert expected price to f64".to_string(),
+        ))?;
+
+        let price_deviation = (normalized_price - expected_price) / expected_price;
+        API_SEQUENCER_DEVIATION
+            .with_label_values(&[network_env])
+            .set(price_deviation);
+    }
 
     Ok(price_deviation)
 }

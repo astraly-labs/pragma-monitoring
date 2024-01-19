@@ -92,4 +92,12 @@ lazy_static! {
         &["network", "pair"]
     )
     .unwrap();
+    pub static ref API_SEQUENCER_DEVIATION: GaugeVec = register_gauge_vec!(
+        opts!(
+            "api_sequencer_deviation",
+            "Price deviation from starknet gateway price."
+        ),
+        &["network"]
+    )
+    .unwrap();
 }
