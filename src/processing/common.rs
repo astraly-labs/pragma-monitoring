@@ -94,3 +94,51 @@ async fn blocks_left(
         Ok(None)
     }
 }
+
+/// Data Transfer Object for Pragma API
+/// e.g
+/// {
+//     "num_sources_aggregated": 2,
+//     "pair_id": "ETH/STRK",
+//     "price": "0xd136e79f57d9198",
+//     "timestamp": 1705669200000,
+//     "decimals": 18
+// }
+#[derive(serde::Deserialize, Debug)]
+pub struct PragmaDataDTO {
+    pub num_sources_aggregated: u32,
+    pub pair_id: String,
+    pub price: String,
+    pub timestamp: u64,
+    pub decimals: u32,
+}
+
+/// Queries Pragma API
+pub async fn query_pragma_api(pair: &str) -> Result<PragmaDataDTO, MonitoringError> {
+    let config = get_config(None).await;
+
+    let network_env = config.network_str();
+
+    let request_url = match network_env {
+        "testnet" => format!(
+            "https://api.dev.pragma.build/node/v1/data/{pair}?routing=true",
+            pair = pair,
+        ),
+        "mainnet" => format!(
+            "https://api.prod.pragma.build/node/v1/data/{pair}?routing=true",
+            pair = pair,
+        ),
+        _ => panic!("Invalid network env"),
+    };
+
+    let response = reqwest::get(&request_url)
+        .await
+        .map_err(|e| MonitoringError::Api(e.to_string()))?;
+
+    let data = response
+        .json::<PragmaDataDTO>()
+        .await
+        .map_err(|e| MonitoringError::Api(e.to_string()))?;
+
+    Ok(data)
+}

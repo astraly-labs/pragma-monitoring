@@ -59,16 +59,48 @@ async fn main() {
     let spot_monitoring = tokio::spawn(monitor(pool.clone(), true, &DataType::Spot));
     let future_monitoring = tokio::spawn(monitor(pool.clone(), true, &DataType::Future));
 
+    let api_monitoring = tokio::spawn(monitor_api());
+
     // Wait for the monitoring to finish
-    let (spot_result, future_result) =
-        futures::future::join(spot_monitoring, future_monitoring).await;
+    let results =
+        futures::future::join_all(vec![spot_monitoring, future_monitoring, api_monitoring]).await;
 
     // Check if any of the monitoring tasks failed
-    if let Err(e) = spot_result {
+    if let Err(e) = &results[0] {
         log::error!("[SPOT] Monitoring failed: {:?}", e);
     }
-    if let Err(e) = future_result {
+    if let Err(e) = &results[1] {
         log::error!("[FUTURE] Monitoring failed: {:?}", e);
+    }
+    if let Err(e) = &results[2] {
+        log::error!("[API] Monitoring failed: {:?}", e);
+    }
+}
+
+pub(crate) async fn monitor_api() {
+    let monitoring_config = get_config(None).await;
+
+    let tasks: Vec<_> = monitoring_config
+        .sources(DataType::Spot)
+        .iter()
+        .flat_map(|(pair, _sources)| {
+            vec![tokio::spawn(Box::pin(
+                processing::api::process_data_by_pair(pair.clone()),
+            ))]
+        })
+        .collect();
+
+    let results: Vec<_> = futures::future::join_all(tasks).await;
+
+    // Process or output the results
+    for result in &results {
+        match result {
+            Ok(data) => match data {
+                Ok(_) => log::info!("[API] Task finished successfully",),
+                Err(e) => log::error!("[API] Task failed with error: {e}"),
+            },
+            Err(e) => log::error!("[API] Task failed with error: {:?}", e),
+        }
     }
 }
 

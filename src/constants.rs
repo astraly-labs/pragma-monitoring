@@ -68,4 +68,12 @@ lazy_static! {
         &["network", "type"]
     )
     .unwrap();
+    pub static ref API_PRICE_DEVIATION: GaugeVec = register_gauge_vec!(
+        opts!(
+            "api_price_deviation",
+            "Price deviation from the reference price."
+        ),
+        &["pair"]
+    )
+    .unwrap();
 }

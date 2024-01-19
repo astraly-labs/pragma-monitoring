@@ -54,8 +54,6 @@ pub async fn process_data_by_pair(
 
     log::info!("Processing data for pair: {}", pair);
 
-    let config = get_config(None).await;
-
     match result {
         Ok(data) => {
             let network_env = &config.network_str();
