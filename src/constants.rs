@@ -63,7 +63,7 @@ lazy_static! {
     pub static ref INDEXER_BLOCKS_LEFT: IntGaugeVec = register_int_gauge_vec!(
         opts!(
             "indexer_blocks_left",
-            "Number of blocks left to index for a give indexer."
+            "Number of blocks left to index for a given indexer."
         ),
         &["network", "type"]
     )
@@ -80,6 +80,14 @@ lazy_static! {
         opts!(
             "api_time_since_last_update",
             "Time since the last update in seconds."
+        ),
+        &["network", "pair"]
+    )
+    .unwrap();
+    pub static ref API_NUM_SOURCES: IntGaugeVec = register_int_gauge_vec!(
+        opts!(
+            "api_num_sources",
+            "Number of sources aggregated for a pair."
         ),
         &["network", "pair"]
     )

@@ -1,6 +1,6 @@
 use crate::{
     config::get_config,
-    constants::{API_PRICE_DEVIATION, API_TIME_SINCE_LAST_UPDATE},
+    constants::{API_NUM_SOURCES, API_PRICE_DEVIATION, API_TIME_SINCE_LAST_UPDATE},
     error::MonitoringError,
     monitoring::{
         price_deviation::raw_price_deviation, time_since_last_update::raw_time_since_last_update,
@@ -29,6 +29,9 @@ pub async fn process_data_by_pair(pair: String) -> Result<f64, MonitoringError> 
     API_TIME_SINCE_LAST_UPDATE
         .with_label_values(&[network_env, &pair])
         .set(time_since_last_update as f64);
+    API_NUM_SOURCES
+        .with_label_values(&[network_env, &pair])
+        .set(result.num_sources_aggregated as i64);
 
     Ok(price_deviation)
 }
