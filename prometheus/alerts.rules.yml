@@ -42,7 +42,7 @@ groups:
           summary: "Indexer is down"
           description: "The {{ $labels.network }} indexer for {{ $labels.type }} is lagging behind 10 blocks."
   - name: API
-    rules: 
+    rules:
       - alert: TimeSinceLastUpdateTooHigh
         expr: api_time_since_last_update > 1800
         for: 5m
