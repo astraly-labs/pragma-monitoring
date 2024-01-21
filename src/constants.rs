@@ -76,6 +76,13 @@ lazy_static! {
         &["network", "pair"]
     )
     .unwrap();
+    pub static ref API_ON_OFF_PRICE_DEVIATION: GaugeVec = register_gauge_vec!(
+        opts!(
+            "api_on_off_price_deviation",
+            "Price deviation betqeen the on-chain price and the off-chain price."
+        ),
+        &["network", "pair"]
+    ).unwrap();
     pub static ref API_TIME_SINCE_LAST_UPDATE: GaugeVec = register_gauge_vec!(
         opts!(
             "api_time_since_last_update",
