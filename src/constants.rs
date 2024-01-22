@@ -68,6 +68,14 @@ lazy_static! {
         &["network", "type"]
     )
     .unwrap();
+    pub static ref DATA_PROVIDER_BALANCE_DEF: GaugeVec = register_gauge_vec!(
+        opts!(
+            "data_provider_balance",
+            "Balance of the data provider in the token."
+        ),
+        &["data_provider", "type"]
+    )
+    .unwrap();
     pub static ref API_PRICE_DEVIATION: GaugeVec = register_gauge_vec!(
         opts!(
             "api_price_deviation",

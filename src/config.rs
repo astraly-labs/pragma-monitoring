@@ -54,6 +54,11 @@ pub struct Config {
     indexer_url: String,
 }
 
+#[derive(Debug, Clone)]
+pub struct DataProviderInfo {
+    pub name: String,
+    pub address: FieldElement,
+}
 /// We are using `ArcSwap` as it allow us to replace the new `Config` with
 /// a new one which is required when running test cases. This approach was
 /// inspired from here - https://github.com/matklad/once_cell/issues/127

@@ -1,13 +1,13 @@
 extern crate diesel;
 extern crate dotenv;
 
-use config::get_config;
-use config::DataType;
+use config::{get_config,DataProviderInfo, DataType};
 use diesel_async::pooled_connection::deadpool::*;
 use diesel_async::pooled_connection::AsyncDieselConnectionManager;
 use diesel_async::AsyncPgConnection;
 
 use dotenv::dotenv;
+use starknet::core::utils::cairo_short_string_to_felt;
 use std::env;
 use std::time::Duration;
 use tokio::time::interval;
@@ -59,11 +59,17 @@ async fn main() {
     let spot_monitoring = tokio::spawn(monitor(pool.clone(), true, &DataType::Spot));
     let future_monitoring = tokio::spawn(monitor(pool.clone(), true, &DataType::Future));
 
+    let balance_monitoring = tokio::spawn(balance_monitor());
     let api_monitoring = tokio::spawn(monitor_api());
 
     // Wait for the monitoring to finish
-    let results =
-        futures::future::join_all(vec![spot_monitoring, future_monitoring, api_monitoring]).await;
+    let results = futures::future::join_all(vec![
+        spot_monitoring,
+        future_monitoring,
+        api_monitoring,
+        balance_monitoring,
+    ])
+    .await;
 
     // Check if any of the monitoring tasks failed
     if let Err(e) = &results[0] {
@@ -194,6 +200,39 @@ pub(crate) async fn monitor(
                 },
                 Err(e) => log::error!("[{data_type}] Task failed with error: {:?}", e),
             }
+        }
+    }
+}
+
+pub(crate) async fn balance_monitor() {
+    // Should replace this process with the actual process to retrieve data from
+    let mut data_provider_add_list = Vec::new();
+    let data_provider_address =
+        std::env::var("DATA_PROVIDER_ADDRESS").expect("DATA_PROVIDER_ADDRESS must be set");
+    let field_data_provider_address = cairo_short_string_to_felt(&data_provider_address.clone())
+        .expect("failed to convert data provider address");
+    let new_data_provider: DataProviderInfo = DataProviderInfo {
+        name: "test".to_string(),
+        address: field_data_provider_address,
+    };
+    data_provider_add_list.push(new_data_provider);
+    let tasks: Vec<_> = data_provider_add_list
+        .iter()
+        .map(|data_provider| {
+            tokio::spawn(Box::pin(
+                monitoring::data_providers_balance::data_provider_balance(data_provider.clone()),
+            ))
+        })
+        .collect();
+    let results: Vec<_> = futures::future::join_all(tasks).await;
+    // Process or output the results
+    for result in &results {
+        match result {
+            Ok(data) => match data {
+                Ok(_) => log::info!("Balance monitoring: Task finished successfully",),
+                Err(e) => log::error!("Balance monitoring: Task failed with error: {e}"),
+            },
+            Err(e) => log::error!("Balance monitoring: Task failed with error: {:?}", e),
         }
     }
 }
