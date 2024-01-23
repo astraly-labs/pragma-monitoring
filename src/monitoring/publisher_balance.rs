@@ -10,9 +10,7 @@ use crate::{config::get_config, error::MonitoringError};
 
 /// Returns the balance of a given publisher address
 /// Note: Currently only reads ETH balance
-pub async fn data_provider_balance(
-    publisher_address: FieldElement,
-) -> Result<f64, MonitoringError> {
+pub async fn publisher_balance(publisher_address: FieldElement) -> Result<f64, MonitoringError> {
     let config = get_config(None).await;
 
     let client = &config.network().provider;

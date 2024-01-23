@@ -70,7 +70,7 @@ lazy_static! {
     .unwrap();
     pub static ref PUBLISHER_BALANCE: GaugeVec = register_gauge_vec!(
         opts!("publisher_balance", "Balance of the publisher in ETH"),
-        &["publisher", "type"]
+        &["network", "publisher"]
     )
     .unwrap();
     pub static ref API_PRICE_DEVIATION: GaugeVec = register_gauge_vec!(

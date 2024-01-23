@@ -7,12 +7,11 @@ use diesel_async::pooled_connection::AsyncDieselConnectionManager;
 use diesel_async::AsyncPgConnection;
 
 use dotenv::dotenv;
-use processing::common::check_data_provider_balance;
 use std::env;
 use std::time::Duration;
 use tokio::time::interval;
 
-use crate::processing::common::is_syncing;
+use crate::processing::common::{check_publisher_balance, is_syncing};
 
 // Configuration
 mod config;
@@ -208,7 +207,7 @@ pub(crate) async fn monitor(
 }
 
 pub(crate) async fn balance_monitor() {
-    log::info!("[Balance] Monitoring Balance..");
+    log::info!("[PUBLISHERS] Monitoring Publishers..");
     let mut interval = interval(Duration::from_secs(30));
     let monitoring_config: arc_swap::Guard<std::sync::Arc<config::Config>> = get_config(None).await;
 
@@ -217,16 +216,14 @@ pub(crate) async fn balance_monitor() {
 
         let tasks: Vec<_> = monitoring_config
             .all_publishers()
-            .clone()
             .iter()
             .map(|(name, address)| {
-                tokio::spawn(Box::pin(check_data_provider_balance(
-                    name.clone(),
-                    *address,
-                )))
+                tokio::spawn(Box::pin(check_publisher_balance(name.clone(), *address)))
             })
             .collect();
+
         let results: Vec<_> = futures::future::join_all(tasks).await;
+
         // Process or output the results
         for result in &results {
             match result {

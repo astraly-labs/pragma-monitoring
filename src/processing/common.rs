@@ -1,4 +1,4 @@
-use crate::monitoring::data_providers_balance::data_provider_balance;
+use crate::monitoring::publisher_balance;
 use crate::{
     config::{get_config, DataType},
     constants::{INDEXER_BLOCKS_LEFT, PUBLISHER_BALANCE},
@@ -163,12 +163,12 @@ pub async fn query_pragma_api(
     }
 }
 
-pub async fn check_data_provider_balance(
+pub async fn check_publisher_balance(
     publisher: String,
     publisher_address: FieldElement,
 ) -> Result<(), MonitoringError> {
     let config = get_config(None).await;
-    let balance = data_provider_balance(publisher_address).await?;
+    let balance = publisher_balance(publisher_address).await?;
 
     let network_env = &config.network_str();
 
