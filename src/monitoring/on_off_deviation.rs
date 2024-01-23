@@ -84,7 +84,7 @@ pub async fn raw_on_off_price_deviation(
 
     let decimals =
         config
-            .decimals(DataType::Future)
+            .decimals(DataType::Spot)
             .get(pair_id)
             .ok_or(MonitoringError::OnChain(format!(
                 "Failed to get decimals for pair {:?}",
