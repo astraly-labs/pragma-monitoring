@@ -220,7 +220,10 @@ pub(crate) async fn balance_monitor() {
             .clone()
             .iter()
             .map(|(name, address)| {
-                tokio::spawn(Box::pin(check_data_provider_balance(name.clone(), address)))
+                tokio::spawn(Box::pin(check_data_provider_balance(
+                    name.clone(),
+                    address.clone(),
+                )))
             })
             .collect();
         let results: Vec<_> = futures::future::join_all(tasks).await;
