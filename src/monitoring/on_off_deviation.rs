@@ -82,14 +82,13 @@ pub async fn raw_on_off_price_deviation(
         .await
         .map_err(|e| MonitoringError::OnChain(e.to_string()))?;
 
-    let decimals =
-        config
-            .decimals(DataType::Spot)
-            .get(pair_id)
-            .ok_or(MonitoringError::OnChain(format!(
-                "Failed to get decimals for pair {:?}",
-                pair_id
-            )))?;
+    let decimals = config
+        .decimals(DataType::Spot)
+        .get(pair_id)
+        .ok_or(MonitoringError::OnChain(format!(
+            "Failed to get decimals for pair {:?}",
+            pair_id
+        )))?;
 
     let on_chain_price = data
         .first()
