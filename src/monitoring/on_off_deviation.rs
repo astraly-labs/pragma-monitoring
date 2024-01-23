@@ -24,26 +24,30 @@ pub async fn on_off_price_deviation(
     let config = get_config(None).await;
     let client = &config.network().provider;
     let field_pair = cairo_short_string_to_felt(&pair_id).expect("failed to convert pair id");
-
+    let calldata = match data_type {
+        DataType::Spot => vec![FieldElement::ZERO, field_pair],
+        DataType::Future => vec![FieldElement::ONE, field_pair, FieldElement::ZERO],
+    };
     let data = client
         .call(
             FunctionCall {
                 contract_address: config.network().oracle_address,
                 entry_point_selector: selector!("get_data_median"),
-                calldata: vec![FieldElement::ZERO, field_pair],
+                calldata: calldata,
             },
             BlockId::Tag(BlockTag::Latest),
         )
         .await
         .map_err(|e| MonitoringError::OnChain(e.to_string()))?;
 
-    let decimals = config
-        .decimals(data_type)
-        .get(&pair_id)
-        .ok_or(MonitoringError::OnChain(format!(
-            "Failed to get decimals for pair {:?}",
-            pair_id
-        )))?;
+    let decimals =
+        config
+            .decimals(data_type.clone())
+            .get(&pair_id)
+            .ok_or(MonitoringError::OnChain(format!(
+                "Failed to get decimals for pair {:?}",
+                pair_id
+            )))?;
 
     let on_chain_price = data
         .first()
@@ -54,51 +58,62 @@ pub async fn on_off_price_deviation(
             "Failed to convert to f64".to_string(),
         ))?;
 
-    let coingecko_id = *ids.get(&pair_id).expect("Failed to get coingecko id");
+    let (deviation, num_sources_aggregated) = match data_type {
+        DataType::Spot => {
+            let coingecko_id = *ids.get(&pair_id).expect("Failed to get coingecko id");
 
-    let api_key = std::env::var("DEFILLAMA_API_KEY");
+            let api_key = std::env::var("DEFILLAMA_API_KEY");
 
-    let request_url = if let Ok(api_key) = api_key {
-        format!(
+            let request_url = if let Ok(api_key) = api_key {
+                format!(
             "https://coins.llama.fi/prices/historical/{timestamp}/coingecko:{id}?apikey={apikey}",
             timestamp = timestamp,
             id = coingecko_id,
             apikey = api_key
         )
-    } else {
-        format!(
-            "https://coins.llama.fi/prices/historical/{timestamp}/coingecko:{id}",
-            timestamp = timestamp,
-            id = coingecko_id,
-        )
+            } else {
+                format!(
+                    "https://coins.llama.fi/prices/historical/{timestamp}/coingecko:{id}",
+                    timestamp = timestamp,
+                    id = coingecko_id,
+                )
+            };
+
+            let response = reqwest::get(&request_url)
+                .await
+                .map_err(|e| MonitoringError::Api(e.to_string()))?;
+
+            let coins_prices: CoinPricesDTO = response.json().await.map_err(|e| {
+                MonitoringError::Api(format!(
+                    "Failed to convert to DTO object, got error {:?}",
+                    e.to_string()
+                ))
+            })?;
+
+            let api_id = format!("coingecko:{}", coingecko_id);
+
+            let reference_price = coins_prices
+                .get_coins()
+                .get(&api_id)
+                .ok_or(MonitoringError::Api(format!(
+                    "Failed to get coingecko price for id {:?}",
+                    coingecko_id
+                )))?
+                .get_price();
+
+            let deviation = (reference_price - on_chain_price) / on_chain_price;
+            let num_sources_aggregated = (*data.get(3).unwrap()).try_into().map_err(|e| {
+                MonitoringError::Conversion(format!("Failed to convert num sources {:?}", e))
+            })?;
+            (deviation, num_sources_aggregated)
+        }
+
+        DataType::Future => {
+            // TODO: work on a different API for futures
+
+            (0.0, 0)
+        }
     };
-
-    let response = reqwest::get(&request_url)
-        .await
-        .map_err(|e| MonitoringError::Api(e.to_string()))?;
-
-    let coins_prices: CoinPricesDTO = response.json().await.map_err(|e| {
-        MonitoringError::Api(format!(
-            "Failed to convert to DTO object, got error {:?}",
-            e.to_string()
-        ))
-    })?;
-
-    let api_id = format!("coingecko:{}", coingecko_id);
-
-    let reference_price = coins_prices
-        .get_coins()
-        .get(&api_id)
-        .ok_or(MonitoringError::Api(format!(
-            "Failed to get coingecko price for id {:?}",
-            coingecko_id
-        )))?
-        .get_price();
-
-    let deviation = (reference_price - on_chain_price) / on_chain_price;
-    let num_sources_aggregated = (*data.get(3).unwrap()).try_into().map_err(|e| {
-        MonitoringError::Conversion(format!("Failed to convert num sources {:?}", e))
-    })?;
 
     Ok((deviation, num_sources_aggregated))
 }
