@@ -92,7 +92,7 @@ pub async fn process_data_by_pair_and_sources(
         timestamps.push(res);
     }
     let (on_off_deviation, _) =
-        on_off_price_deviation::<SpotEntry>(pair.clone(), *timestamps.last().unwrap()).await?;
+        on_off_price_deviation(pair.clone(), *timestamps.last().unwrap(), DataType::Spot).await?;
     ON_OFF_PRICE_DEVIATION
         .with_label_values(&[network_env, &pair.clone(), data_type])
         .set(on_off_deviation);

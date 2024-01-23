@@ -13,12 +13,12 @@ use crate::{
     config::{get_config, DataType},
     constants::COINGECKO_IDS,
     error::MonitoringError,
-    types::Entry,
 };
 
-pub async fn on_off_price_deviation<T: Entry>(
+pub async fn on_off_price_deviation(
     pair_id: String,
     timestamp: u64,
+    data_type: DataType,
 ) -> Result<(f64, u32), MonitoringError> {
     let ids = &COINGECKO_IDS;
     let config = get_config(None).await;
@@ -37,14 +37,13 @@ pub async fn on_off_price_deviation<T: Entry>(
         .await
         .map_err(|e| MonitoringError::OnChain(e.to_string()))?;
 
-    let decimals =
-        config
-            .decimals(DataType::Spot)
-            .get(&pair_id)
-            .ok_or(MonitoringError::OnChain(format!(
-                "Failed to get decimals for pair {:?}",
-                pair_id
-            )))?;
+    let decimals = config
+        .decimals(data_type)
+        .get(&pair_id)
+        .ok_or(MonitoringError::OnChain(format!(
+            "Failed to get decimals for pair {:?}",
+            pair_id
+        )))?;
 
     let on_chain_price = data
         .first()

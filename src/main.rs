@@ -53,7 +53,6 @@ async fn main() {
     let database_url: String = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
     let config = AsyncDieselConnectionManager::<diesel_async::AsyncPgConnection>::new(database_url);
     let pool = Pool::builder(config).build().unwrap();
-
     // Monitor spot/future in parallel
     let spot_monitoring = tokio::spawn(monitor(pool.clone(), true, &DataType::Spot));
     let future_monitoring = tokio::spawn(monitor(pool.clone(), true, &DataType::Future));
