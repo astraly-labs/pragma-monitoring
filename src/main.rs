@@ -1,8 +1,7 @@
 extern crate diesel;
 extern crate dotenv;
 
-use config::get_config;
-use config::DataType;
+use config::{get_config, DataType};
 use diesel_async::pooled_connection::deadpool::*;
 use diesel_async::pooled_connection::AsyncDieselConnectionManager;
 use diesel_async::AsyncPgConnection;
@@ -12,7 +11,7 @@ use std::env;
 use std::time::Duration;
 use tokio::time::interval;
 
-use crate::processing::common::is_syncing;
+use crate::processing::common::{check_publisher_balance, is_syncing};
 
 // Configuration
 mod config;
@@ -59,11 +58,17 @@ async fn main() {
     let spot_monitoring = tokio::spawn(monitor(pool.clone(), true, &DataType::Spot));
     let future_monitoring = tokio::spawn(monitor(pool.clone(), true, &DataType::Future));
 
+    let balance_monitoring = tokio::spawn(balance_monitor());
     let api_monitoring = tokio::spawn(monitor_api());
 
     // Wait for the monitoring to finish
-    let results =
-        futures::future::join_all(vec![spot_monitoring, future_monitoring, api_monitoring]).await;
+    let results = futures::future::join_all(vec![
+        spot_monitoring,
+        future_monitoring,
+        api_monitoring,
+        balance_monitoring,
+    ])
+    .await;
 
     // Check if any of the monitoring tasks failed
     if let Err(e) = &results[0] {
@@ -74,6 +79,9 @@ async fn main() {
     }
     if let Err(e) = &results[2] {
         log::error!("[API] Monitoring failed: {:?}", e);
+    }
+    if let Err(e) = &results[3] {
+        log::error!("[BALANCE] Monitoring failed: {:?}", e);
     }
 }
 
@@ -193,6 +201,37 @@ pub(crate) async fn monitor(
                     Err(e) => log::error!("[{data_type}] Task failed with error: {e}"),
                 },
                 Err(e) => log::error!("[{data_type}] Task failed with error: {:?}", e),
+            }
+        }
+    }
+}
+
+pub(crate) async fn balance_monitor() {
+    log::info!("[PUBLISHERS] Monitoring Publishers..");
+    let mut interval = interval(Duration::from_secs(30));
+    let monitoring_config: arc_swap::Guard<std::sync::Arc<config::Config>> = get_config(None).await;
+
+    loop {
+        interval.tick().await; // Wait for the next tick
+
+        let tasks: Vec<_> = monitoring_config
+            .all_publishers()
+            .iter()
+            .map(|(name, address)| {
+                tokio::spawn(Box::pin(check_publisher_balance(name.clone(), *address)))
+            })
+            .collect();
+
+        let results: Vec<_> = futures::future::join_all(tasks).await;
+
+        // Process or output the results
+        for result in &results {
+            match result {
+                Ok(data) => match data {
+                    Ok(_) => log::info!("[PUBLISHERS]: Task finished successfully",),
+                    Err(e) => log::error!("[PUBLISHERS]: Task failed with error: {e}"),
+                },
+                Err(e) => log::error!("[PUBLISHERS]: Task failed with error: {:?}", e),
             }
         }
     }

@@ -49,7 +49,7 @@ pub struct DataInfo {
 #[allow(unused)]
 pub struct Config {
     data_info: HashMap<DataType, DataInfo>,
-    publishers: Vec<String>,
+    publishers: HashMap<String, FieldElement>,
     network: Network,
     indexer_url: String,
 }
@@ -129,6 +129,10 @@ impl Config {
             NetworkName::Testnet => table_name.to_string(),
         }
     }
+
+    pub fn all_publishers(&self) -> &HashMap<String, FieldElement> {
+        &self.publishers
+    }
 }
 
 #[derive(Debug)]
@@ -186,7 +190,7 @@ pub async fn config_force_init(config_input: ConfigInput) {
 async fn init_publishers(
     rpc_client: &JsonRpcClient<HttpTransport>,
     oracle_address: FieldElement,
-) -> (Vec<String>, FieldElement) {
+) -> (HashMap<String, FieldElement>, FieldElement) {
     // Fetch publisher registry address
     let publisher_registry_address = *rpc_client
         .call(
@@ -232,7 +236,27 @@ async fn init_publishers(
         .filter(|publisher| !excluded_publishers.contains(publisher))
         .collect::<Vec<String>>();
 
-    (publishers, publisher_registry_address)
+    let mut publishers_map: HashMap<String, FieldElement> = HashMap::new();
+    for publisher in publishers {
+        let field_publisher =
+            cairo_short_string_to_felt(&publisher).expect("Failed to parse publisher");
+        let publisher_address = *rpc_client
+            .call(
+                FunctionCall {
+                    contract_address: publisher_registry_address,
+                    entry_point_selector: selector!("get_publisher_address"), // Replace with actual function name
+                    calldata: vec![field_publisher],
+                },
+                BlockId::Tag(BlockTag::Latest),
+            )
+            .await
+            .expect("failed to get publisher address")
+            .first()
+            .unwrap();
+
+        publishers_map.insert(publisher, publisher_address);
+    }
+    (publishers_map, publisher_registry_address)
 }
 
 async fn init_spot_config(

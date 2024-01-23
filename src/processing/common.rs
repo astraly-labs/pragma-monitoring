@@ -1,13 +1,13 @@
-use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
-use serde::{Deserialize, Serialize};
-use starknet::providers::{jsonrpc::HttpTransport, JsonRpcClient, Provider};
-
+use crate::monitoring::publisher_balance;
 use crate::{
     config::{get_config, DataType},
-    constants::INDEXER_BLOCKS_LEFT,
+    constants::{INDEXER_BLOCKS_LEFT, PUBLISHER_BALANCE},
     error::MonitoringError,
 };
-
+use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
+use serde::{Deserialize, Serialize};
+use starknet::core::types::FieldElement;
+use starknet::providers::{jsonrpc::HttpTransport, JsonRpcClient, Provider};
 #[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize)]
 pub struct IndexerServerStatus {
     pub status: i32,
@@ -161,4 +161,19 @@ pub async fn query_pragma_api(
             other
         ))),
     }
+}
+
+pub async fn check_publisher_balance(
+    publisher: String,
+    publisher_address: FieldElement,
+) -> Result<(), MonitoringError> {
+    let config = get_config(None).await;
+    let balance = publisher_balance(publisher_address).await?;
+
+    let network_env = &config.network_str();
+
+    PUBLISHER_BALANCE
+        .with_label_values(&[network_env, &publisher])
+        .set(balance);
+    Ok(())
 }

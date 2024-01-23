@@ -41,6 +41,14 @@ groups:
         annotations:
           summary: "Indexer is down"
           description: "The {{ $labels.network }} indexer for {{ $labels.type }} is lagging behind 10 blocks."
+      - alert: PublisherBalanceLow
+        expr: publisher_balance < 0.1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Publisher balance is low"
+          description: "The {{ $labels.publisher }} balance is below 0.1 ETH."
   - name: API
     rules:
       - alert: TimeSinceLastUpdateTooHigh

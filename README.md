@@ -13,6 +13,7 @@ It then processes the data and computes the following metrics:
 - `time_since_last_update_pair_id{network, pair, type}`: Time since an update has been published for a given pair. (in seconds)
 - `price_deviation{network, pair, source, type}`: Deviation of the price from a reference price (DefiLlama API) given source and pair. (in percents)
 - `price_deviation_source{network, pair, source, type}`: Deviation of the price from the on-chain aggregated median price given source and pair. (in percents)
+- `publisher_balance{network, publisher}`: Balance of a publisher. (in ETH)
 
 ## Shared Public Access
 
