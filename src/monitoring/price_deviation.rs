@@ -15,17 +15,28 @@ use crate::{constants::COINGECKO_IDS, error::MonitoringError, types::Entry};
 //   }
 // }
 #[derive(serde::Deserialize, Debug)]
-struct CoinPricesDTO {
+pub struct CoinPricesDTO {
     coins: HashMap<String, CoinPriceDTO>,
 }
 
 #[allow(unused)]
 #[derive(serde::Deserialize, Debug)]
-struct CoinPriceDTO {
+pub struct CoinPriceDTO {
     price: f64,
     symbol: String,
     timestamp: u64,
     confidence: f64,
+}
+
+impl CoinPricesDTO {
+    pub fn get_coins(&self) -> &HashMap<String, CoinPriceDTO> {
+        &self.coins
+    }
+}
+impl CoinPriceDTO {
+    pub fn get_price(&self) -> f64 {
+        self.price.clone()
+    }
 }
 
 /// Calculates the deviation of the price from a trusted API (DefiLLama)

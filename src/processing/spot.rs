@@ -5,6 +5,7 @@ use crate::config::get_config;
 use crate::config::DataType;
 use crate::config::NetworkName;
 use crate::constants::NUM_SOURCES;
+use crate::constants::ON_OFF_PRICE_DEVIATION;
 use crate::constants::PAIR_PRICE;
 use crate::constants::PRICE_DEVIATION;
 use crate::constants::PRICE_DEVIATION_SOURCE;
@@ -13,7 +14,9 @@ use crate::constants::TIME_SINCE_LAST_UPDATE_PUBLISHER;
 use crate::diesel::QueryDsl;
 use crate::error::MonitoringError;
 use crate::models::SpotEntry;
-use crate::monitoring::{price_deviation, source_deviation, time_since_last_update};
+use crate::monitoring::{
+    on_off_price_deviation, price_deviation, source_deviation, time_since_last_update,
+};
 
 use crate::schema::mainnet_spot_entry::dsl as mainnet_dsl;
 use crate::schema::spot_entry::dsl as testnet_dsl;
@@ -77,8 +80,9 @@ pub async fn process_data_by_pair_and_sources(
     sources: Vec<String>,
 ) -> Result<u64, MonitoringError> {
     let mut timestamps = Vec::new();
-
     let config = get_config(None).await;
+    let data_type: &str = "spot";
+    let network_env = &config.network_str();
 
     let decimals = *config.decimals(DataType::Spot).get(&pair.clone()).unwrap();
 
@@ -87,7 +91,11 @@ pub async fn process_data_by_pair_and_sources(
         let res = process_data_by_pair_and_source(pool.clone(), &pair, &src, decimals).await?;
         timestamps.push(res);
     }
-
+    let (on_off_deviation, _) =
+        on_off_price_deviation::<SpotEntry>(pair.clone(), *timestamps.last().unwrap()).await?;
+    ON_OFF_PRICE_DEVIATION
+        .with_label_values(&[network_env, &pair.clone(), data_type])
+        .set(on_off_deviation);
     Ok(*timestamps.last().unwrap())
 }
 
@@ -126,7 +134,7 @@ pub async fn process_data_by_pair_and_source(
     match filtered_by_source_result {
         Ok(data) => {
             let network_env = &config.network_str();
-            let data_type = "spot";
+            let data_type: &str = "spot";
 
             // Get the labels
             let time_labels = TIME_SINCE_LAST_UPDATE_PUBLISHER.with_label_values(&[

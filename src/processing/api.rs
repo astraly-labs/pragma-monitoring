@@ -8,13 +8,11 @@ use starknet::{
 use crate::{
     config::get_config,
     constants::{
-        API_NUM_SOURCES, API_ON_OFF_PRICE_DEVIATION, API_PRICE_DEVIATION, API_SEQUENCER_DEVIATION,
-        API_TIME_SINCE_LAST_UPDATE,
+        API_NUM_SOURCES, API_PRICE_DEVIATION, API_SEQUENCER_DEVIATION, API_TIME_SINCE_LAST_UPDATE,
     },
     error::MonitoringError,
     monitoring::{
-        on_off_deviation::raw_on_off_price_deviation, price_deviation::raw_price_deviation,
-        time_since_last_update::raw_time_since_last_update,
+        price_deviation::raw_price_deviation, time_since_last_update::raw_time_since_last_update,
     },
     processing::common::query_pragma_api,
 };
@@ -37,7 +35,6 @@ pub async fn process_data_by_pair(pair: String) -> Result<(), MonitoringError> {
 
     let price_deviation = raw_price_deviation(&pair, normalized_price).await?;
     let time_since_last_update = raw_time_since_last_update(result.timestamp)?;
-    let (on_off_price_deviation, _) = raw_on_off_price_deviation(&pair, normalized_price).await?;
 
     API_PRICE_DEVIATION
         .with_label_values(&[network_env, &pair])
@@ -48,9 +45,7 @@ pub async fn process_data_by_pair(pair: String) -> Result<(), MonitoringError> {
     API_NUM_SOURCES
         .with_label_values(&[network_env, &pair])
         .set(result.num_sources_aggregated as i64);
-    API_ON_OFF_PRICE_DEVIATION
-        .with_label_values(&[network_env, &pair])
-        .set(on_off_price_deviation);
+
     Ok(())
 }
 
