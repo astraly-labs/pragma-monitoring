@@ -8,11 +8,11 @@ use starknet::{
     providers::Provider,
 };
 
-use crate::{config::{get_config, DataType}, error::MonitoringError, types::Entry};
-
-
-
-
+use crate::{
+    config::{get_config, DataType},
+    error::MonitoringError,
+    types::Entry,
+};
 
 pub async fn on_off_price_deviation<T: Entry>(
     query: &T,
@@ -61,17 +61,14 @@ pub async fn on_off_price_deviation<T: Entry>(
     Ok((deviation, num_sources_aggregated))
 }
 
-
-
-
 pub async fn raw_on_off_price_deviation(
-    pair_id: &String, off_chain_price: f64
+    pair_id: &String,
+    off_chain_price: f64,
 ) -> Result<(f64, u32), MonitoringError> {
     let config = get_config(None).await;
 
     let client = &config.network().provider;
-    let field_pair =
-        cairo_short_string_to_felt(pair_id).expect("failed to convert pair id");
+    let field_pair = cairo_short_string_to_felt(pair_id).expect("failed to convert pair id");
 
     let data = client
         .call(
@@ -85,13 +82,14 @@ pub async fn raw_on_off_price_deviation(
         .await
         .map_err(|e| MonitoringError::OnChain(e.to_string()))?;
 
-    let decimals = config
-        .decimals(DataType::Future)
-        .get(pair_id)
-        .ok_or(MonitoringError::OnChain(format!(
-            "Failed to get decimals for pair {:?}",
-            pair_id
-        )))?;
+    let decimals =
+        config
+            .decimals(DataType::Future)
+            .get(pair_id)
+            .ok_or(MonitoringError::OnChain(format!(
+                "Failed to get decimals for pair {:?}",
+                pair_id
+            )))?;
 
     let on_chain_price = data
         .first()
@@ -109,4 +107,3 @@ pub async fn raw_on_off_price_deviation(
 
     Ok((deviation, num_sources_aggregated))
 }
-
