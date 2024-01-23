@@ -68,12 +68,9 @@ lazy_static! {
         &["network", "type"]
     )
     .unwrap();
-    pub static ref DATA_PROVIDER_BALANCE_DEF: GaugeVec = register_gauge_vec!(
-        opts!(
-            "data_provider_balance",
-            "Balance of the data provider in ETH"
-        ),
-        &["data_provider", "type"]
+    pub static ref PUBLISHER_BALANCE: GaugeVec = register_gauge_vec!(
+        opts!("publisher_balance", "Balance of the publisher in ETH"),
+        &["publisher", "type"]
     )
     .unwrap();
     pub static ref API_PRICE_DEVIATION: GaugeVec = register_gauge_vec!(
@@ -110,4 +107,6 @@ lazy_static! {
     .unwrap();
 }
 
-pub const DECIMALS: i32 = 18;
+pub const FEE_TOKEN_DECIMALS: i32 = 18;
+pub const FEE_TOKEN_ADDRESS: &str =
+    "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7";

@@ -1,7 +1,7 @@
 use crate::monitoring::data_providers_balance::data_provider_balance;
 use crate::{
     config::{get_config, DataType},
-    constants::{DATA_PROVIDER_BALANCE_DEF, INDEXER_BLOCKS_LEFT},
+    constants::{INDEXER_BLOCKS_LEFT, PUBLISHER_BALANCE},
     error::MonitoringError,
 };
 use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
@@ -164,18 +164,16 @@ pub async fn query_pragma_api(
 }
 
 pub async fn check_data_provider_balance(
-    dp_name: String,
-    dp_address: FieldElement,
-) -> Result<bool, MonitoringError> {
+    publisher: String,
+    publisher_address: FieldElement,
+) -> Result<(), MonitoringError> {
     let config = get_config(None).await;
-    let balance = data_provider_balance(dp_address).await;
+    let balance = data_provider_balance(publisher_address).await?;
 
-    // Update the prometheus metric
-    DATA_PROVIDER_BALANCE_DEF
-        .with_label_values(&[
-            (&config.network().name).into(),
-            &dp_name.to_ascii_lowercase(),
-        ])
-        .set(balance.unwrap_or(0.0) as f64);
-    Ok(true)
+    let network_env = &config.network_str();
+
+    PUBLISHER_BALANCE
+        .with_label_values(&[network_env, &publisher])
+        .set(balance);
+    Ok(())
 }

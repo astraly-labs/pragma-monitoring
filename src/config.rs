@@ -49,7 +49,7 @@ pub struct DataInfo {
 #[allow(unused)]
 pub struct Config {
     data_info: HashMap<DataType, DataInfo>,
-    pub publishers: HashMap<String, FieldElement>,
+    publishers: HashMap<String, FieldElement>,
     network: Network,
     indexer_url: String,
 }
@@ -128,6 +128,10 @@ impl Config {
             NetworkName::Mainnet => format!("mainnet_{}", table_name),
             NetworkName::Testnet => table_name.to_string(),
         }
+    }
+
+    pub fn all_publishers(&self) -> &HashMap<String, FieldElement> {
+        &self.publishers
     }
 }
 
@@ -233,8 +237,9 @@ async fn init_publishers(
         .collect::<Vec<String>>();
 
     let mut publishers_map: HashMap<String, FieldElement> = HashMap::new();
-    for publisher in publishers.clone() {
-        let field_publisher = cairo_short_string_to_felt(&publisher).unwrap();
+    for publisher in publishers {
+        let field_publisher =
+            cairo_short_string_to_felt(&publisher).expect("Failed to parse publisher");
         let publisher_address = *rpc_client
             .call(
                 FunctionCall {
@@ -245,7 +250,7 @@ async fn init_publishers(
                 BlockId::Tag(BlockTag::Latest),
             )
             .await
-            .expect("failed to call contract")
+            .expect("failed to get publisher address")
             .first()
             .unwrap();
 

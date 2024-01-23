@@ -128,7 +128,7 @@ pub(crate) async fn monitor(
     wait_for_syncing: bool,
     data_type: &DataType,
 ) {
-    let monitoring_config: arc_swap::Guard<std::sync::Arc<config::Config>> = get_config(None).await;
+    let monitoring_config = get_config(None).await;
 
     let mut interval = interval(Duration::from_secs(30));
 
@@ -216,7 +216,7 @@ pub(crate) async fn balance_monitor() {
         interval.tick().await; // Wait for the next tick
 
         let tasks: Vec<_> = monitoring_config
-            .publishers
+            .all_publishers()
             .clone()
             .iter()
             .map(|(name, address)| {
@@ -231,10 +231,10 @@ pub(crate) async fn balance_monitor() {
         for result in &results {
             match result {
                 Ok(data) => match data {
-                    Ok(_) => log::info!("Balance monitoring: Task finished successfully",),
-                    Err(e) => log::error!("Balance monitoring: Task failed with error: {e}"),
+                    Ok(_) => log::info!("[PUBLISHERS]: Task finished successfully",),
+                    Err(e) => log::error!("[PUBLISHERS]: Task failed with error: {e}"),
                 },
-                Err(e) => log::error!("Balance monitoring: Task failed with error: {:?}", e),
+                Err(e) => log::error!("[PUBLISHERS]: Task failed with error: {:?}", e),
             }
         }
     }
