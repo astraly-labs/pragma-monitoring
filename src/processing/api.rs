@@ -1,4 +1,5 @@
-use bigdecimal::ToPrimitive;
+use bigdecimal::{Num, ToPrimitive};
+use num_bigint::BigInt;
 use starknet::{
     core::types::{BlockId, BlockTag},
     providers::SequencerGatewayProvider,
@@ -16,7 +17,7 @@ use crate::{
     processing::common::query_pragma_api,
 };
 
-pub async fn process_data_by_pair(pair: String) -> Result<f64, MonitoringError> {
+pub async fn process_data_by_pair(pair: String) -> Result<(), MonitoringError> {
     // Query the Pragma API
     let config = get_config(None).await;
     let network_env = &config.network_str();
@@ -25,8 +26,12 @@ pub async fn process_data_by_pair(pair: String) -> Result<f64, MonitoringError> 
 
     log::info!("Processing data for pair: {}", pair);
 
+    // Parse the hex string price
+    let parsed_price = BigInt::from_str_radix(&result.price[2..], 16)
+        .unwrap()
+        .to_string();
     let normalized_price =
-        result.price.parse::<f64>().unwrap() / 10_f64.powi(result.decimals as i32);
+        parsed_price.to_string().parse::<f64>().unwrap() / 10_f64.powi(result.decimals as i32);
 
     let price_deviation = raw_price_deviation(&pair, normalized_price).await?;
     let time_since_last_update = raw_time_since_last_update(result.timestamp)?;
@@ -53,18 +58,50 @@ pub async fn process_data_by_pair(pair: String) -> Result<f64, MonitoringError> 
             .await
             .map_err(MonitoringError::Provider)?;
 
-        let eth = block.eth_l1_gas_price.to_big_decimal(18);
-        let strk = block.strk_l1_gas_price.to_big_decimal(18);
+    Ok(())
+}
 
-        let expected_price = (eth / strk).to_f64().ok_or(MonitoringError::Conversion(
-            "Failed to convert expected price to f64".to_string(),
-        ))?;
+pub async fn process_sequencer_data() -> Result<(), MonitoringError> {
+    let pair = "ETH/STRK".to_string();
 
-        let price_deviation = (normalized_price - expected_price) / expected_price;
-        API_SEQUENCER_DEVIATION
-            .with_label_values(&[network_env])
-            .set(price_deviation);
-    }
+    // Query the Pragma API
+    let config = get_config(None).await;
+    let network_env = config.network_str();
 
-    Ok(price_deviation)
+    let result = query_pragma_api(&pair, network_env).await?;
+
+    log::info!("Processing sequencer data");
+
+    // Parse the hex string price
+    let parsed_price = BigInt::from_str_radix(&result.price[2..], 16)
+        .unwrap()
+        .to_string();
+    let normalized_price =
+        parsed_price.to_string().parse::<f64>().unwrap() / 10_f64.powi(result.decimals as i32);
+
+    let provider = match network_env {
+        "Testnet" => SequencerGatewayProvider::starknet_alpha_goerli(),
+        "Mainnet" => SequencerGatewayProvider::starknet_alpha_mainnet(),
+        _ => panic!("Invalid network env"),
+    };
+
+    #[allow(deprecated)]
+    let block = provider
+        .get_block(BlockId::Tag(BlockTag::Pending).into())
+        .await
+        .map_err(MonitoringError::Provider)?;
+
+    let eth = block.eth_l1_gas_price.to_big_decimal(18);
+    let strk = block.strk_l1_gas_price.to_big_decimal(18);
+
+    let expected_price = (strk / eth).to_f64().ok_or(MonitoringError::Conversion(
+        "Failed to convert expected price to f64".to_string(),
+    ))?;
+
+    let price_deviation = (normalized_price - expected_price) / expected_price;
+    API_SEQUENCER_DEVIATION
+        .with_label_values(&[network_env])
+        .set(price_deviation);
+
+    Ok(())
 }

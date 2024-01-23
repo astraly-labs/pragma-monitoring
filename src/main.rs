@@ -79,27 +79,37 @@ async fn main() {
 
 pub(crate) async fn monitor_api() {
     let monitoring_config = get_config(None).await;
+    log::info!("[API] Monitoring API..");
 
-    let tasks: Vec<_> = monitoring_config
-        .sources(DataType::Spot)
-        .iter()
-        .flat_map(|(pair, _sources)| {
-            vec![tokio::spawn(Box::pin(
-                processing::api::process_data_by_pair(pair.clone()),
-            ))]
-        })
-        .collect();
+    let mut interval = interval(Duration::from_secs(30));
 
-    let results: Vec<_> = futures::future::join_all(tasks).await;
+    loop {
+        interval.tick().await; // Wait for the next tick
 
-    // Process or output the results
-    for result in &results {
-        match result {
-            Ok(data) => match data {
-                Ok(_) => log::info!("[API] Task finished successfully",),
-                Err(e) => log::error!("[API] Task failed with error: {e}"),
-            },
-            Err(e) => log::error!("[API] Task failed with error: {:?}", e),
+        let mut tasks: Vec<_> = monitoring_config
+            .sources(DataType::Spot)
+            .iter()
+            .flat_map(|(pair, _sources)| {
+                vec![tokio::spawn(Box::pin(
+                    processing::api::process_data_by_pair(pair.clone()),
+                ))]
+            })
+            .collect();
+        tasks.push(tokio::spawn(Box::pin(
+            processing::api::process_sequencer_data(),
+        )));
+
+        let results: Vec<_> = futures::future::join_all(tasks).await;
+
+        // Process or output the results
+        for result in &results {
+            match result {
+                Ok(data) => match data {
+                    Ok(_) => log::info!("[API] Task finished successfully",),
+                    Err(e) => log::error!("[API] Task failed with error: {e}"),
+                },
+                Err(e) => log::error!("[API] Task failed with error: {:?}", e),
+            }
         }
     }
 }

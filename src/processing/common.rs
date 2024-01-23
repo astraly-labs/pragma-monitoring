@@ -120,11 +120,11 @@ pub async fn query_pragma_api(
     network_env: &str,
 ) -> Result<PragmaDataDTO, MonitoringError> {
     let request_url = match network_env {
-        "testnet" => format!(
+        "Testnet" => format!(
             "https://api.dev.pragma.build/node/v1/data/{pair}?routing=true",
             pair = pair,
         ),
-        "mainnet" => format!(
+        "Mainnet" => format!(
             "https://api.prod.pragma.build/node/v1/data/{pair}?routing=true",
             pair = pair,
         ),
