@@ -222,7 +222,7 @@ pub(crate) async fn balance_monitor() {
             .map(|(name, address)| {
                 tokio::spawn(Box::pin(check_data_provider_balance(
                     name.clone(),
-                    address.clone(),
+                    *address,
                 )))
             })
             .collect();

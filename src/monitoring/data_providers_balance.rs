@@ -22,7 +22,7 @@ pub async fn data_provider_balance(data_provider: FieldElement) -> Result<f64, M
                 contract_address: FieldElement::from_hex_be(&token_address)
                     .expect("failed to convert token address"),
                 entry_point_selector: selector!("balanceOf"),
-                calldata: vec![data_provider.into()],
+                calldata: vec![data_provider],
             },
             BlockId::Tag(BlockTag::Latest),
         )
