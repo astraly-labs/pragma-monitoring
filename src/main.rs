@@ -8,7 +8,6 @@ use diesel_async::AsyncPgConnection;
 
 use dotenv::dotenv;
 use processing::common::check_data_provider_balance;
-use starknet::core::utils::cairo_short_string_to_felt;
 use std::env;
 use std::time::Duration;
 use tokio::time::interval;
@@ -221,10 +220,7 @@ pub(crate) async fn balance_monitor() {
             .clone()
             .iter()
             .map(|(name, address)| {
-                tokio::spawn(Box::pin(check_data_provider_balance(
-                    name.clone(),
-                    address.clone(),
-                )))
+                tokio::spawn(Box::pin(check_data_provider_balance(name.clone(), address)))
             })
             .collect();
         let results: Vec<_> = futures::future::join_all(tasks).await;

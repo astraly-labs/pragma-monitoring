@@ -1,9 +1,6 @@
 use bigdecimal::ToPrimitive;
 use starknet::{
-    core::{
-        types::{BlockId, BlockTag, FieldElement, FunctionCall},
-        utils::cairo_short_string_to_felt,
-    },
+    core::types::{BlockId, BlockTag, FieldElement, FunctionCall},
     macros::selector,
     providers::Provider,
 };
@@ -25,7 +22,7 @@ pub async fn data_provider_balance(data_provider: FieldElement) -> Result<f64, M
                 contract_address: FieldElement::from_hex_be(&token_address)
                     .expect("failed to convert token address"),
                 entry_point_selector: selector!("balanceOf"),
-                calldata: vec![data_provider.clone().into()],
+                calldata: vec![data_provider.into()],
             },
             BlockId::Tag(BlockTag::Latest),
         )
@@ -54,5 +51,5 @@ pub async fn data_provider_balance(data_provider: FieldElement) -> Result<f64, M
             "Failed to convert to f64".to_string(),
         ))?;
 
-    Ok((on_chain_balance))
+    Ok(on_chain_balance)
 }

@@ -249,7 +249,7 @@ async fn init_publishers(
             .first()
             .unwrap();
 
-        publishers_map.insert(publisher, publisher_address.clone());
+        publishers_map.insert(publisher, publisher_address);
     }
     (publishers_map, publisher_registry_address)
 }
