@@ -8,17 +8,12 @@ use starknet::{
     providers::Provider,
 };
 
-use crate::{
-    config::{get_config, DataProviderInfo},
-    error::MonitoringError,
-    types::Entry,
-};
+use crate::constants::DECIMALS;
+use crate::{config::get_config, error::MonitoringError};
 
 /// Calculates the deviation from the on-chain price
 /// Returns the deviation and the number of sources aggregated
-pub async fn data_provider_balance(
-    data_provider: DataProviderInfo,
-) -> Result<f64, MonitoringError> {
+pub async fn data_provider_balance(data_provider: FieldElement) -> Result<f64, MonitoringError> {
     let config = get_config(None).await;
 
     let client = &config.network().provider;
@@ -30,7 +25,7 @@ pub async fn data_provider_balance(
                 contract_address: FieldElement::from_hex_be(&token_address)
                     .expect("failed to convert token address"),
                 entry_point_selector: selector!("balanceOf"),
-                calldata: vec![data_provider.address.clone().into()],
+                calldata: vec![data_provider.clone().into()],
             },
             BlockId::Tag(BlockTag::Latest),
         )
@@ -50,12 +45,10 @@ pub async fn data_provider_balance(
     // .await
     // .map_err(|e| MonitoringError::OnChain(e.to_string()))?;
 
-    let decimals = 18;
-
     let on_chain_balance = token_balance
         .first()
         .ok_or(MonitoringError::OnChain("No data".to_string()))?
-        .to_big_decimal(decimals)
+        .to_big_decimal(DECIMALS)
         .to_f64()
         .ok_or(MonitoringError::Conversion(
             "Failed to convert to f64".to_string(),

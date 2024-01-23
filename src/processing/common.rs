@@ -1,13 +1,13 @@
-use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
-use serde::{Deserialize, Serialize};
-use starknet::providers::{jsonrpc::HttpTransport, JsonRpcClient, Provider};
-
 use crate::monitoring::data_providers_balance::data_provider_balance;
 use crate::{
-    config::{get_config, DataProviderInfo, DataType},
+    config::{get_config, DataType},
     constants::{DATA_PROVIDER_BALANCE_DEF, INDEXER_BLOCKS_LEFT},
     error::MonitoringError,
 };
+use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
+use serde::{Deserialize, Serialize};
+use starknet::core::types::FieldElement;
+use starknet::providers::{jsonrpc::HttpTransport, JsonRpcClient, Provider};
 #[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize)]
 pub struct IndexerServerStatus {
     pub status: i32,
@@ -164,16 +164,17 @@ pub async fn query_pragma_api(
 }
 
 pub async fn check_data_provider_balance(
-    data_provider: DataProviderInfo,
+    dp_name: String,
+    dp_address: FieldElement,
 ) -> Result<bool, MonitoringError> {
     let config = get_config(None).await;
-    let balance = data_provider_balance(data_provider.clone()).await;
+    let balance = data_provider_balance(dp_address).await;
 
     // Update the prometheus metric
     DATA_PROVIDER_BALANCE_DEF
         .with_label_values(&[
             (&config.network().name).into(),
-            &data_provider.name.to_string().to_ascii_lowercase(),
+            &dp_name.to_ascii_lowercase(),
         ])
         .set(balance.unwrap_or(0.0) as f64);
     Ok(true)

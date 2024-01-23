@@ -49,16 +49,11 @@ pub struct DataInfo {
 #[allow(unused)]
 pub struct Config {
     data_info: HashMap<DataType, DataInfo>,
-    publishers: Vec<String>,
+    pub publishers: HashMap<String, FieldElement>,
     network: Network,
     indexer_url: String,
 }
 
-#[derive(Debug, Clone)]
-pub struct DataProviderInfo {
-    pub name: String,
-    pub address: FieldElement,
-}
 /// We are using `ArcSwap` as it allow us to replace the new `Config` with
 /// a new one which is required when running test cases. This approach was
 /// inspired from here - https://github.com/matklad/once_cell/issues/127
@@ -191,7 +186,7 @@ pub async fn config_force_init(config_input: ConfigInput) {
 async fn init_publishers(
     rpc_client: &JsonRpcClient<HttpTransport>,
     oracle_address: FieldElement,
-) -> (Vec<String>, FieldElement) {
+) -> (HashMap<String, FieldElement>, FieldElement) {
     // Fetch publisher registry address
     let publisher_registry_address = *rpc_client
         .call(
@@ -237,7 +232,26 @@ async fn init_publishers(
         .filter(|publisher| !excluded_publishers.contains(publisher))
         .collect::<Vec<String>>();
 
-    (publishers, publisher_registry_address)
+    let mut publishers_map: HashMap<String, FieldElement> = HashMap::new();
+    for publisher in publishers.clone() {
+        let field_publisher = cairo_short_string_to_felt(&publisher).unwrap();
+        let publisher_address = *rpc_client
+            .call(
+                FunctionCall {
+                    contract_address: publisher_registry_address,
+                    entry_point_selector: selector!("get_publisher_address"), // Replace with actual function name
+                    calldata: vec![field_publisher],
+                },
+                BlockId::Tag(BlockTag::Latest),
+            )
+            .await
+            .expect("failed to call contract")
+            .first()
+            .unwrap();
+
+        publishers_map.insert(publisher, publisher_address.clone());
+    }
+    (publishers_map, publisher_registry_address)
 }
 
 async fn init_spot_config(
