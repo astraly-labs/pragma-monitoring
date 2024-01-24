@@ -254,7 +254,7 @@ pub(crate) async fn publisher_monitor(
 ) {
     let monitoring_config = get_config(None).await;
 
-    let mut interval = interval(Duration::from_secs(30));
+    let mut interval = interval(Duration::from_secs(10));
 
     loop {
         interval.tick().await; // Wait for the next tick
@@ -322,10 +322,10 @@ pub(crate) async fn publisher_monitor(
         for result in &results {
             match result {
                 Ok(data) => match data {
-                    Ok(_) => log::info!("[{data_type}] Task finished successfully",),
-                    Err(e) => log::error!("[{data_type}] Task failed with error: {e}"),
+                    Ok(_) => log::info!("[{data_type}] [PUBLISHERS TIME MONITORING]:Task finished successfully",),
+                    Err(e) => log::error!("[{data_type}] [PUBLISHERS TIME MONITORING] Task failed with error: {e}"),
                 },
-                Err(e) => log::error!("[{data_type}] Task failed with error: {:?}", e),
+                Err(e) => log::error!("[{data_type}] [PUBLISHERS TIME MONITORING]:  Task failed with error: {:?}", e),
             }
         }
     }
