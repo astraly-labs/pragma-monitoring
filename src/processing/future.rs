@@ -5,6 +5,7 @@ use crate::config::get_config;
 use crate::config::DataType;
 use crate::config::NetworkName;
 use crate::constants::NUM_SOURCES;
+use crate::constants::ON_OFF_PRICE_DEVIATION;
 use crate::constants::PAIR_PRICE;
 use crate::constants::PRICE_DEVIATION;
 use crate::constants::PRICE_DEVIATION_SOURCE;
@@ -13,7 +14,9 @@ use crate::constants::TIME_SINCE_LAST_UPDATE_PUBLISHER;
 use crate::diesel::QueryDsl;
 use crate::error::MonitoringError;
 use crate::models::FutureEntry;
-use crate::monitoring::{price_deviation, source_deviation, time_since_last_update};
+use crate::monitoring::{
+    on_off_price_deviation, price_deviation, source_deviation, time_since_last_update,
+};
 
 use crate::schema::future_entry::dsl as testnet_dsl;
 use crate::schema::mainnet_future_entry::dsl as mainnet_dsl;
@@ -62,8 +65,22 @@ pub async fn process_data_by_pair(
             let seconds_since_last_publish = time_since_last_update(&data);
             let time_labels =
                 TIME_SINCE_LAST_UPDATE_PAIR_ID.with_label_values(&[network_env, &pair, data_type]);
+            let num_sources_labels =
+                NUM_SOURCES.with_label_values(&[network_env, &pair, data_type]);
 
             time_labels.set(seconds_since_last_publish as f64);
+
+            let (on_off_deviation, num_sources_aggregated) = on_off_price_deviation(
+                pair.clone(),
+                data.timestamp.timestamp() as u64,
+                DataType::Future,
+            )
+            .await?;
+
+            ON_OFF_PRICE_DEVIATION
+                .with_label_values(&[network_env, &pair.clone(), data_type])
+                .set(on_off_deviation);
+            num_sources_labels.set(num_sources_aggregated as i64);
 
             Ok(seconds_since_last_publish)
         }
@@ -153,7 +170,6 @@ pub async fn process_data_by_pair_and_source(
                 PRICE_DEVIATION.with_label_values(&[network_env, pair, src, data_type]);
             let source_deviation_labels =
                 PRICE_DEVIATION_SOURCE.with_label_values(&[network_env, pair, src, data_type]);
-            let num_sources_labels = NUM_SOURCES.with_label_values(&[network_env, pair, data_type]);
 
             // Compute metrics
             let time = time_since_last_update(&data);
@@ -163,14 +179,12 @@ pub async fn process_data_by_pair_and_source(
             let normalized_price = price_as_f64 / (10_u64.pow(decimals)) as f64;
 
             let deviation = price_deviation(&data, normalized_price).await?;
-            let (source_deviation, num_sources_aggregated) =
-                source_deviation(&data, normalized_price).await?;
+            let (source_deviation, _) = source_deviation(&data, normalized_price).await?;
 
             // Set the metrics
             price_labels.set(normalized_price);
             deviation_labels.set(deviation);
             source_deviation_labels.set(source_deviation);
-            num_sources_labels.set(num_sources_aggregated as i64);
 
             Ok(time)
         }
