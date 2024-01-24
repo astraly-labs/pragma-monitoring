@@ -59,6 +59,10 @@ async fn main() {
     let future_monitoring = tokio::spawn(monitor(pool.clone(), true, &DataType::Future));
 
     let balance_monitoring = tokio::spawn(balance_monitor());
+    let future_publisher_monitoring = tokio::spawn(publisher_monitor(pool.clone(), false, &DataType::Future));
+    let spot_publisher_monitoring = tokio::spawn(publisher_monitor(pool.clone(), false, &DataType::Spot));
+    
+
     let api_monitoring = tokio::spawn(monitor_api());
 
     // Wait for the monitoring to finish
@@ -67,6 +71,8 @@ async fn main() {
         future_monitoring,
         api_monitoring,
         balance_monitoring,
+        spot_publisher_monitoring, 
+        future_publisher_monitoring
     ])
     .await;
 
@@ -82,6 +88,9 @@ async fn main() {
     }
     if let Err(e) = &results[3] {
         log::error!("[BALANCE] Monitoring failed: {:?}", e);
+    }
+    if let Err(e) = &results[4] {
+        log::error!("[PUBLISHER] Monitoring failed: {:?}", e);
     }
 }
 
@@ -232,6 +241,91 @@ pub(crate) async fn balance_monitor() {
                     Err(e) => log::error!("[PUBLISHERS]: Task failed with error: {e}"),
                 },
                 Err(e) => log::error!("[PUBLISHERS]: Task failed with error: {:?}", e),
+            }
+        }
+    }
+}
+
+
+pub(crate) async fn publisher_monitor(
+    pool: deadpool::managed::Pool<AsyncDieselConnectionManager<AsyncPgConnection>>,
+    wait_for_syncing: bool,
+    data_type: &DataType,
+) {
+    let monitoring_config = get_config(None).await;
+
+    let mut interval = interval(Duration::from_secs(30));
+
+    loop {
+        interval.tick().await; // Wait for the next tick
+
+        // Skip if indexer is still syncing
+        if wait_for_syncing {
+            match is_syncing(data_type).await {
+                Ok(true) => {
+                    log::info!("[{data_type}] Indexers are still syncing ♻️");
+                    continue;
+                }
+                Ok(false) => {
+                    log::info!("[{data_type}] Indexers are synced ✅");
+                }
+                Err(e) => {
+                    log::error!(
+                        "[{data_type}] Failed to check if indexers are syncing: {:?}",
+                        e
+                    );
+                    continue;
+                }
+            }
+        }
+
+        let tasks: Vec<_> = monitoring_config
+            .sources(data_type.clone())
+            .iter()
+            .flat_map(|(pair, sources)| match data_type {
+                DataType::Spot => {
+                    vec![
+                        tokio::spawn(Box::pin(processing::spot::process_data_by_pair(
+                            pool.clone(),
+                            pair.clone(),
+                        ))),
+                        tokio::spawn(Box::pin(
+                            processing::spot::process_data_publisher_by_pair_and_sources(
+                                pool.clone(),
+                                pair.clone(),
+                                sources.to_vec(),
+                            ),
+                        )),
+                    ]
+                }
+                DataType::Future => {
+                    vec![
+                        tokio::spawn(Box::pin(processing::future::process_data_by_pair(
+                            pool.clone(),
+                            pair.clone(),
+                        ))),
+                        tokio::spawn(Box::pin(
+                            processing::future::process_data_publisher_by_pair_and_sources(
+                                pool.clone(),
+                                pair.clone(),
+                                sources.to_vec(),
+                            ),
+                        )),
+                    ]
+                }
+            })
+            .collect();
+
+        let results: Vec<_> = futures::future::join_all(tasks).await;
+
+        // Process or output the results
+        for result in &results {
+            match result {
+                Ok(data) => match data {
+                    Ok(_) => log::info!("[{data_type}] Task finished successfully",),
+                    Err(e) => log::error!("[{data_type}] Task failed with error: {e}"),
+                },
+                Err(e) => log::error!("[{data_type}] Task failed with error: {:?}", e),
             }
         }
     }

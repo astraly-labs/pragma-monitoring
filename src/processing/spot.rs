@@ -91,6 +91,22 @@ pub async fn process_data_by_pair_and_sources(
     Ok(*timestamps.last().unwrap())
 }
 
+pub async fn process_data_publisher_by_pair_and_sources(
+    pool: deadpool::managed::Pool<AsyncDieselConnectionManager<AsyncPgConnection>>,
+    pair: String,
+    sources: Vec<String>,
+) -> Result<u64, MonitoringError> {
+    let mut timestamps = Vec::new();
+
+    for src in sources {
+        log::info!("Processing data for pair: {} and source: {}", pair, src);
+        let res = process_data_publisher_by_pair_and_source(pool.clone(), &pair, &src).await?;
+        timestamps.push(res);
+    }
+
+    Ok(*timestamps.last().unwrap())
+}
+
 pub async fn process_data_by_pair_and_source(
     pool: deadpool::managed::Pool<AsyncDieselConnectionManager<AsyncPgConnection>>,
     pair: &str,
@@ -159,6 +175,60 @@ pub async fn process_data_by_pair_and_source(
             source_deviation_labels.set(source_deviation);
             num_sources_labels.set(num_sources_aggregated as i64);
 
+            Ok(time)
+        }
+        Err(e) => Err(e.into()),
+    }
+}
+
+
+
+pub async fn process_data_publisher_by_pair_and_source(
+    pool: deadpool::managed::Pool<AsyncDieselConnectionManager<AsyncPgConnection>>,
+    pair: &str,
+    src: &str,
+) -> Result<u64, MonitoringError> {
+    let mut conn = pool
+        .get()
+        .await
+        .map_err(|_| MonitoringError::Connection("Failed to get connection".to_string()))?;
+
+    let config = get_config(None).await;
+
+    let filtered_by_source_result: Result<SpotEntry, _> = match config.network().name {
+        NetworkName::Testnet => {
+            testnet_dsl::spot_entry
+                .filter(testnet_dsl::pair_id.eq(pair))
+                .filter(testnet_dsl::source.eq(src))
+                .order(testnet_dsl::block_timestamp.desc())
+                .first(&mut conn)
+                .await
+        }
+        NetworkName::Mainnet => {
+            mainnet_dsl::mainnet_spot_entry
+                .filter(mainnet_dsl::pair_id.eq(pair))
+                .filter(mainnet_dsl::source.eq(src))
+                .order(mainnet_dsl::block_timestamp.desc())
+                .first(&mut conn)
+                .await
+        }
+    };
+
+    match filtered_by_source_result {
+        Ok(data) => {
+            let network_env = &config.network_str();
+            let data_type = "spot";
+
+            // Get the labels
+            let time_labels = TIME_SINCE_LAST_UPDATE_PUBLISHER.with_label_values(&[
+                network_env,
+                &data.publisher,
+                data_type,
+            ]);
+            let time = time_since_last_update(&data);
+
+            // Set the metrics
+            time_labels.set(time as f64);
             Ok(time)
         }
         Err(e) => Err(e.into()),
