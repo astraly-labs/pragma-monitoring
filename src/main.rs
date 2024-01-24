@@ -58,7 +58,7 @@ async fn main() {
     let spot_monitoring = tokio::spawn(monitor(pool.clone(), true, &DataType::Spot));
     let future_monitoring = tokio::spawn(monitor(pool.clone(), true, &DataType::Future));
 
-    let balance_monitoring = tokio::spawn(balance_monitor(pool.clone(), false) );
+    let publisher_monitoring = tokio::spawn(publisher_monitor(pool.clone(), false));
 
     let api_monitoring = tokio::spawn(monitor_api());
 
@@ -67,7 +67,7 @@ async fn main() {
         spot_monitoring,
         future_monitoring,
         api_monitoring,
-        balance_monitoring,
+        publisher_monitoring,
     ])
     .await;
 
@@ -82,7 +82,7 @@ async fn main() {
         log::error!("[API] Monitoring failed: {:?}", e);
     }
     if let Err(e) = &results[3] {
-        log::error!("[BALANCE] Monitoring failed: {:?}", e);
+        log::error!("[PUBLISHERS] Monitoring failed: {:?}", e);
     }
 }
 
@@ -207,12 +207,12 @@ pub(crate) async fn monitor(
     }
 }
 
-pub(crate) async fn balance_monitor(
+pub(crate) async fn publisher_monitor(
     pool: deadpool::managed::Pool<AsyncDieselConnectionManager<AsyncPgConnection>>,
     wait_for_syncing: bool,
-
 ) {
     log::info!("[PUBLISHERS] Monitoring Publishers..");
+
     let mut interval = interval(Duration::from_secs(30));
     let monitoring_config: arc_swap::Guard<std::sync::Arc<config::Config>> = get_config(None).await;
 
@@ -237,6 +237,7 @@ pub(crate) async fn balance_monitor(
                 }
             }
         }
+
         let tasks: Vec<_> = monitoring_config
             .all_publishers()
             .iter()
@@ -247,10 +248,6 @@ pub(crate) async fn balance_monitor(
                         *address,
                     ))),
                     tokio::spawn(Box::pin(processing::spot::process_data_by_publisher(
-                        pool.clone(),
-                        publisher.clone(),
-                    ))),
-                    tokio::spawn(Box::pin(processing::future::process_data_by_publisher(
                         pool.clone(),
                         publisher.clone(),
                     ))),

@@ -20,7 +20,7 @@ lazy_static! {
             "time_since_last_update_seconds",
             "Time since the last update in seconds."
         ),
-        &["network", "publisher", "type"]
+        &["network", "publisher"]
     )
     .unwrap();
     pub static ref PAIR_PRICE: GaugeVec = register_gauge_vec!(
