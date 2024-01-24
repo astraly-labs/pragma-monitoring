@@ -15,6 +15,19 @@ use crate::{
     error::MonitoringError,
 };
 
+/// On-chain price deviation from the reference price.
+/// Returns the deviation and the number of sources aggregated.
+///
+/// # Arguments
+///
+/// * `pair_id` - The pair id.
+/// * `timestamp` - The timestamp for which to get the price.
+/// * `data_type` - The type of data to get.
+///
+/// # Returns
+///
+/// * `Ok((deviation, num_sources_aggregated))` - The deviation and the number of sources aggregated.
+/// * `Err(MonitoringError)` - The error.
 pub async fn on_off_price_deviation(
     pair_id: String,
     timestamp: u64,
@@ -24,16 +37,18 @@ pub async fn on_off_price_deviation(
     let config = get_config(None).await;
     let client = &config.network().provider;
     let field_pair = cairo_short_string_to_felt(&pair_id).expect("failed to convert pair id");
+
     let calldata = match data_type {
         DataType::Spot => vec![FieldElement::ZERO, field_pair],
         DataType::Future => vec![FieldElement::ONE, field_pair, FieldElement::ZERO],
     };
+
     let data = client
         .call(
             FunctionCall {
                 contract_address: config.network().oracle_address,
                 entry_point_selector: selector!("get_data_median"),
-                calldata: calldata,
+                calldata,
             },
             BlockId::Tag(BlockTag::Latest),
         )
@@ -66,11 +81,11 @@ pub async fn on_off_price_deviation(
 
             let request_url = if let Ok(api_key) = api_key {
                 format!(
-            "https://coins.llama.fi/prices/historical/{timestamp}/coingecko:{id}?apikey={apikey}",
-            timestamp = timestamp,
-            id = coingecko_id,
-            apikey = api_key
-        )
+                    "https://coins.llama.fi/prices/historical/{timestamp}/coingecko:{id}?apikey={apikey}",
+                    timestamp = timestamp,
+                    id = coingecko_id,
+                    apikey = api_key
+                )
             } else {
                 format!(
                     "https://coins.llama.fi/prices/historical/{timestamp}/coingecko:{id}",
@@ -111,7 +126,7 @@ pub async fn on_off_price_deviation(
         DataType::Future => {
             // TODO: work on a different API for futures
 
-            (0.0, 0)
+            (0.0, 5)
         }
     };
 

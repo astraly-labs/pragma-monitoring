@@ -35,7 +35,7 @@ impl CoinPricesDTO {
 }
 impl CoinPriceDTO {
     pub fn get_price(&self) -> f64 {
-        self.price.clone()
+        self.price
     }
 }
 

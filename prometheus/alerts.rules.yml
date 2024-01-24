@@ -49,6 +49,14 @@ groups:
         annotations:
           summary: "Publisher balance is low"
           description: "The {{ $labels.publisher }} balance is below 0.1 ETH."
+      - alert: PriceDeviationTooHigh
+        expr: on_off_price_deviation > 0.025
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Price deviation is too high"
+          description: "The on-chain price of {{ $labels.pair }} from the reference price has exceeded 2.5%."
   - name: API
     rules:
       - alert: TimeSinceLastUpdateTooHigh
@@ -67,14 +75,6 @@ groups:
         annotations:
           summary: "Price deviation is too high"
           description: "The price deviation of {{ $labels.pair }} from DefiLlama has exceeded 2.5%."
-      - alerrt: OffOnChainWrongPrice
-        expr: api_off_on_chain_price_deviation > 0.025
-        for: 5m
-        labels:
-          severity: warning
-        annotations:
-          summary: "Price deviation between the on chain and the off chain configuration"
-          description: "The off-chain price deviation of {{ $labels.pair }} from the on-chain price has exceeded 2.5%."
       - alert: TooFewSources
         expr: api_num_sources < 1
         for: 5m
