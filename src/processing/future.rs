@@ -111,22 +111,6 @@ pub async fn process_data_by_pair_and_sources(
     Ok(*timestamps.last().unwrap())
 }
 
-pub async fn process_data_publisher_by_pair_and_sources(
-    pool: deadpool::managed::Pool<AsyncDieselConnectionManager<AsyncPgConnection>>,
-    pair: String,
-    sources: Vec<String>,
-) -> Result<u64, MonitoringError> {
-    let mut timestamps = Vec::new();
-
-    for src in sources {
-        log::info!("Processing data for pair: {} and source: {}", pair, src);
-        let res = process_data_publisher_by_pair_and_source(pool.clone(), &pair, &src).await?;
-        timestamps.push(res);
-    }
-
-    Ok(*timestamps.last().unwrap())
-}
-
 pub async fn process_data_by_pair_and_source(
     pool: deadpool::managed::Pool<AsyncDieselConnectionManager<AsyncPgConnection>>,
     pair: &str,
@@ -192,12 +176,10 @@ pub async fn process_data_by_pair_and_source(
     }
 }
 
-
-pub async fn process_data_publisher_by_pair_and_source(
+pub async fn process_data_by_publisher(
     pool: deadpool::managed::Pool<AsyncDieselConnectionManager<AsyncPgConnection>>,
-    pair: &str,
-    src: &str,
-) -> Result<u64, MonitoringError> {
+    publisher: String,
+) -> Result<(), MonitoringError> {
     let mut conn = pool
         .get()
         .await
@@ -205,41 +187,37 @@ pub async fn process_data_publisher_by_pair_and_source(
 
     let config = get_config(None).await;
 
-    let filtered_by_source_result: Result<FutureEntry, _> = match config.network().name {
+    let result: Result<FutureEntry, _> = match config.network().name {
         NetworkName::Testnet => {
             testnet_dsl::future_entry
-                .filter(testnet_dsl::pair_id.eq(pair))
-                .filter(testnet_dsl::source.eq(src))
+                .filter(testnet_dsl::publisher.eq(publisher.clone()))
                 .order(testnet_dsl::block_timestamp.desc())
                 .first(&mut conn)
                 .await
         }
         NetworkName::Mainnet => {
             mainnet_dsl::mainnet_future_entry
-                .filter(mainnet_dsl::pair_id.eq(pair))
-                .filter(mainnet_dsl::source.eq(src))
+                .filter(mainnet_dsl::publisher.eq(publisher.clone()))
                 .order(mainnet_dsl::block_timestamp.desc())
                 .first(&mut conn)
                 .await
         }
     };
 
-    match filtered_by_source_result {
+    log::info!("Processing data for publisher: {}", publisher);
+
+    match result {
         Ok(data) => {
             let network_env = &config.network_str();
             let data_type = "future";
 
-            // Get the labels
-            let time_labels = TIME_SINCE_LAST_UPDATE_PUBLISHER.with_label_values(&[
-                network_env,
-                &data.publisher,
-                data_type,
-            ]);
-            let time = time_since_last_update(&data);
+            let seconds_since_last_publish = time_since_last_update(&data);
+            let time_labels =
+                TIME_SINCE_LAST_UPDATE_PAIR_ID.with_label_values(&[network_env, data_type]);
 
-            // Set the metrics
-            time_labels.set(time as f64);
-            Ok(time)
+            time_labels.set(seconds_since_last_publish as f64);
+
+            Ok(())
         }
         Err(e) => Err(e.into()),
     }
