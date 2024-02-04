@@ -1,7 +1,7 @@
 extern crate diesel;
 extern crate dotenv;
 
-use config::{get_config, DataType};
+use config::{get_config, periodic_config_update, DataType};
 use diesel_async::pooled_connection::deadpool::*;
 use diesel_async::pooled_connection::AsyncDieselConnectionManager;
 use diesel_async::AsyncPgConnection;
@@ -44,8 +44,8 @@ async fn main() {
     dotenv().ok();
 
     // Define the pairs to monitor
-
     let monitoring_config = get_config(None).await;
+    tokio::spawn(periodic_config_update());
 
     log::info!("Successfully fetched config: {:?}", monitoring_config);
 

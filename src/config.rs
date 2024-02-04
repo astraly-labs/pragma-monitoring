@@ -1,4 +1,9 @@
-use std::{collections::HashMap, str::FromStr, sync::Arc};
+use std::{
+    collections::HashMap,
+    str::FromStr,
+    sync::Arc,
+    time::{Duration, Instant},
+};
 
 use arc_swap::{ArcSwap, Guard};
 use starknet::{
@@ -58,6 +63,7 @@ pub struct Config {
 /// a new one which is required when running test cases. This approach was
 /// inspired from here - https://github.com/matklad/once_cell/issues/127
 pub static CONFIG: OnceCell<ArcSwap<Config>> = OnceCell::const_new();
+// Introduce a new function to periodically update the configuration
 
 impl Config {
     pub async fn new(config_input: ConfigInput) -> Self {
@@ -135,7 +141,7 @@ impl Config {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ConfigInput {
     pub network: NetworkName,
     pub oracle_address: FieldElement,
@@ -171,6 +177,44 @@ pub async fn get_config(config_input: Option<ConfigInput>) -> Guard<Arc<Config>>
         })
         .await;
     cfg.load()
+}
+
+pub async fn periodic_config_update() {
+    let interval = Duration::from_secs(3 * 3600); // Set the update interval as needed (3 hours in this example)
+
+    let mut next_update = Instant::now() + interval;
+
+    loop {
+        let network = std::env::var("NETWORK").expect("NETWORK must be set");
+        let oracle_address = std::env::var("ORACLE_ADDRESS").expect("ORACLE_ADDRESS must be set");
+        let spot_pairs = std::env::var("SPOT_PAIRS").expect("SPOT_PAIRS must be set");
+        let future_pairs = std::env::var("FUTURE_PAIRS").expect("FUTURE_PAIRS must be set");
+
+        let updated_config_input = ConfigInput {
+            network: NetworkName::from_str(&network).expect("Invalid network name"),
+            oracle_address: FieldElement::from_hex_be(&oracle_address)
+                .expect("Invalid oracle address"),
+            spot_pairs: parse_pairs(&spot_pairs),
+            future_pairs: parse_pairs(&future_pairs),
+        };
+
+        let updated_config = Config::new(updated_config_input.clone()).await;
+
+        let current_config_cell = CONFIG
+            .get_or_init(|| async {
+                ArcSwap::from_pointee(Config::new(updated_config_input.clone()).await)
+            })
+            .await;
+
+        // Store the updated config in the ArcSwap
+        current_config_cell.store(updated_config.clone().into());
+
+        // Sleep until the next update
+        tokio::time::sleep_until(next_update.into()).await;
+
+        // Update the next update time
+        next_update += interval;
+    }
 }
 
 /// OnceCell only allows us to initialize the config once and that's how it should be on production.
