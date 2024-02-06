@@ -18,6 +18,8 @@ use strum::{Display, EnumString, IntoStaticStr};
 use tokio::sync::OnceCell;
 use url::Url;
 
+use crate::constants::CONFIG_UPDATE_INTERVAL;
+
 #[derive(Debug, Clone, EnumString, IntoStaticStr)]
 pub enum NetworkName {
     #[strum(ascii_case_insensitive)]
@@ -63,7 +65,6 @@ pub struct Config {
 /// a new one which is required when running test cases. This approach was
 /// inspired from here - https://github.com/matklad/once_cell/issues/127
 pub static CONFIG: OnceCell<ArcSwap<Config>> = OnceCell::const_new();
-// Introduce a new function to periodically update the configuration
 
 impl Config {
     pub async fn new(config_input: ConfigInput) -> Self {
@@ -106,6 +107,22 @@ impl Config {
                 publisher_registry_address,
             },
         }
+    }
+
+    pub async fn create_from_env() -> Config {
+        let network = std::env::var("NETWORK").expect("NETWORK must be set");
+        let oracle_address = std::env::var("ORACLE_ADDRESS").expect("ORACLE_ADDRESS must be set");
+        let spot_pairs = std::env::var("SPOT_PAIRS").expect("SPOT_PAIRS must be set");
+        let future_pairs = std::env::var("FUTURE_PAIRS").expect("FUTURE_PAIRS must be set");
+
+        Config::new(ConfigInput {
+            network: NetworkName::from_str(&network).expect("Invalid network name"),
+            oracle_address: FieldElement::from_hex_be(&oracle_address)
+                .expect("Invalid oracle address"),
+            spot_pairs: parse_pairs(&spot_pairs),
+            future_pairs: parse_pairs(&future_pairs),
+        })
+        .await
     }
 
     pub fn sources(&self, data_type: DataType) -> &HashMap<String, Vec<String>> {
@@ -154,65 +171,32 @@ pub async fn get_config(config_input: Option<ConfigInput>) -> Guard<Arc<Config>>
         .get_or_init(|| async {
             match config_input {
                 Some(config_input) => ArcSwap::from_pointee(Config::new(config_input).await),
-                None => {
-                    let network = std::env::var("NETWORK").expect("NETWORK must be set");
-                    let oracle_address =
-                        std::env::var("ORACLE_ADDRESS").expect("ORACLE_ADDRESS must be set");
-                    let spot_pairs = std::env::var("SPOT_PAIRS").expect("SPOT_PAIRS must be set");
-                    let future_pairs =
-                        std::env::var("FUTURE_PAIRS").expect("FUTURE_PAIRS must be set");
-
-                    ArcSwap::from_pointee(
-                        Config::new(ConfigInput {
-                            network: NetworkName::from_str(&network).expect("Invalid network name"),
-                            oracle_address: FieldElement::from_hex_be(&oracle_address)
-                                .expect("Invalid oracle address"),
-                            spot_pairs: parse_pairs(&spot_pairs),
-                            future_pairs: parse_pairs(&future_pairs),
-                        })
-                        .await,
-                    )
-                }
+                None => ArcSwap::from_pointee(Config::create_from_env().await),
             }
         })
         .await;
     cfg.load()
 }
 
+/// This function is used to periodically update the configuration settings
+/// from the environment variables. This is useful when we want to update the
+/// configuration settings without restarting the service.
 pub async fn periodic_config_update() {
-    let interval = Duration::from_secs(3 * 3600); // Set the update interval as needed (3 hours in this example)
+    let interval = Duration::from_secs(CONFIG_UPDATE_INTERVAL); // Set the update interval as needed (3 hours in this example)
 
     let mut next_update = Instant::now() + interval;
 
     loop {
-        let network = std::env::var("NETWORK").expect("NETWORK must be set");
-        let oracle_address = std::env::var("ORACLE_ADDRESS").expect("ORACLE_ADDRESS must be set");
-        let spot_pairs = std::env::var("SPOT_PAIRS").expect("SPOT_PAIRS must be set");
-        let future_pairs = std::env::var("FUTURE_PAIRS").expect("FUTURE_PAIRS must be set");
+        let new_config = Config::create_from_env().await;
+        let updated_config = ArcSwap::from_pointee(new_config.clone());
 
-        let updated_config_input = ConfigInput {
-            network: NetworkName::from_str(&network).expect("Invalid network name"),
-            oracle_address: FieldElement::from_hex_be(&oracle_address)
-                .expect("Invalid oracle address"),
-            spot_pairs: parse_pairs(&spot_pairs),
-            future_pairs: parse_pairs(&future_pairs),
-        };
-
-        let updated_config = Config::new(updated_config_input.clone()).await;
-
-        let current_config_cell = CONFIG
-            .get_or_init(|| async {
-                ArcSwap::from_pointee(Config::new(updated_config_input.clone()).await)
-            })
-            .await;
+        let current_config_cell = CONFIG.get_or_init(|| async { updated_config }).await;
 
         // Store the updated config in the ArcSwap
-        current_config_cell.store(updated_config.clone().into());
+        current_config_cell.store(new_config.into());
 
-        // Sleep until the next update
         tokio::time::sleep_until(next_update.into()).await;
 
-        // Update the next update time
         next_update += interval;
     }
 }
