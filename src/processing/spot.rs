@@ -206,8 +206,11 @@ pub async fn process_data_by_publisher(
             let network_env = &config.network_str();
 
             let seconds_since_last_publish = time_since_last_update(&data);
-            let time_labels =
-                TIME_SINCE_LAST_UPDATE_PUBLISHER.with_label_values(&[network_env, &publisher, "spot"]);
+            let time_labels = TIME_SINCE_LAST_UPDATE_PUBLISHER.with_label_values(&[
+                network_env,
+                &publisher,
+                "spot",
+            ]);
 
             time_labels.set(seconds_since_last_publish as f64);
 

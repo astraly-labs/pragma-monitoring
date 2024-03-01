@@ -176,7 +176,6 @@ pub async fn process_data_by_pair_and_source(
     }
 }
 
-
 pub async fn process_data_by_publisher(
     pool: deadpool::managed::Pool<AsyncDieselConnectionManager<AsyncPgConnection>>,
     publisher: String,
@@ -212,8 +211,11 @@ pub async fn process_data_by_publisher(
             let network_env = &config.network_str();
 
             let seconds_since_last_publish = time_since_last_update(&data);
-            let time_labels =
-                TIME_SINCE_LAST_UPDATE_PUBLISHER.with_label_values(&[network_env, &publisher, "future"]);
+            let time_labels = TIME_SINCE_LAST_UPDATE_PUBLISHER.with_label_values(&[
+                network_env,
+                &publisher,
+                "future",
+            ]);
 
             time_labels.set(seconds_since_last_publish as f64);
 
