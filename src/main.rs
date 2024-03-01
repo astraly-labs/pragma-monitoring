@@ -257,6 +257,10 @@ pub(crate) async fn publisher_monitor(
                         pool.clone(),
                         publisher.clone(),
                     ))),
+                    tokio::spawn(Box::pin(processing::future::process_data_by_publisher(
+                        pool.clone(),
+                        publisher.clone(),
+                    ))),
                 ]
             })
             .collect();

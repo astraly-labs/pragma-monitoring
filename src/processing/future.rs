@@ -10,6 +10,7 @@ use crate::constants::PAIR_PRICE;
 use crate::constants::PRICE_DEVIATION;
 use crate::constants::PRICE_DEVIATION_SOURCE;
 use crate::constants::TIME_SINCE_LAST_UPDATE_PAIR_ID;
+use crate::constants::TIME_SINCE_LAST_UPDATE_PUBLISHER;
 use crate::diesel::QueryDsl;
 use crate::error::MonitoringError;
 use crate::models::FutureEntry;
@@ -170,6 +171,53 @@ pub async fn process_data_by_pair_and_source(
             source_deviation_labels.set(source_deviation);
 
             Ok(time)
+        }
+        Err(e) => Err(e.into()),
+    }
+}
+
+
+pub async fn process_data_by_publisher(
+    pool: deadpool::managed::Pool<AsyncDieselConnectionManager<AsyncPgConnection>>,
+    publisher: String,
+) -> Result<(), MonitoringError> {
+    let mut conn = pool
+        .get()
+        .await
+        .map_err(|_| MonitoringError::Connection("Failed to get connection".to_string()))?;
+
+    let config = get_config(None).await;
+
+    let result: Result<FutureEntry, _> = match config.network().name {
+        NetworkName::Testnet => {
+            testnet_dsl::future_entry
+                .filter(testnet_dsl::publisher.eq(publisher.clone()))
+                .order(testnet_dsl::block_timestamp.desc())
+                .first(&mut conn)
+                .await
+        }
+        NetworkName::Mainnet => {
+            mainnet_dsl::mainnet_future_entry
+                .filter(mainnet_dsl::publisher.eq(publisher.clone()))
+                .order(mainnet_dsl::block_timestamp.desc())
+                .first(&mut conn)
+                .await
+        }
+    };
+
+    log::info!("Processing data for publisher: {}", publisher);
+
+    match result {
+        Ok(data) => {
+            let network_env = &config.network_str();
+
+            let seconds_since_last_publish = time_since_last_update(&data);
+            let time_labels =
+                TIME_SINCE_LAST_UPDATE_PUBLISHER.with_label_values(&[network_env, &publisher, "future"]);
+
+            time_labels.set(seconds_since_last_publish as f64);
+
+            Ok(())
         }
         Err(e) => Err(e.into()),
     }
