@@ -1324,39 +1324,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "monitoring"
-version = "0.1.0"
-dependencies = [
- "arc-swap",
- "axum",
- "axum-macros",
- "bigdecimal 0.4.2",
- "chrono",
- "deadpool",
- "diesel",
- "diesel-async",
- "diesel_derives 1.4.1",
- "diesel_migrations",
- "dotenv",
- "env_logger",
- "futures",
- "hyper",
- "lazy_static",
- "log",
- "num-bigint",
- "phf",
- "prometheus",
- "reqwest",
- "rstest",
- "serde",
- "starknet",
- "strum",
- "tokio",
- "url",
- "uuid 1.6.1",
-]
-
-[[package]]
 name = "multer"
 version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1689,6 +1656,39 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "31c0052426df997c0cbd30789eb44ca097e3541717a7b8fa36b1c464ee7edebd"
 dependencies = [
  "vcpkg",
+]
+
+[[package]]
+name = "pragma-monitoring"
+version = "0.1.0"
+dependencies = [
+ "arc-swap",
+ "axum",
+ "axum-macros",
+ "bigdecimal 0.4.2",
+ "chrono",
+ "deadpool",
+ "diesel",
+ "diesel-async",
+ "diesel_derives 1.4.1",
+ "diesel_migrations",
+ "dotenv",
+ "env_logger",
+ "futures",
+ "hyper",
+ "lazy_static",
+ "log",
+ "num-bigint",
+ "phf",
+ "prometheus",
+ "reqwest",
+ "rstest",
+ "serde",
+ "starknet",
+ "strum",
+ "tokio",
+ "url",
+ "uuid 1.6.1",
 ]
 
 [[package]]
