@@ -78,7 +78,7 @@ diesel::table! {
 }
 
 diesel::table! {
-    spot_entry (timestamp) {
+    spot_entry (data_id) {
         #[max_length = 255]
         network -> Varchar,
         #[max_length = 255]
@@ -99,6 +99,54 @@ diesel::table! {
         source -> Varchar,
         volume -> Numeric,
         _cursor -> Int8,
+    }
+}
+
+diesel::table! {
+    mainnet_spot_checkpoints (pair_id) {
+        #[max_length = 255]
+        network -> Varchar,
+        #[max_length = 255]
+        pair_id -> Varchar,
+        #[max_length = 255]
+        data_id -> Varchar,
+        #[max_length = 255]
+        block_hash -> Varchar,
+        block_number -> Int8,
+        block_timestamp -> Timestamp,
+        #[max_length = 255]
+        transaction_hash -> Varchar,
+        price -> Numeric,
+        #[max_length = 255]
+        sender_address -> Varchar,
+        aggregation_mode -> Numeric,
+        _cursor -> Int8,
+        timestamp -> Timestamp,
+        nb_sources_aggregated -> Numeric,
+    }
+}
+
+diesel::table! {
+    spot_checkpoints (data_id) {
+        #[max_length = 255]
+        network -> Varchar,
+        #[max_length = 255]
+        pair_id -> Varchar,
+        #[max_length = 255]
+        data_id -> Varchar,
+        #[max_length = 255]
+        block_hash -> Varchar,
+        block_number -> Int8,
+        block_timestamp -> Timestamp,
+        #[max_length = 255]
+        transaction_hash -> Varchar,
+        price -> Numeric,
+        #[max_length = 255]
+        sender_address -> Varchar,
+        aggregation_mode -> Numeric,
+        _cursor -> Int8,
+        timestamp -> Timestamp,
+        nb_sources_aggregated -> Numeric,
     }
 }
 
@@ -127,7 +175,9 @@ diesel::table! {
 diesel::allow_tables_to_appear_in_same_query!(
     future_entry,
     mainnet_future_entry,
+    mainnet_spot_checkpoints,
     mainnet_spot_entry,
+    spot_checkpoints,
     spot_entry,
     vrf_requests,
 );
