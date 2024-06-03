@@ -6,6 +6,7 @@ use crate::{
     models::{FutureEntry, SpotEntry},
 };
 
+#[allow(dead_code)]
 pub trait Entry {
     fn pair_id(&self) -> &str;
     fn source(&self) -> &str;
