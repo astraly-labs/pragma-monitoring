@@ -11,17 +11,17 @@ diesel::table! {
         #[max_length = 255]
         block_hash -> Varchar,
         block_number -> Int8,
-        block_timestamp -> Timestamp,
+        block_timestamp -> Timestamptz,
         #[max_length = 255]
         transaction_hash -> Varchar,
         price -> Numeric,
-        timestamp -> Timestamp,
+        timestamp -> Timestamptz,
         #[max_length = 255]
         publisher -> Varchar,
         #[max_length = 255]
         source -> Varchar,
         volume -> Numeric,
-        expiration_timestamp -> Nullable<Timestamp>,
+        expiration_timestamp -> Nullable<Timestamptz>,
         _cursor -> Int8,
     }
 }
@@ -37,17 +37,17 @@ diesel::table! {
         #[max_length = 255]
         block_hash -> Varchar,
         block_number -> Int8,
-        block_timestamp -> Timestamp,
+        block_timestamp -> Timestamptz,
         #[max_length = 255]
         transaction_hash -> Varchar,
         price -> Numeric,
-        timestamp -> Timestamp,
+        timestamp -> Timestamptz,
         #[max_length = 255]
         publisher -> Varchar,
         #[max_length = 255]
         source -> Varchar,
         volume -> Numeric,
-        expiration_timestamp -> Nullable<Timestamp>,
+        expiration_timestamp -> Nullable<Timestamptz>,
         _cursor -> Int8,
     }
 }
@@ -63,11 +63,11 @@ diesel::table! {
         #[max_length = 255]
         block_hash -> Varchar,
         block_number -> Int8,
-        block_timestamp -> Timestamp,
+        block_timestamp -> Timestamptz,
         #[max_length = 255]
         transaction_hash -> Varchar,
         price -> Numeric,
-        timestamp -> Timestamp,
+        timestamp -> Timestamptz,
         #[max_length = 255]
         publisher -> Varchar,
         #[max_length = 255]
@@ -88,11 +88,11 @@ diesel::table! {
         #[max_length = 255]
         block_hash -> Varchar,
         block_number -> Int8,
-        block_timestamp -> Timestamp,
+        block_timestamp -> Timestamptz,
         #[max_length = 255]
         transaction_hash -> Varchar,
         price -> Numeric,
-        timestamp -> Timestamp,
+        timestamp -> Timestamptz,
         #[max_length = 255]
         publisher -> Varchar,
         #[max_length = 255]
@@ -113,7 +113,7 @@ diesel::table! {
         #[max_length = 255]
         block_hash -> Varchar,
         block_number -> Int8,
-        block_timestamp -> Timestamp,
+        block_timestamp -> Timestamptz,
         #[max_length = 255]
         transaction_hash -> Varchar,
         price -> Numeric,
@@ -121,7 +121,7 @@ diesel::table! {
         sender_address -> Varchar,
         aggregation_mode -> Numeric,
         _cursor -> Int8,
-        timestamp -> Timestamp,
+        timestamp -> Timestamptz,
         nb_sources_aggregated -> Numeric,
     }
 }
@@ -137,7 +137,7 @@ diesel::table! {
         #[max_length = 255]
         block_hash -> Varchar,
         block_number -> Int8,
-        block_timestamp -> Timestamp,
+        block_timestamp -> Timestamptz,
         #[max_length = 255]
         transaction_hash -> Varchar,
         price -> Numeric,
@@ -145,7 +145,7 @@ diesel::table! {
         sender_address -> Varchar,
         aggregation_mode -> Numeric,
         _cursor -> Int8,
-        timestamp -> Timestamp,
+        timestamp -> Timestamptz,
         nb_sources_aggregated -> Numeric,
     }
 }
@@ -156,14 +156,14 @@ diesel::table! {
         network -> Varchar,
         request_id -> Numeric,
         seed -> Numeric,
-        created_at -> Timestamp,
+        created_at -> Timestamptz,
         created_at_tx -> Varchar,
         #[max_length = 255]
         callback_address -> Varchar,
         callback_fee_limit -> Numeric,
         num_words -> Numeric,
         requestor_address -> Varchar,
-        updated_at -> Timestamp,
+        updated_at -> Timestamptz,
         updated_at_tx -> Varchar,
         status -> Numeric,
         minimum_block_number -> Numeric,
