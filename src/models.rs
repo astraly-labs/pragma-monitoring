@@ -4,7 +4,7 @@
 #![allow(clippy::all)]
 
 use bigdecimal::BigDecimal;
-use chrono::{DateTime, Utc};
+use chrono::NaiveDateTime;
 use diesel::{Queryable, QueryableByName, Selectable};
 use num_bigint::BigInt;
 use std::ops::Bound;
@@ -18,10 +18,10 @@ pub struct SpotEntry {
     pub data_id: String,
     pub block_hash: String,
     pub block_number: i64,
-    pub block_timestamp: DateTime<Utc>,
+    pub block_timestamp: NaiveDateTime,
     pub transaction_hash: String,
     pub price: BigDecimal,
-    pub timestamp: DateTime<Utc>,
+    pub timestamp: NaiveDateTime,
     pub publisher: String,
     pub source: String,
     pub volume: BigDecimal,
@@ -37,14 +37,14 @@ pub struct FutureEntry {
     pub data_id: String,
     pub block_hash: String,
     pub block_number: i64,
-    pub block_timestamp: DateTime<Utc>,
+    pub block_timestamp: NaiveDateTime,
     pub transaction_hash: String,
     pub price: BigDecimal,
-    pub timestamp: DateTime<Utc>,
+    pub timestamp: NaiveDateTime,
     pub publisher: String,
     pub source: String,
     pub volume: BigDecimal,
-    pub expiration_timestamp: Option<DateTime<Utc>>,
+    pub expiration_timestamp: Option<NaiveDateTime>,
     pub _cursor: i64,
 }
 
@@ -58,13 +58,13 @@ pub struct SpotCheckpoint {
     pub data_id: String,
     pub block_hash: String,
     pub block_number: i64,
-    pub block_timestamp: DateTime<Utc>,
+    pub block_timestamp: NaiveDateTime,
     pub transaction_hash: String,
     pub price: BigDecimal,
     pub sender_address: String,
     pub aggregation_mode: BigDecimal,
     pub _cursor: i64,
-    pub timestamp: DateTime<Utc>,
+    pub timestamp: NaiveDateTime,
     pub nb_sources_aggregated: BigDecimal,
 }
 
@@ -76,13 +76,13 @@ pub struct VrfRequest {
     pub network: String,
     pub request_id: BigDecimal,
     pub seed: BigDecimal,
-    pub created_at: DateTime<Utc>,
+    pub created_at: NaiveDateTime,
     pub created_at_tx: String,
     pub callback_address: String,
     pub callback_fee_limit: BigDecimal,
     pub num_words: BigDecimal,
     pub requestor_address: String,
-    pub updated_at: DateTime<Utc>,
+    pub updated_at: NaiveDateTime,
     pub updated_at_tx: String,
     pub status: BigDecimal,
     pub minimum_block_number: BigDecimal,

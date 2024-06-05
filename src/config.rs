@@ -66,7 +66,6 @@ pub struct Config {
 /// inspired from here - https://github.com/matklad/once_cell/issues/127
 pub static CONFIG: OnceCell<ArcSwap<Config>> = OnceCell::const_new();
 
-#[allow(dead_code)]
 impl Config {
     pub async fn new(config_input: ConfigInput) -> Self {
         let indexer_url =
@@ -167,7 +166,6 @@ pub struct ConfigInput {
     pub future_pairs: Vec<String>,
 }
 
-#[allow(dead_code)]
 pub async fn get_config(config_input: Option<ConfigInput>) -> Guard<Arc<Config>> {
     let cfg = CONFIG
         .get_or_init(|| async {
@@ -183,7 +181,6 @@ pub async fn get_config(config_input: Option<ConfigInput>) -> Guard<Arc<Config>>
 /// This function is used to periodically update the configuration settings
 /// from the environment variables. This is useful when we want to update the
 /// configuration settings without restarting the service.
-#[allow(dead_code)]
 pub async fn periodic_config_update() {
     let interval = Duration::from_secs(CONFIG_UPDATE_INTERVAL); // Set the update interval as needed (3 hours in this example)
 
@@ -209,7 +206,6 @@ pub async fn periodic_config_update() {
 /// set it up again for reuse in new tests. By calling `config_force_init` we replace the already
 /// stored config inside `ArcSwap` with the new configuration and pool settings.
 #[cfg(test)]
-#[allow(dead_code)]
 pub async fn config_force_init(config_input: ConfigInput) {
     match CONFIG.get() {
         Some(arc) => arc.store(Arc::new(Config::new(config_input).await)),

@@ -1,5 +1,5 @@
 use bigdecimal::BigDecimal;
-use chrono::{DateTime, Utc};
+use chrono::NaiveDateTime;
 
 use crate::{
     config::DataType,
@@ -10,10 +10,10 @@ use crate::{
 pub trait Entry {
     fn pair_id(&self) -> &str;
     fn source(&self) -> &str;
-    fn timestamp(&self) -> DateTime<Utc>;
+    fn timestamp(&self) -> NaiveDateTime;
     fn block_number(&self) -> i64;
     fn price(&self) -> BigDecimal;
-    fn expiration_timestamp(&self) -> Option<DateTime<Utc>>;
+    fn expiration_timestamp(&self) -> Option<NaiveDateTime>;
     fn data_type(&self) -> DataType;
 }
 
@@ -26,7 +26,7 @@ impl Entry for SpotEntry {
         &self.source
     }
 
-    fn timestamp(&self) -> DateTime<Utc> {
+    fn timestamp(&self) -> NaiveDateTime {
         self.timestamp
     }
 
@@ -38,7 +38,7 @@ impl Entry for SpotEntry {
         self.price.clone()
     }
 
-    fn expiration_timestamp(&self) -> Option<DateTime<Utc>> {
+    fn expiration_timestamp(&self) -> Option<NaiveDateTime> {
         None
     }
 
@@ -56,7 +56,7 @@ impl Entry for FutureEntry {
         &self.source
     }
 
-    fn timestamp(&self) -> DateTime<Utc> {
+    fn timestamp(&self) -> NaiveDateTime {
         self.timestamp
     }
 
@@ -68,7 +68,7 @@ impl Entry for FutureEntry {
         self.price.clone()
     }
 
-    fn expiration_timestamp(&self) -> Option<DateTime<Utc>> {
+    fn expiration_timestamp(&self) -> Option<NaiveDateTime> {
         self.expiration_timestamp
     }
 
