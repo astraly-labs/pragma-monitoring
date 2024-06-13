@@ -2,6 +2,7 @@ use lazy_static::lazy_static;
 use phf::phf_map;
 use prometheus::{opts, register_gauge_vec, register_int_gauge_vec, GaugeVec, IntGaugeVec};
 
+#[allow(unused)]
 pub(crate) static COINGECKO_IDS: phf::Map<&'static str, &'static str> = phf_map! {
     "BTC/USD" => "bitcoin",
     "ETH/USD" => "ethereum",
@@ -117,7 +118,9 @@ lazy_static! {
     .unwrap();
 }
 
+#[allow(unused)]
 pub const FEE_TOKEN_DECIMALS: i32 = 18;
+#[allow(unused)]
 pub const FEE_TOKEN_ADDRESS: &str =
     "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7";
 
