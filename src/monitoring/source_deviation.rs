@@ -34,14 +34,6 @@ pub async fn source_deviation<T: Entry>(
         .await
         .map_err(|e| MonitoringError::OnChain(e.to_string()))?;
 
-    let _decimals = config
-        .decimals(query.data_type())
-        .get(query.pair_id())
-        .ok_or(MonitoringError::OnChain(format!(
-            "Failed to get decimals for pair {:?}",
-            query.pair_id()
-        )))?;
-
     let on_chain_price = data
         .first()
         .ok_or(MonitoringError::OnChain("No data".to_string()))?
