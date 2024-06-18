@@ -8,7 +8,7 @@ use std::{
 use arc_swap::{ArcSwap, Guard};
 use starknet::{
     core::{
-        types::{BlockId, BlockTag, FieldElement, FunctionCall},
+        types::{BlockId, BlockTag, Felt, FunctionCall},
         utils::{cairo_short_string_to_felt, parse_cairo_short_string},
     },
     macros::selector,
@@ -18,7 +18,7 @@ use strum::{Display, EnumString, IntoStaticStr};
 use tokio::sync::OnceCell;
 use url::Url;
 
-use crate::constants::CONFIG_UPDATE_INTERVAL;
+use crate::{constants::CONFIG_UPDATE_INTERVAL, utils::try_felt_to_u32};
 
 #[derive(Debug, Clone, EnumString, IntoStaticStr)]
 pub enum NetworkName {
@@ -37,14 +37,16 @@ pub enum DataType {
 }
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct Network {
     pub name: NetworkName,
     pub provider: Arc<JsonRpcClient<HttpTransport>>,
-    pub oracle_address: FieldElement,
-    pub publisher_registry_address: FieldElement,
+    pub oracle_address: Felt,
+    pub publisher_registry_address: Felt,
 }
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct DataInfo {
     pub pairs: Vec<String>,
     pub sources: HashMap<String, Vec<String>>,
@@ -56,7 +58,7 @@ pub struct DataInfo {
 #[allow(unused)]
 pub struct Config {
     data_info: HashMap<DataType, DataInfo>,
-    publishers: HashMap<String, FieldElement>,
+    publishers: HashMap<String, Felt>,
     network: Network,
     indexer_url: String,
 }
@@ -119,8 +121,7 @@ impl Config {
 
         Config::new(ConfigInput {
             network: NetworkName::from_str(&network).expect("Invalid network name"),
-            oracle_address: FieldElement::from_hex_be(&oracle_address)
-                .expect("Invalid oracle address"),
+            oracle_address: Felt::from_hex_unchecked(&oracle_address),
             spot_pairs: parse_pairs(&spot_pairs),
             future_pairs: parse_pairs(&future_pairs),
         })
@@ -155,7 +156,7 @@ impl Config {
         }
     }
 
-    pub fn all_publishers(&self) -> &HashMap<String, FieldElement> {
+    pub fn all_publishers(&self) -> &HashMap<String, Felt> {
         &self.publishers
     }
 }
@@ -163,7 +164,7 @@ impl Config {
 #[derive(Debug, Clone)]
 pub struct ConfigInput {
     pub network: NetworkName,
-    pub oracle_address: FieldElement,
+    pub oracle_address: Felt,
     pub spot_pairs: Vec<String>,
     pub future_pairs: Vec<String>,
 }
@@ -222,8 +223,8 @@ pub async fn config_force_init(config_input: ConfigInput) {
 
 async fn init_publishers(
     rpc_client: &JsonRpcClient<HttpTransport>,
-    oracle_address: FieldElement,
-) -> (HashMap<String, FieldElement>, FieldElement) {
+    oracle_address: Felt,
+) -> (HashMap<String, Felt>, Felt) {
     // Fetch publisher registry address
     let publisher_registry_address = *rpc_client
         .call(
@@ -269,7 +270,7 @@ async fn init_publishers(
         .filter(|publisher| !excluded_publishers.contains(publisher))
         .collect::<Vec<String>>();
 
-    let mut publishers_map: HashMap<String, FieldElement> = HashMap::new();
+    let mut publishers_map: HashMap<String, Felt> = HashMap::new();
     for publisher in publishers {
         let field_publisher =
             cairo_short_string_to_felt(&publisher).expect("Failed to parse publisher");
@@ -294,7 +295,7 @@ async fn init_publishers(
 
 async fn init_spot_config(
     rpc_client: &JsonRpcClient<HttpTransport>,
-    oracle_address: FieldElement,
+    oracle_address: Felt,
     pairs: Vec<String>,
 ) -> DataInfo {
     let mut sources: HashMap<String, Vec<String>> = HashMap::new();
@@ -315,7 +316,7 @@ async fn init_spot_config(
                 FunctionCall {
                     contract_address: oracle_address,
                     entry_point_selector: selector!("get_decimals"),
-                    calldata: vec![FieldElement::ZERO, field_pair],
+                    calldata: vec![Felt::ZERO, field_pair],
                 },
                 BlockId::Tag(BlockTag::Latest),
             )
@@ -324,7 +325,7 @@ async fn init_spot_config(
             .first()
             .unwrap();
 
-        decimals.insert(pair.to_string(), spot_decimals.try_into().unwrap());
+        decimals.insert(pair.to_string(), try_felt_to_u32(&spot_decimals).unwrap());
 
         // Fetch sources
         let spot_pair_sources = rpc_client
@@ -332,7 +333,7 @@ async fn init_spot_config(
                 FunctionCall {
                     contract_address: oracle_address,
                     entry_point_selector: selector!("get_all_sources"),
-                    calldata: vec![FieldElement::ZERO, field_pair],
+                    calldata: vec![Felt::ZERO, field_pair],
                 },
                 BlockId::Tag(BlockTag::Latest),
             )
@@ -366,7 +367,7 @@ async fn init_spot_config(
 
 async fn init_future_config(
     rpc_client: &JsonRpcClient<HttpTransport>,
-    oracle_address: FieldElement,
+    oracle_address: Felt,
     pairs: Vec<String>,
 ) -> DataInfo {
     let mut sources: HashMap<String, Vec<String>> = HashMap::new();
@@ -387,7 +388,7 @@ async fn init_future_config(
                 FunctionCall {
                     contract_address: oracle_address,
                     entry_point_selector: selector!("get_decimals"),
-                    calldata: vec![FieldElement::ONE, field_pair, FieldElement::ZERO],
+                    calldata: vec![Felt::ONE, field_pair, Felt::ZERO],
                 },
                 BlockId::Tag(BlockTag::Latest),
             )
@@ -396,7 +397,7 @@ async fn init_future_config(
             .first()
             .unwrap();
 
-        decimals.insert(pair.to_string(), future_decimals.try_into().unwrap());
+        decimals.insert(pair.to_string(), try_felt_to_u32(&future_decimals).unwrap());
 
         // Fetch sources
         let future_pair_sources = rpc_client
@@ -404,7 +405,7 @@ async fn init_future_config(
                 FunctionCall {
                     contract_address: oracle_address,
                     entry_point_selector: selector!("get_all_sources"),
-                    calldata: vec![FieldElement::ONE, field_pair, FieldElement::ZERO],
+                    calldata: vec![Felt::ONE, field_pair, Felt::ZERO],
                 },
                 BlockId::Tag(BlockTag::Latest),
             )

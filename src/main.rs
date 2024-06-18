@@ -32,6 +32,8 @@ mod schema;
 mod constants;
 // Types
 mod types;
+// Utils
+mod utils;
 
 #[cfg(test)]
 mod tests;

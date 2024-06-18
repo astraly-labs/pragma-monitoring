@@ -6,7 +6,7 @@ use crate::{
 };
 use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
 use serde::{Deserialize, Serialize};
-use starknet::core::types::FieldElement;
+use starknet::core::types::Felt;
 use starknet::providers::{jsonrpc::HttpTransport, JsonRpcClient, Provider};
 #[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize)]
 pub struct IndexerServerStatus {
@@ -106,6 +106,7 @@ async fn blocks_left(
 //     "decimals": 18
 // }
 #[derive(serde::Deserialize, Debug)]
+#[allow(dead_code)]
 pub struct PragmaDataDTO {
     pub num_sources_aggregated: u32,
     pub pair_id: String,
@@ -169,7 +170,7 @@ pub async fn query_pragma_api(
 
 pub async fn check_publisher_balance(
     publisher: String,
-    publisher_address: FieldElement,
+    publisher_address: Felt,
 ) -> Result<(), MonitoringError> {
     let config = get_config(None).await;
     let balance = publisher_balance(publisher_address).await?;

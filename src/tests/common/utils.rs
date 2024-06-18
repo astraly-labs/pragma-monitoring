@@ -4,7 +4,7 @@ use starknet::{
     accounts::{single_owner::SignError, Account, AccountError, Call, SingleOwnerAccount},
     core::{
         chain_id,
-        types::{FieldElement, InvokeTransactionResult},
+        types::{Felt, InvokeTransactionResult},
         utils::{cairo_short_string_to_felt, get_selector_from_name},
     },
     providers::{jsonrpc::HttpTransport, JsonRpcClient},
@@ -41,11 +41,10 @@ pub fn build_single_owner_account<'a>(
     account_address: &str,
     is_legacy: bool,
 ) -> RpcAccount<'a> {
-    let signer = LocalWallet::from(SigningKey::from_secret_scalar(
-        FieldElement::from_hex_be(private_key).unwrap(),
-    ));
-    let account_address =
-        FieldElement::from_hex_be(account_address).expect("Invalid Contract Address");
+    let signer = LocalWallet::from(SigningKey::from_secret_scalar(Felt::from_hex_unchecked(
+        private_key,
+    )));
+    let account_address = Felt::from_hex_unchecked(account_address);
     let execution_encoding = if is_legacy {
         starknet::accounts::ExecutionEncoding::Legacy
     } else {
@@ -55,14 +54,14 @@ pub fn build_single_owner_account<'a>(
         rpc,
         signer,
         account_address,
-        chain_id::TESTNET,
+        chain_id::SEPOLIA,
         execution_encoding,
     )
 }
 
 pub async fn publish_data(
     provider: &JsonRpcClient<HttpTransport>,
-    oracle_address: FieldElement,
+    oracle_address: Felt,
     pair_id: &str,
     timestamp: &str,
     price: &str,
@@ -77,8 +76,8 @@ pub async fn publish_data(
     );
 
     let pair_id = cairo_short_string_to_felt(pair_id).expect("Invalid pair id");
-    let timestamp = FieldElement::from_dec_str(timestamp).expect("Invalid timestamp");
-    let price = FieldElement::from_dec_str(price).expect("Invalid price");
+    let timestamp = Felt::from_dec_str(timestamp).expect("Invalid timestamp");
+    let price = Felt::from_dec_str(price).expect("Invalid price");
     let source = cairo_short_string_to_felt(source).expect("Invalid source");
     let publisher = cairo_short_string_to_felt(publisher).expect("Invalid publisher");
 
@@ -86,15 +85,15 @@ pub async fn publish_data(
         to: oracle_address,
         selector: get_selector_from_name("publish_data").unwrap(),
         calldata: vec![
-            FieldElement::ZERO,
+            Felt::ZERO,
             timestamp,
             source,
             publisher,
             price,
             pair_id,
-            FieldElement::ZERO,
+            Felt::ZERO,
         ],
     }];
-    let tx = publisher_account.execute(calls);
+    let tx = publisher_account.execute_v1(calls);
     tx.send().await
 }

@@ -68,7 +68,7 @@ pub async fn process_sequencer_data() -> Result<(), MonitoringError> {
         parsed_price.to_string().parse::<f64>().unwrap() / 10_f64.powi(result.decimals as i32);
 
     let provider = match network_env {
-        "Testnet" => SequencerGatewayProvider::starknet_alpha_goerli(),
+        "Testnet" => SequencerGatewayProvider::starknet_alpha_sepolia(),
         "Mainnet" => SequencerGatewayProvider::starknet_alpha_mainnet(),
         _ => panic!("Invalid network env"),
     };
@@ -79,8 +79,8 @@ pub async fn process_sequencer_data() -> Result<(), MonitoringError> {
         .await
         .map_err(MonitoringError::Provider)?;
 
-    let eth = block.eth_l1_gas_price.to_big_decimal(18);
-    let strk = block.strk_l1_gas_price.to_big_decimal(18);
+    let eth = block.l1_gas_price.price_in_wei.to_bigint();
+    let strk = block.l1_gas_price.price_in_fri.to_bigint();
 
     let expected_price = (strk / eth).to_f64().ok_or(MonitoringError::Conversion(
         "Failed to convert expected price to f64".to_string(),

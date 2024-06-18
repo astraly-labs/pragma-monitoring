@@ -1,7 +1,7 @@
 use bigdecimal::ToPrimitive;
 use starknet::{
     core::{
-        types::{BlockId, BlockTag, FieldElement, FunctionCall},
+        types::{BlockId, BlockTag, Felt, FunctionCall},
         utils::cairo_short_string_to_felt,
     },
     macros::selector,
@@ -13,6 +13,7 @@ use crate::{
     config::{get_config, DataType},
     constants::COINGECKO_IDS,
     error::MonitoringError,
+    utils::try_felt_to_u32,
 };
 
 /// On-chain price deviation from the reference price.
@@ -39,8 +40,8 @@ pub async fn on_off_price_deviation(
     let field_pair = cairo_short_string_to_felt(&pair_id).expect("failed to convert pair id");
 
     let calldata = match data_type {
-        DataType::Spot => vec![FieldElement::ZERO, field_pair],
-        DataType::Future => vec![FieldElement::ONE, field_pair, FieldElement::ZERO],
+        DataType::Spot => vec![Felt::ZERO, field_pair],
+        DataType::Future => vec![Felt::ONE, field_pair, Felt::ZERO],
     };
 
     let data = client
@@ -55,7 +56,7 @@ pub async fn on_off_price_deviation(
         .await
         .map_err(|e| MonitoringError::OnChain(e.to_string()))?;
 
-    let decimals =
+    let _decimals =
         config
             .decimals(data_type.clone())
             .get(&pair_id)
@@ -67,7 +68,7 @@ pub async fn on_off_price_deviation(
     let on_chain_price = data
         .first()
         .ok_or(MonitoringError::OnChain("No data".to_string()))?
-        .to_big_decimal(*decimals)
+        .to_bigint()
         .to_f64()
         .ok_or(MonitoringError::Conversion(
             "Failed to convert to f64".to_string(),
@@ -117,7 +118,8 @@ pub async fn on_off_price_deviation(
                 .get_price();
 
             let deviation = (reference_price - on_chain_price) / on_chain_price;
-            let num_sources_aggregated = (*data.get(3).unwrap()).try_into().map_err(|e| {
+            let num_sources = data.get(3).unwrap();
+            let num_sources_aggregated = try_felt_to_u32(num_sources).map_err(|e| {
                 MonitoringError::Conversion(format!("Failed to convert num sources {:?}", e))
             })?;
             (deviation, num_sources_aggregated)
