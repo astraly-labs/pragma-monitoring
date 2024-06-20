@@ -56,6 +56,15 @@ pub async fn on_off_price_deviation(
         .await
         .map_err(|e| MonitoringError::OnChain(e.to_string()))?;
 
+    let decimals =
+        config
+            .decimals(data_type.clone())
+            .get(&pair_id)
+            .ok_or(MonitoringError::OnChain(format!(
+                "Failed to get decimals for pair {:?}",
+                pair_id
+            )))?;
+
     let on_chain_price = data
         .first()
         .ok_or(MonitoringError::OnChain("No data".to_string()))?
@@ -63,7 +72,8 @@ pub async fn on_off_price_deviation(
         .to_f64()
         .ok_or(MonitoringError::Conversion(
             "Failed to convert to f64".to_string(),
-        ))?;
+        ))?
+        / 10u64.pow(*decimals as u32) as f64;
 
     let (deviation, num_sources_aggregated) = match data_type {
         DataType::Spot => {

@@ -34,6 +34,14 @@ pub async fn source_deviation<T: Entry>(
         .await
         .map_err(|e| MonitoringError::OnChain(e.to_string()))?;
 
+    let decimals = config
+        .decimals(query.data_type())
+        .get(query.pair_id())
+        .ok_or(MonitoringError::OnChain(format!(
+            "Failed to get decimals for pair {:?}",
+            query.pair_id()
+        )))?;
+
     let on_chain_price = data
         .first()
         .ok_or(MonitoringError::OnChain("No data".to_string()))?
@@ -41,7 +49,8 @@ pub async fn source_deviation<T: Entry>(
         .to_f64()
         .ok_or(MonitoringError::Conversion(
             "Failed to convert to f64".to_string(),
-        ))?;
+        ))?
+        / 10u32.pow(*decimals as u32) as f64;
 
     let deviation = (normalized_price - on_chain_price) / on_chain_price;
     let num_sources_aggregated = try_felt_to_u32(data.get(3).unwrap()).map_err(|e| {

@@ -5,7 +5,7 @@ use starknet::{
     providers::Provider,
 };
 
-use crate::constants::FEE_TOKEN_ADDRESS;
+use crate::constants::{FEE_TOKEN_ADDRESS, FEE_TOKEN_DECIMALS};
 use crate::{config::get_config, error::MonitoringError};
 
 /// Returns the balance of a given publisher address
@@ -33,7 +33,8 @@ pub async fn publisher_balance(publisher_address: Felt) -> Result<f64, Monitorin
         .to_f64()
         .ok_or(MonitoringError::Conversion(
             "Failed to convert to f64".to_string(),
-        ))?;
+        ))?
+        / 10u32.pow(FEE_TOKEN_DECIMALS) as f64;
 
     Ok(on_chain_balance)
 }
