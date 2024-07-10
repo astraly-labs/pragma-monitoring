@@ -55,13 +55,13 @@ async fn main() {
     let database_url: String = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
     let config = AsyncDieselConnectionManager::<diesel_async::AsyncPgConnection>::new(database_url);
     let pool = Pool::builder(config).build().unwrap();
+
     // Monitor spot/future in parallel
     let spot_monitoring = tokio::spawn(monitor(pool.clone(), true, &DataType::Spot));
     let future_monitoring = tokio::spawn(monitor(pool.clone(), true, &DataType::Future));
-
     let publisher_monitoring = tokio::spawn(publisher_monitor(pool.clone(), false));
-
-    let api_monitoring = tokio::spawn(monitor_api());
+    let api_monitoring = tokio::spawn(api_monitor());
+    let vrf_monitoring = tokio::spawn(vrf_monitor(pool.clone(), true));
 
     let config_update = tokio::spawn(periodic_config_update());
 
@@ -71,6 +71,7 @@ async fn main() {
         future_monitoring,
         api_monitoring,
         publisher_monitoring,
+        vrf_monitoring,
         config_update,
     ])
     .await;
@@ -90,11 +91,15 @@ async fn main() {
     }
 
     if let Err(e) = &results[4] {
+        log::error!("[VRF] Monitoring failed: {:?}", e);
+    }
+
+    if let Err(e) = &results[5] {
         log::error!("[CONFIG] Config Update failed: {:?}", e);
     }
 }
 
-pub(crate) async fn monitor_api() {
+pub(crate) async fn api_monitor() {
     let monitoring_config = get_config(None).await;
     log::info!("[API] Monitoring API..");
 
@@ -277,6 +282,36 @@ pub(crate) async fn publisher_monitor(
                     Err(e) => log::error!("[PUBLISHERS]: Task failed with error: {e}"),
                 },
                 Err(e) => log::error!("[PUBLISHERS]: Task failed with error: {:?}", e),
+            }
+        }
+    }
+}
+
+pub(crate) async fn vrf_monitor(
+    pool: deadpool::managed::Pool<AsyncDieselConnectionManager<AsyncPgConnection>>,
+    wait_for_syncing: bool,
+) {
+    log::info!("[VRF] Monitoring VRF requests..");
+
+    let mut interval = interval(Duration::from_secs(30));
+    let monitoring_config: arc_swap::Guard<std::sync::Arc<config::Config>> = get_config(None).await;
+
+    loop {
+        interval.tick().await; // Wait for the next tick
+
+        if wait_for_syncing {
+            match is_syncing(&DataType::Spot).await {
+                Ok(true) => {
+                    log::info!("[VRF] Indexers are still syncing ♻️");
+                    continue;
+                }
+                Ok(false) => {
+                    log::info!("VRF] Indexers are synced ✅");
+                }
+                Err(e) => {
+                    log::error!("[VRF] Failed to check if indexers are syncing: {:?}", e);
+                    continue;
+                }
             }
         }
     }
