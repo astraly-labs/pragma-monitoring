@@ -117,6 +117,22 @@ lazy_static! {
         &["network"]
     )
     .unwrap();
+    pub static ref VRF_REQUESTS_COUNT: GaugeVec = register_gauge_vec!(
+        opts!(
+            "vrf_requests_count",
+            "Number of requests for a given network and a status."
+        ),
+        &["network", "status"]
+    )
+    .unwrap();
+    pub static ref VRF_TIME_SINCE_LAST_HANDLE_REQUEST: GaugeVec = register_gauge_vec!(
+        opts!(
+            "vrf_time_since_last_handle_request",
+            "Time since the latest request was handled for a given network."
+        ),
+        &["network"]
+    )
+    .unwrap();
 }
 
 #[allow(unused)]
