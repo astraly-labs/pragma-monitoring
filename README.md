@@ -17,7 +17,7 @@ It then processes the data and computes the following metrics:
 - `vrf_balance{network}`: Balance of the VRF contract. (in ETH)
 - `vrf_requests_count{network, status}`: Number of VRF requests handled for a given network.
 - `vrf_time_since_last_handle_request{network}`: Time since the last VRF request was handled for a given network.
-- `vrf_time_since_oldest_request_in_initial_status{network}`: Time in seconds that the oldest pending VRF request has been in the initial status for a given network.
+- `vrf_time_since_oldest_request_in_pending_status{network}`: Time in seconds that the oldest pending VRF request has been in the pending status for a given network.
 
 ## Shared Public Access
 

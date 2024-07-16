@@ -97,12 +97,12 @@ groups:
           description: "The ETH/STRK price has deviated from the sequencer price by more than 2%."
   - name: VRF
     rules:
-      - alert: TimeInInitialStatusTooLong
-        expr: vrf_time_since_oldest_request_in_initial_status > 900 # 900 Seconds = 15 minutes
+      - alert: TimeInPendingStatusTooLong
+        expr: vrf_time_since_oldest_request_in_pending_status > 900 # 900 Seconds = 15 minutes
         for: 5m
         labels:
           severity: critical
           group: VRF
         annotations:
-          summary: "VRF request has been in initial status for too long"
-          description: "The oldest VRF request in network {{ $labels.network }} has been in the initial status for more than 15 minutes."
+          summary: "VRF request has been in pending status for too long"
+          description: 'The oldest VRF request for network "{{ $labels.network }}" has been in the pending status for more than 15 minutes.'

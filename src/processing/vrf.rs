@@ -15,7 +15,7 @@ use starknet::core::types::Felt;
 use crate::config::get_config;
 use crate::constants::{
     VRF_BALANCE, VRF_REQUESTS_COUNT, VRF_TIME_SINCE_LAST_HANDLE_REQUEST,
-    VRF_TIME_SINCE_OLDEST_REQUEST_IN_INITIAL_STATUS,
+    VRF_TIME_SINCE_OLDEST_REQUEST_IN_PENDING_STATUS,
 };
 use crate::diesel::QueryDsl;
 use crate::error::MonitoringError;
@@ -129,7 +129,7 @@ pub async fn check_vrf_oldest_request_pending_status_duration(
 
         if let Some(request) = oldest_uninitialized_request {
             let duration = now.signed_duration_since(request.created_at).num_seconds();
-            VRF_TIME_SINCE_OLDEST_REQUEST_IN_INITIAL_STATUS
+            VRF_TIME_SINCE_OLDEST_REQUEST_IN_PENDING_STATUS
                 .with_label_values(&[&network])
                 .set(duration as f64);
         }
