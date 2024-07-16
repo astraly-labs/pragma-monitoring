@@ -51,27 +51,21 @@ pub async fn check_vrf_balance(vrf_address: Felt) -> Result<(), MonitoringError>
 pub async fn check_vrf_request_count(
     pool: Pool<AsyncDieselConnectionManager<AsyncPgConnection>>,
 ) -> Result<(), MonitoringError> {
-    let mut conn = pool.get().await.map_err(MonitoringError::Connection)?;
+    let config = get_config(None).await;
+    let network = config.network_str();
 
-    let networks: Vec<String> = vrf_dsl::vrf_requests
-        .select(vrf_dsl::network)
-        .distinct()
-        .load::<String>(&mut conn)
+    let mut conn = pool.get().await.map_err(MonitoringError::Connection)?;
+    let counts = vrf_dsl::vrf_requests
+        .filter(vrf_dsl::network.eq(&network))
+        .group_by(vrf_dsl::status)
+        .select((vrf_dsl::status, diesel::dsl::count(vrf_dsl::status)))
+        .load::<(BigDecimal, i64)>(&mut conn)
         .await?;
 
-    for network in networks {
-        let counts = vrf_dsl::vrf_requests
-            .filter(vrf_dsl::network.eq(&network))
-            .group_by(vrf_dsl::status)
-            .select((vrf_dsl::status, diesel::dsl::count(vrf_dsl::status)))
-            .load::<(BigDecimal, i64)>(&mut conn)
-            .await?;
-
-        for (status, count) in counts {
-            VRF_REQUESTS_COUNT
-                .with_label_values(&[&network, &status.to_string()])
-                .set(count as f64);
-        }
+    for (status, count) in counts {
+        VRF_REQUESTS_COUNT
+            .with_label_values(&[network, &status.to_string()])
+            .set(count as f64);
     }
 
     Ok(())
@@ -80,28 +74,23 @@ pub async fn check_vrf_request_count(
 pub async fn check_vrf_time_since_last_handle(
     pool: Pool<AsyncDieselConnectionManager<AsyncPgConnection>>,
 ) -> Result<(), MonitoringError> {
-    let mut conn = pool.get().await.map_err(MonitoringError::Connection)?;
-
-    let networks: Vec<String> = vrf_dsl::vrf_requests
-        .select(vrf_dsl::network)
-        .distinct()
-        .load::<String>(&mut conn)
-        .await?;
+    let config = get_config(None).await;
+    let network = config.network_str();
 
     let now = Utc::now().naive_utc();
-    for network in networks {
-        let last_handle_time: Option<chrono::NaiveDateTime> = vrf_dsl::vrf_requests
-            .filter(vrf_dsl::network.eq(&network))
-            .select(max(vrf_dsl::updated_at))
-            .first::<Option<chrono::NaiveDateTime>>(&mut conn)
-            .await?;
 
-        if let Some(last_time) = last_handle_time {
-            let duration = now.signed_duration_since(last_time).num_seconds();
-            VRF_TIME_SINCE_LAST_HANDLE_REQUEST
-                .with_label_values(&[&network])
-                .set(duration as f64);
-        }
+    let mut conn = pool.get().await.map_err(MonitoringError::Connection)?;
+    let last_handle_time: Option<chrono::NaiveDateTime> = vrf_dsl::vrf_requests
+        .filter(vrf_dsl::network.eq(&network))
+        .select(max(vrf_dsl::updated_at))
+        .first::<Option<chrono::NaiveDateTime>>(&mut conn)
+        .await?;
+
+    if let Some(last_time) = last_handle_time {
+        let duration = now.signed_duration_since(last_time).num_seconds();
+        VRF_TIME_SINCE_LAST_HANDLE_REQUEST
+            .with_label_values(&[network])
+            .set(duration as f64);
     }
     Ok(())
 }
@@ -109,30 +98,25 @@ pub async fn check_vrf_time_since_last_handle(
 pub async fn check_vrf_oldest_request_pending_status_duration(
     pool: Pool<AsyncDieselConnectionManager<AsyncPgConnection>>,
 ) -> Result<(), MonitoringError> {
-    let mut conn = pool.get().await.map_err(MonitoringError::Connection)?;
-
-    let networks: Vec<String> = vrf_dsl::vrf_requests
-        .select(vrf_dsl::network)
-        .distinct()
-        .load::<String>(&mut conn)
-        .await?;
+    let config = get_config(None).await;
+    let network = config.network_str();
 
     let now = Utc::now().naive_utc();
-    for network in networks {
-        let oldest_uninitialized_request: Option<VrfRequest> = vrf_dsl::vrf_requests
-            .filter(vrf_dsl::network.eq(&network))
-            .filter(vrf_dsl::status.eq(BigDecimal::from(VrfStatus::Uninitialized)))
-            .order_by(vrf_dsl::created_at.asc())
-            .first::<VrfRequest>(&mut conn)
-            .await
-            .optional()?;
 
-        if let Some(request) = oldest_uninitialized_request {
-            let duration = now.signed_duration_since(request.created_at).num_seconds();
-            VRF_TIME_SINCE_OLDEST_REQUEST_IN_PENDING_STATUS
-                .with_label_values(&[&network])
-                .set(duration as f64);
-        }
+    let mut conn = pool.get().await.map_err(MonitoringError::Connection)?;
+    let oldest_uninitialized_request: Option<VrfRequest> = vrf_dsl::vrf_requests
+        .filter(vrf_dsl::network.eq(&network))
+        .filter(vrf_dsl::status.eq(BigDecimal::from(VrfStatus::Uninitialized)))
+        .order_by(vrf_dsl::created_at.asc())
+        .first::<VrfRequest>(&mut conn)
+        .await
+        .optional()?;
+
+    if let Some(request) = oldest_uninitialized_request {
+        let duration = now.signed_duration_since(request.created_at).num_seconds();
+        VRF_TIME_SINCE_OLDEST_REQUEST_IN_PENDING_STATUS
+            .with_label_values(&[network])
+            .set(duration as f64);
     }
     Ok(())
 }
