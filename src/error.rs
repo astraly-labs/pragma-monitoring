@@ -6,7 +6,7 @@ use starknet::providers::ProviderError;
 pub enum MonitoringError {
     Price(String),
     Database(diesel::result::Error),
-    Connection(String),
+    Connection(diesel_async::pooled_connection::deadpool::PoolError),
     Api(String),
     Conversion(String),
     OnChain(String),

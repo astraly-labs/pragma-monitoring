@@ -117,6 +117,35 @@ lazy_static! {
         &["network"]
     )
     .unwrap();
+    pub static ref VRF_BALANCE: GaugeVec = register_gauge_vec!(
+        opts!("vrf_balance", "Balance of the VRF contract in ETH"),
+        &["network"]
+    )
+    .unwrap();
+    pub static ref VRF_REQUESTS_COUNT: GaugeVec = register_gauge_vec!(
+        opts!(
+            "vrf_requests_count",
+            "Number of requests for a given network and a status."
+        ),
+        &["network", "status"]
+    )
+    .unwrap();
+    pub static ref VRF_TIME_SINCE_LAST_HANDLE_REQUEST: GaugeVec = register_gauge_vec!(
+        opts!(
+            "vrf_time_since_last_handle_request",
+            "Time since the latest request was handled for a given network."
+        ),
+        &["network"]
+    )
+    .unwrap();
+    pub static ref VRF_TIME_SINCE_OLDEST_REQUEST_IN_PENDING_STATUS: GaugeVec = register_gauge_vec!(
+        opts!(
+            "vrf_time_since_oldest_request_in_pending_status",
+            "Time in seconds that the oldest pending VRF request has been in the initial status for a given network."
+        ),
+        &["network"]
+    )
+    .unwrap();
 }
 
 #[allow(unused)]

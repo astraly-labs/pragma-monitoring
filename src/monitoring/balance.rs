@@ -8,9 +8,9 @@ use starknet::{
 use crate::constants::{FEE_TOKEN_ADDRESS, FEE_TOKEN_DECIMALS};
 use crate::{config::get_config, error::MonitoringError};
 
-/// Returns the balance of a given publisher address
+/// Returns the balance of a given adress
 /// Note: Currently only reads ETH balance
-pub async fn publisher_balance(publisher_address: Felt) -> Result<f64, MonitoringError> {
+pub async fn get_on_chain_balance(address: Felt) -> Result<f64, MonitoringError> {
     let config = get_config(None).await;
 
     let client = &config.network().provider;
@@ -19,7 +19,7 @@ pub async fn publisher_balance(publisher_address: Felt) -> Result<f64, Monitorin
             FunctionCall {
                 contract_address: Felt::from_hex_unchecked(FEE_TOKEN_ADDRESS),
                 entry_point_selector: selector!("balanceOf"),
-                calldata: vec![publisher_address],
+                calldata: vec![address],
             },
             BlockId::Tag(BlockTag::Latest),
         )

@@ -1,19 +1,6 @@
 extern crate diesel;
 extern crate dotenv;
 
-use config::{get_config, periodic_config_update, DataType};
-use diesel_async::pooled_connection::deadpool::*;
-use diesel_async::pooled_connection::AsyncDieselConnectionManager;
-use diesel_async::AsyncPgConnection;
-
-use dotenv::dotenv;
-use std::env;
-use std::time::Duration;
-use std::vec;
-use tokio::time::interval;
-
-use crate::processing::common::{check_publisher_balance, is_syncing};
-
 // Configuration
 mod config;
 // Error handling
@@ -38,6 +25,20 @@ mod utils;
 #[cfg(test)]
 mod tests;
 
+use std::time::Duration;
+use std::{env, vec};
+
+use deadpool::managed::Pool;
+use diesel_async::pooled_connection::AsyncDieselConnectionManager;
+use diesel_async::AsyncPgConnection;
+use dotenv::dotenv;
+use tokio::time::interval;
+
+use config::{get_config, periodic_config_update, DataType};
+use processing::common::{check_publisher_balance, is_syncing};
+
+use crate::utils::log_tasks_results;
+
 #[tokio::main]
 async fn main() {
     env_logger::init();
@@ -55,13 +56,13 @@ async fn main() {
     let database_url: String = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
     let config = AsyncDieselConnectionManager::<diesel_async::AsyncPgConnection>::new(database_url);
     let pool = Pool::builder(config).build().unwrap();
+
     // Monitor spot/future in parallel
     let spot_monitoring = tokio::spawn(monitor(pool.clone(), true, &DataType::Spot));
     let future_monitoring = tokio::spawn(monitor(pool.clone(), true, &DataType::Future));
-
     let publisher_monitoring = tokio::spawn(publisher_monitor(pool.clone(), false));
-
-    let api_monitoring = tokio::spawn(monitor_api());
+    let api_monitoring = tokio::spawn(api_monitor());
+    let vrf_monitoring = tokio::spawn(vrf_monitor(pool.clone()));
 
     let config_update = tokio::spawn(periodic_config_update());
 
@@ -71,6 +72,7 @@ async fn main() {
         future_monitoring,
         api_monitoring,
         publisher_monitoring,
+        vrf_monitoring,
         config_update,
     ])
     .await;
@@ -90,11 +92,15 @@ async fn main() {
     }
 
     if let Err(e) = &results[4] {
+        log::error!("[VRF] Monitoring failed: {:?}", e);
+    }
+
+    if let Err(e) = &results[5] {
         log::error!("[CONFIG] Config Update failed: {:?}", e);
     }
 }
 
-pub(crate) async fn monitor_api() {
+pub(crate) async fn api_monitor() {
     let monitoring_config = get_config(None).await;
     log::info!("[API] Monitoring API..");
 
@@ -117,22 +123,12 @@ pub(crate) async fn monitor_api() {
         )));
 
         let results: Vec<_> = futures::future::join_all(tasks).await;
-
-        // Process or output the results
-        for result in &results {
-            match result {
-                Ok(data) => match data {
-                    Ok(_) => log::info!("[API] Task finished successfully",),
-                    Err(e) => log::error!("[API] Task failed with error: {e}"),
-                },
-                Err(e) => log::error!("[API] Task failed with error: {:?}", e),
-            }
-        }
+        log_tasks_results("API", results);
     }
 }
 
 pub(crate) async fn monitor(
-    pool: deadpool::managed::Pool<AsyncDieselConnectionManager<AsyncPgConnection>>,
+    pool: Pool<AsyncDieselConnectionManager<AsyncPgConnection>>,
     wait_for_syncing: bool,
     data_type: &DataType,
 ) {
@@ -201,22 +197,12 @@ pub(crate) async fn monitor(
             .collect();
 
         let results: Vec<_> = futures::future::join_all(tasks).await;
-
-        // Process or output the results
-        for result in &results {
-            match result {
-                Ok(data) => match data {
-                    Ok(_) => log::info!("[{data_type}] Task finished successfully",),
-                    Err(e) => log::error!("[{data_type}] Task failed with error: {e}"),
-                },
-                Err(e) => log::error!("[{data_type}] Task failed with error: {:?}", e),
-            }
-        }
+        log_tasks_results(data_type.into(), results);
     }
 }
 
 pub(crate) async fn publisher_monitor(
-    pool: deadpool::managed::Pool<AsyncDieselConnectionManager<AsyncPgConnection>>,
+    pool: Pool<AsyncDieselConnectionManager<AsyncPgConnection>>,
     wait_for_syncing: bool,
 ) {
     log::info!("[PUBLISHERS] Monitoring Publishers..");
@@ -268,16 +254,34 @@ pub(crate) async fn publisher_monitor(
             .collect();
 
         let results: Vec<_> = futures::future::join_all(tasks).await;
+        log_tasks_results("PUBLISHERS", results);
+    }
+}
 
-        // Process or output the results
-        for result in &results {
-            match result {
-                Ok(data) => match data {
-                    Ok(_) => log::info!("[PUBLISHERS]: Task finished successfully",),
-                    Err(e) => log::error!("[PUBLISHERS]: Task failed with error: {e}"),
-                },
-                Err(e) => log::error!("[PUBLISHERS]: Task failed with error: {:?}", e),
-            }
-        }
+pub(crate) async fn vrf_monitor(pool: Pool<AsyncDieselConnectionManager<AsyncPgConnection>>) {
+    log::info!("[VRF] Monitoring VRF requests..");
+
+    let monitoring_config = get_config(None).await;
+    let mut interval = interval(Duration::from_secs(30));
+    loop {
+        let tasks: Vec<_> = vec![
+            tokio::spawn(Box::pin(processing::vrf::check_vrf_balance(
+                monitoring_config.network().vrf_address,
+            ))),
+            tokio::spawn(Box::pin(processing::vrf::check_vrf_request_count(
+                pool.clone(),
+            ))),
+            tokio::spawn(Box::pin(processing::vrf::check_vrf_time_since_last_handle(
+                pool.clone(),
+            ))),
+            tokio::spawn(Box::pin(
+                processing::vrf::check_vrf_oldest_request_pending_status_duration(pool.clone()),
+            )),
+        ];
+
+        let results: Vec<_> = futures::future::join_all(tasks).await;
+        log_tasks_results("VRF", results);
+
+        interval.tick().await; // Wait for the next tick
     }
 }

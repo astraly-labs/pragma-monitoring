@@ -31,10 +31,7 @@ pub async fn process_data_by_pair(
     pool: deadpool::managed::Pool<AsyncDieselConnectionManager<AsyncPgConnection>>,
     pair: String,
 ) -> Result<u64, MonitoringError> {
-    let mut conn = pool
-        .get()
-        .await
-        .map_err(|_| MonitoringError::Connection("Failed to get connection".to_string()))?;
+    let mut conn = pool.get().await.map_err(MonitoringError::Connection)?;
 
     let config = get_config(None).await;
 
@@ -112,10 +109,7 @@ pub async fn process_data_by_pair_and_source(
     src: &str,
     decimals: u32,
 ) -> Result<u64, MonitoringError> {
-    let mut conn = pool
-        .get()
-        .await
-        .map_err(|_| MonitoringError::Connection("Failed to get connection".to_string()))?;
+    let mut conn = pool.get().await.map_err(MonitoringError::Connection)?;
 
     let config = get_config(None).await;
 
@@ -175,10 +169,7 @@ pub async fn process_data_by_publisher(
     pool: deadpool::managed::Pool<AsyncDieselConnectionManager<AsyncPgConnection>>,
     publisher: String,
 ) -> Result<(), MonitoringError> {
-    let mut conn = pool
-        .get()
-        .await
-        .map_err(|_| MonitoringError::Connection("Failed to get connection".to_string()))?;
+    let mut conn = pool.get().await.map_err(MonitoringError::Connection)?;
 
     let config = get_config(None).await;
 

@@ -50,4 +50,4 @@ EXPOSE 8080
 
 ENV RUST_LOG=info
 
-CMD ["/bin/server"]
+CMD ["/bin/server"]￼
