@@ -14,6 +14,8 @@ It then processes the data and computes the following metrics:
 - `price_deviation{network, pair, source, type}`: Deviation of the price from a reference price (DefiLlama API) given source and pair. (in percents)
 - `price_deviation_source{network, pair, source, type}`: Deviation of the price from the on-chain aggregated median price given source and pair. (in percents)
 - `publisher_balance{network, publisher}`: Balance of a publisher. (in ETH)
+- `vrf_requests_count{network, status}`: Number of VRF requests handled for a given network.
+- `vrf_time_since_last_handle_request{network}`: Time since the last VRF request was handled for a given network.
 
 ## Shared Public Access
 

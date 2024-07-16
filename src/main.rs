@@ -261,7 +261,6 @@ pub(crate) async fn publisher_monitor(
 pub(crate) async fn vrf_monitor(pool: Pool<AsyncDieselConnectionManager<AsyncPgConnection>>) {
     log::info!("[VRF] Monitoring VRF requests..");
     let mut interval = interval(Duration::from_secs(30));
-
     loop {
         let tasks: Vec<_> = vec![
             tokio::spawn(Box::pin(processing::vrf::check_vrf_request_count(
@@ -270,7 +269,11 @@ pub(crate) async fn vrf_monitor(pool: Pool<AsyncDieselConnectionManager<AsyncPgC
             tokio::spawn(Box::pin(processing::vrf::check_vrf_time_since_last_handle(
                 pool.clone(),
             ))),
+            tokio::spawn(Box::pin(
+                processing::vrf::check_vrf_received_status_duration(pool.clone()),
+            )),
         ];
+
         let results: Vec<_> = futures::future::join_all(tasks).await;
         log_tasks_results("VRF", results);
 

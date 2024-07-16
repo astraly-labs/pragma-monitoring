@@ -133,6 +133,14 @@ lazy_static! {
         &["network"]
     )
     .unwrap();
+    pub static ref VRF_TIME_IN_RECEIVED_STATUS: GaugeVec = register_gauge_vec!(
+        opts!(
+            "vrf_time_in_received_status",
+            "Time in seconds that a VRF request has been in the initial status for a given network."
+        ),
+        &["network", "request_id"]
+    )
+    .unwrap();
 }
 
 #[allow(unused)]

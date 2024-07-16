@@ -10,18 +10,35 @@ use diesel_async::pooled_connection::AsyncDieselConnectionManager;
 use diesel_async::AsyncPgConnection;
 use diesel_async::RunQueryDsl;
 
-use crate::constants::{VRF_REQUESTS_COUNT, VRF_TIME_SINCE_LAST_HANDLE_REQUEST};
+use crate::constants::{
+    VRF_REQUESTS_COUNT, VRF_TIME_IN_RECEIVED_STATUS, VRF_TIME_SINCE_LAST_HANDLE_REQUEST,
+};
 use crate::diesel::QueryDsl;
 use crate::error::MonitoringError;
+use crate::models::VrfRequest;
 use crate::schema::vrf_requests::dsl as vrf_dsl;
+
+#[derive(Debug, Copy, Clone)]
+#[allow(dead_code)]
+enum VrfStatus {
+    Uninitialized,
+    Received,
+    Fulfilled,
+    Cancelled,
+    OutOfGas,
+    Refunded,
+}
+
+impl From<VrfStatus> for BigDecimal {
+    fn from(val: VrfStatus) -> Self {
+        BigDecimal::from(val as i32)
+    }
+}
 
 pub async fn check_vrf_request_count(
     pool: Pool<AsyncDieselConnectionManager<AsyncPgConnection>>,
 ) -> Result<(), MonitoringError> {
-    let mut conn = pool
-        .get()
-        .await
-        .map_err(|_| MonitoringError::Connection("Failed to get connection".to_string()))?;
+    let mut conn = pool.get().await.map_err(MonitoringError::Connection)?;
 
     let networks: Vec<String> = vrf_dsl::vrf_requests
         .select(vrf_dsl::network)
@@ -50,10 +67,7 @@ pub async fn check_vrf_request_count(
 pub async fn check_vrf_time_since_last_handle(
     pool: Pool<AsyncDieselConnectionManager<AsyncPgConnection>>,
 ) -> Result<(), MonitoringError> {
-    let mut conn = pool
-        .get()
-        .await
-        .map_err(|_| MonitoringError::Connection("Failed to get connection".to_string()))?;
+    let mut conn = pool.get().await.map_err(MonitoringError::Connection)?;
 
     let networks: Vec<String> = vrf_dsl::vrf_requests
         .select(vrf_dsl::network)
@@ -61,6 +75,7 @@ pub async fn check_vrf_time_since_last_handle(
         .load::<String>(&mut conn)
         .await?;
 
+    let now = Utc::now().naive_utc();
     for network in networks {
         let last_handle_time: Option<chrono::NaiveDateTime> = vrf_dsl::vrf_requests
             .filter(vrf_dsl::network.eq(&network))
@@ -69,10 +84,42 @@ pub async fn check_vrf_time_since_last_handle(
             .await?;
 
         if let Some(last_time) = last_handle_time {
-            let now = Utc::now().naive_utc();
             let duration = now.signed_duration_since(last_time).num_seconds();
             VRF_TIME_SINCE_LAST_HANDLE_REQUEST
                 .with_label_values(&[&network])
+                .set(duration as f64);
+        }
+    }
+    Ok(())
+}
+
+pub async fn check_vrf_received_status_duration(
+    pool: Pool<AsyncDieselConnectionManager<AsyncPgConnection>>,
+) -> Result<(), MonitoringError> {
+    let mut conn = pool.get().await.map_err(MonitoringError::Connection)?;
+
+    // Clear the gauge so we only check current received requests for each network
+    VRF_TIME_IN_RECEIVED_STATUS.reset();
+
+    let networks: Vec<String> = vrf_dsl::vrf_requests
+        .select(vrf_dsl::network)
+        .distinct()
+        .load::<String>(&mut conn)
+        .await?;
+
+    let now = Utc::now().naive_utc();
+
+    for network in networks {
+        let requests: Vec<VrfRequest> = vrf_dsl::vrf_requests
+            .filter(vrf_dsl::network.eq(&network))
+            .filter(vrf_dsl::status.eq(BigDecimal::from(VrfStatus::Received)))
+            .load::<VrfRequest>(&mut conn)
+            .await?;
+
+        for request in requests {
+            let duration = now.signed_duration_since(request.created_at).num_seconds();
+            VRF_TIME_IN_RECEIVED_STATUS
+                .with_label_values(&[&network, &request.request_id.to_string()])
                 .set(duration as f64);
         }
     }
