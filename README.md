@@ -16,6 +16,7 @@ It then processes the data and computes the following metrics:
 - `publisher_balance{network, publisher}`: Balance of a publisher. (in ETH)
 - `vrf_requests_count{network, status}`: Number of VRF requests handled for a given network.
 - `vrf_time_since_last_handle_request{network}`: Time since the last VRF request was handled for a given network.
+- `vrf_time_in_received_status{network, request_id}`: Time since a VRF request is in the received status.
 
 ## Shared Public Access
 
