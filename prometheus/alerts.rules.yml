@@ -98,11 +98,11 @@ groups:
   - name: VRF
     rules:
       - alert: TimeInInitialStatusTooLong
-        expr: vrf_time_in_received_status > 900 # 900 Seconds = 15 minutes
+        expr: vrf_time_since_oldest_request_in_initial_status > 900 # 900 Seconds = 15 minutes
         for: 5m
         labels:
           severity: critical
           group: VRF
         annotations:
           summary: "VRF request has been in initial status for too long"
-          description: "The VRF request with ID {{ $labels.request_id }} in network {{ $labels.network }} has been in the initial status for more than 15 minutes."
+          description: "The oldest VRF request in network {{ $labels.network }} has been in the initial status for more than 15 minutes."

@@ -42,6 +42,7 @@ pub struct Network {
     pub name: NetworkName,
     pub provider: Arc<JsonRpcClient<HttpTransport>>,
     pub oracle_address: Felt,
+    pub vrf_address: Felt,
     pub publisher_registry_address: Felt,
 }
 
@@ -108,6 +109,7 @@ impl Config {
                 name: config_input.network,
                 provider: Arc::new(rpc_client),
                 oracle_address: config_input.oracle_address,
+                vrf_address: config_input.vrf_address,
                 publisher_registry_address,
             },
         }
@@ -116,12 +118,14 @@ impl Config {
     pub async fn create_from_env() -> Config {
         let network = std::env::var("NETWORK").expect("NETWORK must be set");
         let oracle_address = std::env::var("ORACLE_ADDRESS").expect("ORACLE_ADDRESS must be set");
+        let vrf_address = std::env::var("VRF_ADDRESS").expect("VRF_ADDRESS must be set");
         let spot_pairs = std::env::var("SPOT_PAIRS").expect("SPOT_PAIRS must be set");
         let future_pairs = std::env::var("FUTURE_PAIRS").expect("FUTURE_PAIRS must be set");
 
         Config::new(ConfigInput {
             network: NetworkName::from_str(&network).expect("Invalid network name"),
             oracle_address: Felt::from_hex_unchecked(&oracle_address),
+            vrf_address: Felt::from_hex_unchecked(&vrf_address),
             spot_pairs: parse_pairs(&spot_pairs),
             future_pairs: parse_pairs(&future_pairs),
         })
@@ -165,6 +169,7 @@ impl Config {
 pub struct ConfigInput {
     pub network: NetworkName,
     pub oracle_address: Felt,
+    pub vrf_address: Felt,
     pub spot_pairs: Vec<String>,
     pub future_pairs: Vec<String>,
 }

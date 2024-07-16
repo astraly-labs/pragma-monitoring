@@ -6,16 +6,21 @@ use chrono::Utc;
 use deadpool::managed::Pool;
 use diesel::dsl::max;
 use diesel::ExpressionMethods;
+use diesel::OptionalExtension;
 use diesel_async::pooled_connection::AsyncDieselConnectionManager;
 use diesel_async::AsyncPgConnection;
 use diesel_async::RunQueryDsl;
+use starknet::core::types::Felt;
 
+use crate::config::get_config;
 use crate::constants::{
-    VRF_REQUESTS_COUNT, VRF_TIME_IN_RECEIVED_STATUS, VRF_TIME_SINCE_LAST_HANDLE_REQUEST,
+    VRF_BALANCE, VRF_REQUESTS_COUNT, VRF_TIME_SINCE_LAST_HANDLE_REQUEST,
+    VRF_TIME_SINCE_OLDEST_REQUEST_IN_INITIAL_STATUS,
 };
 use crate::diesel::QueryDsl;
 use crate::error::MonitoringError;
 use crate::models::VrfRequest;
+use crate::monitoring::get_on_chain_balance;
 use crate::schema::vrf_requests::dsl as vrf_dsl;
 
 #[derive(Debug, Copy, Clone)]
@@ -33,6 +38,14 @@ impl From<VrfStatus> for BigDecimal {
     fn from(val: VrfStatus) -> Self {
         BigDecimal::from(val as i32)
     }
+}
+
+pub async fn check_vrf_balance(vrf_address: Felt) -> Result<(), MonitoringError> {
+    let config = get_config(None).await;
+    let balance = get_on_chain_balance(vrf_address).await?;
+    let network_env = &config.network_str();
+    VRF_BALANCE.with_label_values(&[network_env]).set(balance);
+    Ok(())
 }
 
 pub async fn check_vrf_request_count(
@@ -93,13 +106,10 @@ pub async fn check_vrf_time_since_last_handle(
     Ok(())
 }
 
-pub async fn check_vrf_received_status_duration(
+pub async fn check_vrf_oldest_request_pending_status_duration(
     pool: Pool<AsyncDieselConnectionManager<AsyncPgConnection>>,
 ) -> Result<(), MonitoringError> {
     let mut conn = pool.get().await.map_err(MonitoringError::Connection)?;
-
-    // Clear the gauge so we only check current received requests for each network
-    VRF_TIME_IN_RECEIVED_STATUS.reset();
 
     let networks: Vec<String> = vrf_dsl::vrf_requests
         .select(vrf_dsl::network)
@@ -108,21 +118,21 @@ pub async fn check_vrf_received_status_duration(
         .await?;
 
     let now = Utc::now().naive_utc();
-
     for network in networks {
-        let requests: Vec<VrfRequest> = vrf_dsl::vrf_requests
+        let oldest_uninitialized_request: Option<VrfRequest> = vrf_dsl::vrf_requests
             .filter(vrf_dsl::network.eq(&network))
-            .filter(vrf_dsl::status.eq(BigDecimal::from(VrfStatus::Received)))
-            .load::<VrfRequest>(&mut conn)
-            .await?;
+            .filter(vrf_dsl::status.eq(BigDecimal::from(VrfStatus::Uninitialized)))
+            .order_by(vrf_dsl::created_at.asc())
+            .first::<VrfRequest>(&mut conn)
+            .await
+            .optional()?;
 
-        for request in requests {
+        if let Some(request) = oldest_uninitialized_request {
             let duration = now.signed_duration_since(request.created_at).num_seconds();
-            VRF_TIME_IN_RECEIVED_STATUS
-                .with_label_values(&[&network, &request.request_id.to_string()])
+            VRF_TIME_SINCE_OLDEST_REQUEST_IN_INITIAL_STATUS
+                .with_label_values(&[&network])
                 .set(duration as f64);
         }
     }
-
     Ok(())
 }

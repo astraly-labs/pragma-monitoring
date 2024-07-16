@@ -1,4 +1,4 @@
-use crate::monitoring::publisher_balance;
+use crate::monitoring::balance::get_on_chain_balance;
 use crate::{
     config::{get_config, DataType},
     constants::{INDEXER_BLOCKS_LEFT, PUBLISHER_BALANCE},
@@ -173,7 +173,7 @@ pub async fn check_publisher_balance(
     publisher_address: Felt,
 ) -> Result<(), MonitoringError> {
     let config = get_config(None).await;
-    let balance = publisher_balance(publisher_address).await?;
+    let balance = get_on_chain_balance(publisher_address).await?;
 
     let network_env = &config.network_str();
 
