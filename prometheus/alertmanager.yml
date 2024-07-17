@@ -46,7 +46,8 @@ receivers:
     telegram_configs:
       - bot_token: "${{TELEGRAM_TOKEN}}}}"
         chat_id: -1001904637278
-        parse_mode: ""
+        parse_mode: "HTML"
+        message: '{{ template "telegram.default.message" . }}'
   - name: "internal-critical"
     opsgenie_configs:
       - api_key: "${{OPS_GENIE_API_KEY}}"
@@ -54,8 +55,9 @@ receivers:
     telegram_configs:
       - bot_token: "${{TELEGRAM_TOKEN}}"
         chat_id: -1002060420752
-        parse_mode: ""
+        parse_mode: "HTML"
+        message: '{{ template "telegram.default.message" . }}'
 
 # The directory from which notification templates are read.
 templates:
-  - "/etc/alertmanager/template/*.tmpl"
+  - "/config/templates/alert.tmpl"
