@@ -35,7 +35,7 @@ use dotenv::dotenv;
 use tokio::time::interval;
 
 use config::{get_config, init_long_tail_asset_configuration, periodic_config_update, DataType};
-use processing::common::{check_publisher_balance, verify_indexer_sync};
+use processing::common::{check_publisher_balance, indexers_are_synced};
 use utils::{is_long_tail_asset, log_tasks_results};
 
 #[tokio::main]
@@ -146,7 +146,7 @@ pub(crate) async fn onchain_monitor(
         interval.tick().await; // Wait for the next tick
 
         // Skip if indexer is still syncing
-        if wait_for_syncing && verify_indexer_sync(data_type).await.is_err() {
+        if wait_for_syncing && !indexers_are_synced(data_type).await {
             continue;
         }
 
@@ -225,7 +225,7 @@ pub(crate) async fn publisher_monitor(
         interval.tick().await; // Wait for the next tick
 
         // Skip if indexer is still syncing
-        if wait_for_syncing && verify_indexer_sync(&DataType::Spot).await.is_err() {
+        if wait_for_syncing && !indexers_are_synced(&DataType::Spot).await {
             continue;
         }
 
