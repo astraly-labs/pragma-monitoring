@@ -43,6 +43,27 @@ pub async fn is_syncing(data_type: &DataType) -> Result<bool, MonitoringError> {
     Ok(blocks_left.is_some())
 }
 
+/// Check if the indexers are still syncing
+pub async fn verify_indexer_sync(data_type: &DataType) -> Result<(), ()> {
+    match is_syncing(data_type).await {
+        Ok(true) => {
+            log::info!("[{data_type}] Indexers are still syncing ♻️");
+            Err(())
+        }
+        Ok(false) => {
+            log::info!("[{data_type}] Indexers are synced ✅");
+            Ok(())
+        }
+        Err(e) => {
+            log::error!(
+                "[{data_type}] Failed to check if indexers are syncing: {:?}",
+                e
+            );
+            Err(())
+        }
+    }
+}
+
 /// Returns the status of the indexer
 ///
 /// # Arguments

@@ -35,10 +35,8 @@ use dotenv::dotenv;
 use tokio::time::interval;
 
 use config::{get_config, init_long_tail_asset_configuration, periodic_config_update, DataType};
-use processing::common::{check_publisher_balance, is_syncing};
-use utils::is_long_tail_asset;
-
-use crate::utils::log_tasks_results;
+use processing::common::{check_publisher_balance, verify_indexer_sync};
+use utils::{is_long_tail_asset, log_tasks_results};
 
 #[tokio::main]
 async fn main() {
@@ -148,23 +146,8 @@ pub(crate) async fn onchain_monitor(
         interval.tick().await; // Wait for the next tick
 
         // Skip if indexer is still syncing
-        if wait_for_syncing {
-            match is_syncing(data_type).await {
-                Ok(true) => {
-                    log::info!("[{data_type}] Indexers are still syncing ♻️");
-                    continue;
-                }
-                Ok(false) => {
-                    log::info!("[{data_type}] Indexers are synced ✅");
-                }
-                Err(e) => {
-                    log::error!(
-                        "[{data_type}] Failed to check if indexers are syncing: {:?}",
-                        e
-                    );
-                    continue;
-                }
-            }
+        if wait_for_syncing && verify_indexer_sync(data_type).await.is_err() {
+            continue;
         }
 
         let tasks: Vec<_> = monitoring_config
@@ -241,23 +224,9 @@ pub(crate) async fn publisher_monitor(
     loop {
         interval.tick().await; // Wait for the next tick
 
-        if wait_for_syncing {
-            match is_syncing(&DataType::Spot).await {
-                Ok(true) => {
-                    log::info!("[PUBLISHERS] Indexers are still syncing ♻️");
-                    continue;
-                }
-                Ok(false) => {
-                    log::info!("PUBLISHERS] Indexers are synced ✅");
-                }
-                Err(e) => {
-                    log::error!(
-                        "[PUBLISHERS] Failed to check if indexers are syncing: {:?}",
-                        e
-                    );
-                    continue;
-                }
-            }
+        // Skip if indexer is still syncing
+        if wait_for_syncing && verify_indexer_sync(&DataType::Spot).await.is_err() {
+            continue;
         }
 
         let tasks: Vec<_> = monitoring_config
@@ -292,6 +261,8 @@ pub(crate) async fn vrf_monitor(pool: Pool<AsyncDieselConnectionManager<AsyncPgC
     let monitoring_config = get_config(None).await;
     let mut interval = interval(Duration::from_secs(30));
     loop {
+        interval.tick().await; // Wait for the next tick
+
         let tasks: Vec<_> = vec![
             tokio::spawn(Box::pin(processing::vrf::check_vrf_balance(
                 monitoring_config.network().vrf_address,
@@ -309,7 +280,5 @@ pub(crate) async fn vrf_monitor(pool: Pool<AsyncDieselConnectionManager<AsyncPgC
 
         let results: Vec<_> = futures::future::join_all(tasks).await;
         log_tasks_results("VRF", results);
-
-        interval.tick().await; // Wait for the next tick
     }
 }
