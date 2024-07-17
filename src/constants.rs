@@ -50,7 +50,7 @@ lazy_static! {
     pub static ref LONG_TAIL_ASSET_THRESHOLD: GaugeVec = register_gauge_vec!(
         opts!(
             "long_tail_asset_threshold",
-            "Deviation threshold for long tail assets"
+            "Deviation threshold configuration for long tail assets"
         ),
         &["pair"]
     )
@@ -59,7 +59,7 @@ lazy_static! {
     pub static ref LONG_TAIL_ASSET_DEVIATION: GaugeVec = register_gauge_vec!(
         opts!(
             "long_tail_asset_deviation",
-            "Deviation between sources for long tail assets for spot or future prices"
+            "Deviation between two sources for long tail assets"
         ),
         &["network", "pair", "type", "source1", "source2"]
     )
