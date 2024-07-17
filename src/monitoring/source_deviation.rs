@@ -10,7 +10,7 @@ use starknet::{
 
 use crate::{config::get_config, error::MonitoringError, types::Entry, utils::try_felt_to_u32};
 
-/// Calculates the deviation from the on-chain price
+/// Calculates the deviation of a price from the on-chain price
 /// Returns the deviation and the number of sources aggregated
 pub async fn source_deviation<T: Entry>(
     query: &T,
