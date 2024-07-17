@@ -19,7 +19,7 @@ use tokio::sync::OnceCell;
 use url::Url;
 
 use crate::{
-    constants::{CONFIG_UPDATE_INTERVAL, LONG_TAIL_ASSET_THRESHOLD},
+    constants::{CONFIG_UPDATE_INTERVAL, LONG_TAIL_ASSETS, LONG_TAIL_ASSET_THRESHOLD},
     utils::try_felt_to_u32,
 };
 
@@ -445,15 +445,15 @@ async fn init_future_config(
 }
 
 #[allow(dead_code)]
-/// Fill the LONG_TAIL_ASSET_THRESHOLD metrics with every long tail assets configuration.
-/// TODO: fetch the long tail asset list from an external config?
+/// Fill the LONG_TAIL_ASSET_THRESHOLD metrics with every long tail assets configuration
+/// fetched from LONG_TAIL_ASSETS.
+/// TODO: LONG_TAIL_ASSETS should be an independent (db, yaml...) configuration?
 pub fn init_long_tail_asset_configuration() {
-    LONG_TAIL_ASSET_THRESHOLD
-        .with_label_values(&["ZEND/USD"])
-        .set(0.1);
-    LONG_TAIL_ASSET_THRESHOLD
-        .with_label_values(&["NSTR/USD"])
-        .set(0.15);
+    for (pair, threshold) in LONG_TAIL_ASSETS.iter() {
+        LONG_TAIL_ASSET_THRESHOLD
+            .with_label_values(&[pair])
+            .set(*threshold);
+    }
 }
 
 /// Parse pairs from a comma separated string.

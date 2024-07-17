@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use lazy_static::lazy_static;
 use phf::phf_map;
 use prometheus::{opts, register_gauge_vec, register_int_gauge_vec, GaugeVec, IntGaugeVec};
@@ -19,6 +21,17 @@ pub(crate) static COINGECKO_IDS: phf::Map<&'static str, &'static str> = phf_map!
 };
 
 lazy_static! {
+    /// TODO: Current storage of long tail assets here is not really good.
+    /// We should probably store them either in a yaml config file or a
+    /// database (cons of a database => update the threshold/pairs without restarting
+    /// the monitoring service).
+    pub static ref LONG_TAIL_ASSETS: HashMap<String, f64> = {
+        let mut map = HashMap::new();
+        map.insert("ZEND/USD".to_string(), 0.1);
+        map.insert("NSTR/USD".to_string(), 0.15);
+        map
+    };
+
     /// We have a list of assets that are defined as long tail assets.
     /// They have lower liquidity and higher volatilty - thus, it is trickier
     /// to track their prices and have good alerting.
@@ -34,10 +47,6 @@ lazy_static! {
     /// We define all the long tail assets in the config::init_long_tail_asset_configuration
     /// function.
     ///
-    /// TODO: Current storage of long tail assets here is not really good.
-    /// We should probably store them either in a yaml config file or a
-    /// database (cons of a database => update the threshold/pairs without restarting
-    /// the monitoring service).
     pub static ref LONG_TAIL_ASSET_THRESHOLD: GaugeVec = register_gauge_vec!(
         opts!(
             "long_tail_asset_threshold",
