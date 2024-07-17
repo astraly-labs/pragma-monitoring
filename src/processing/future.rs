@@ -4,6 +4,7 @@ extern crate dotenv;
 use crate::config::get_config;
 use crate::config::DataType;
 use crate::config::NetworkName;
+use crate::constants::LONG_TAIL_ASSET_DEVIATION;
 use crate::constants::NUM_SOURCES;
 use crate::constants::ON_OFF_PRICE_DEVIATION;
 use crate::constants::PAIR_PRICE;
@@ -214,4 +215,60 @@ pub async fn process_data_by_publisher(
         }
         Err(e) => Err(e.into()),
     }
+}
+
+pub async fn process_long_tail_asset(
+    pool: deadpool::managed::Pool<AsyncDieselConnectionManager<AsyncPgConnection>>,
+    pair: String,
+    sources: Vec<String>,
+) -> Result<u64, MonitoringError> {
+    let mut conn = pool.get().await.map_err(MonitoringError::Connection)?;
+
+    let config = get_config(None).await;
+    let network_env = &config.network_str();
+    let data_type = "future";
+
+    let decimals = *config.decimals(DataType::Future).get(&pair).unwrap();
+
+    let mut prices = Vec::new();
+    for src in &sources {
+        let result: Result<FutureEntry, _> = match config.network().name {
+            NetworkName::Testnet => {
+                testnet_dsl::future_entry
+                    .filter(testnet_dsl::pair_id.eq(&pair))
+                    .filter(testnet_dsl::source.eq(src))
+                    .order(testnet_dsl::block_timestamp.desc())
+                    .first(&mut conn)
+                    .await
+            }
+            NetworkName::Mainnet => {
+                mainnet_dsl::mainnet_future_entry
+                    .filter(mainnet_dsl::pair_id.eq(&pair))
+                    .filter(mainnet_dsl::source.eq(src))
+                    .order(mainnet_dsl::block_timestamp.desc())
+                    .first(&mut conn)
+                    .await
+            }
+        };
+
+        if let Ok(data) = result {
+            let price_as_f64 = data.price.to_f64().ok_or(MonitoringError::Price(
+                "Failed to convert price to f64".to_string(),
+            ))?;
+            let normalized_price = price_as_f64 / (10_u64.pow(decimals)) as f64;
+            prices.push((src.clone(), normalized_price));
+        }
+    }
+
+    // Calculate deviations between sources
+    for (i, (src1, price1)) in prices.iter().enumerate() {
+        for (src2, price2) in prices.iter().skip(i + 1) {
+            let deviation = (price1 - price2).abs() / price1;
+            LONG_TAIL_ASSET_DEVIATION
+                .with_label_values(&[network_env, &pair, data_type, src1, src2])
+                .set(deviation);
+        }
+    }
+
+    Ok(0)
 }

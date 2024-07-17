@@ -4,6 +4,8 @@ use num_bigint::BigUint;
 use starknet::core::types::Felt;
 use tokio::task::JoinError;
 
+use crate::constants::LONG_TAIL_ASSET_THRESHOLD;
+
 #[derive(Debug)]
 pub enum FeltConversionError {
     Overflow,
@@ -37,4 +39,10 @@ pub(crate) fn log_tasks_results<T, E: Display>(
             Err(e) => log::error!("[{category}]: Task failed with error: {:?}", e),
         }
     }
+}
+
+/// Check if the provided pair in a long tail asset.
+#[allow(dead_code)]
+pub(crate) fn is_long_tail_asset(pair: &str) -> bool {
+    LONG_TAIL_ASSET_THRESHOLD.with_label_values(&[pair]).get() > 0.0
 }

@@ -18,7 +18,10 @@ use strum::{Display, EnumString, IntoStaticStr};
 use tokio::sync::OnceCell;
 use url::Url;
 
-use crate::{constants::CONFIG_UPDATE_INTERVAL, utils::try_felt_to_u32};
+use crate::{
+    constants::{CONFIG_UPDATE_INTERVAL, LONG_TAIL_ASSET_THRESHOLD},
+    utils::try_felt_to_u32,
+};
 
 #[derive(Debug, Clone, EnumString, IntoStaticStr)]
 pub enum NetworkName {
@@ -439,6 +442,18 @@ async fn init_future_config(
         sources,
         table_name: "future_entry".to_string(),
     }
+}
+
+#[allow(dead_code)]
+/// Fill the LONG_TAIL_ASSET_THRESHOLD metrics with every long tail assets configuration.
+/// TODO: fetch the long tail asset list from an external config?
+pub fn init_long_tail_asset_configuration() {
+    LONG_TAIL_ASSET_THRESHOLD
+        .with_label_values(&["ZEND/USD"])
+        .set(0.1);
+    LONG_TAIL_ASSET_THRESHOLD
+        .with_label_values(&["NSTR/USD"])
+        .set(0.15);
 }
 
 /// Parse pairs from a comma separated string.

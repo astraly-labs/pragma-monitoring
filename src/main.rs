@@ -34,8 +34,9 @@ use diesel_async::AsyncPgConnection;
 use dotenv::dotenv;
 use tokio::time::interval;
 
-use config::{get_config, periodic_config_update, DataType};
+use config::{get_config, init_long_tail_asset_configuration, periodic_config_update, DataType};
 use processing::common::{check_publisher_balance, is_syncing};
+use utils::is_long_tail_asset;
 
 use crate::utils::log_tasks_results;
 
@@ -48,18 +49,18 @@ async fn main() {
 
     // Define the pairs to monitor
     let monitoring_config = get_config(None).await;
-
     log::info!("Successfully fetched config: {:?}", monitoring_config);
-
     tokio::spawn(server::run_metrics_server());
 
     let database_url: String = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
     let config = AsyncDieselConnectionManager::<diesel_async::AsyncPgConnection>::new(database_url);
     let pool = Pool::builder(config).build().unwrap();
 
+    // Set the long tail asset list
+    init_long_tail_asset_configuration();
     // Monitor spot/future in parallel
-    let spot_monitoring = tokio::spawn(monitor(pool.clone(), true, &DataType::Spot));
-    let future_monitoring = tokio::spawn(monitor(pool.clone(), true, &DataType::Future));
+    let spot_monitoring = tokio::spawn(onchain_monitor(pool.clone(), true, &DataType::Spot));
+    let future_monitoring = tokio::spawn(onchain_monitor(pool.clone(), true, &DataType::Future));
     let publisher_monitoring = tokio::spawn(publisher_monitor(pool.clone(), false));
     let api_monitoring = tokio::spawn(api_monitor());
     let vrf_monitoring = tokio::spawn(vrf_monitor(pool.clone()));
@@ -112,12 +113,19 @@ pub(crate) async fn api_monitor() {
         let mut tasks: Vec<_> = monitoring_config
             .sources(DataType::Spot)
             .iter()
-            .flat_map(|(pair, _sources)| {
-                vec![tokio::spawn(Box::pin(
-                    processing::api::process_data_by_pair(pair.clone()),
-                ))]
+            .flat_map(|(pair, sources)| {
+                if is_long_tail_asset(pair) {
+                    vec![tokio::spawn(Box::pin(
+                        processing::api::process_long_tail_assets(pair.clone(), sources.clone()),
+                    ))]
+                } else {
+                    vec![tokio::spawn(Box::pin(
+                        processing::api::process_data_by_pair(pair.clone()),
+                    ))]
+                }
             })
             .collect();
+
         tasks.push(tokio::spawn(Box::pin(
             processing::api::process_sequencer_data(),
         )));
@@ -127,7 +135,7 @@ pub(crate) async fn api_monitor() {
     }
 }
 
-pub(crate) async fn monitor(
+pub(crate) async fn onchain_monitor(
     pool: Pool<AsyncDieselConnectionManager<AsyncPgConnection>>,
     wait_for_syncing: bool,
     data_type: &DataType,
@@ -164,34 +172,54 @@ pub(crate) async fn monitor(
             .iter()
             .flat_map(|(pair, sources)| match data_type {
                 DataType::Spot => {
-                    vec![
-                        tokio::spawn(Box::pin(processing::spot::process_data_by_pair(
-                            pool.clone(),
-                            pair.clone(),
-                        ))),
-                        tokio::spawn(Box::pin(
-                            processing::spot::process_data_by_pair_and_sources(
+                    if is_long_tail_asset(pair) {
+                        vec![tokio::spawn(Box::pin(
+                            processing::spot::process_long_tail_asset(
                                 pool.clone(),
                                 pair.clone(),
                                 sources.to_vec(),
                             ),
-                        )),
-                    ]
+                        ))]
+                    } else {
+                        vec![
+                            tokio::spawn(Box::pin(processing::spot::process_data_by_pair(
+                                pool.clone(),
+                                pair.clone(),
+                            ))),
+                            tokio::spawn(Box::pin(
+                                processing::spot::process_data_by_pair_and_sources(
+                                    pool.clone(),
+                                    pair.clone(),
+                                    sources.to_vec(),
+                                ),
+                            )),
+                        ]
+                    }
                 }
                 DataType::Future => {
-                    vec![
-                        tokio::spawn(Box::pin(processing::future::process_data_by_pair(
-                            pool.clone(),
-                            pair.clone(),
-                        ))),
-                        tokio::spawn(Box::pin(
-                            processing::future::process_data_by_pair_and_sources(
+                    if is_long_tail_asset(pair) {
+                        vec![tokio::spawn(Box::pin(
+                            processing::future::process_long_tail_asset(
                                 pool.clone(),
                                 pair.clone(),
                                 sources.to_vec(),
                             ),
-                        )),
-                    ]
+                        ))]
+                    } else {
+                        vec![
+                            tokio::spawn(Box::pin(processing::future::process_data_by_pair(
+                                pool.clone(),
+                                pair.clone(),
+                            ))),
+                            tokio::spawn(Box::pin(
+                                processing::future::process_data_by_pair_and_sources(
+                                    pool.clone(),
+                                    pair.clone(),
+                                    sources.to_vec(),
+                                ),
+                            )),
+                        ]
+                    }
                 }
             })
             .collect();

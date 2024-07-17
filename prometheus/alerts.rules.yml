@@ -64,6 +64,15 @@ groups:
           summary: "Price deviation is too high"
           description: "The median on-chain price of {{ $labels.pair }} has deviated for more than 2.5% with the reference price from DefiLlama."
 
+      - alert: LongTailAssetDeviation
+        expr: abs(long_tail_asset_deviation) > on(pair) group_left long_tail_asset_threshold
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Long tail asset deviation is too high"
+          description: 'The deviation between sources for {{ $labels.pair }} ({{ $labels.type }}) from {{ $labels.source1 }} vs {{ $labels.source2 }} has exceeded the configured threshold of {{ $value | printf "%.2f" }}.'
+
   - name: API
     rules:
       - alert: TimeSinceLastUpdateTooHigh

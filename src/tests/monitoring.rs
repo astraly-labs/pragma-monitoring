@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use crate::{
     config::{Config, DataType},
-    monitor,
+    onchain_monitor,
     tests::common::{
         fixtures::{database, test_config},
         utils::{publish_data, wait_for_expect},
@@ -30,7 +30,7 @@ async fn detects_publisher_down(
     // Spawn non-blocking monitor
     let monitor_handle = tokio::spawn(async move {
         let db = db_clone.lock().await;
-        monitor(db.clone(), false, &DataType::Spot).await;
+        onchain_monitor(db.clone(), false, &DataType::Spot).await;
     });
 
     // Publish a wrong price
