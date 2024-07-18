@@ -200,6 +200,8 @@ pub async fn periodic_config_update() {
     let mut next_update = Instant::now() + interval;
 
     loop {
+        log::info!("[CONFIG] Updating config...");
+
         let new_config = Config::create_from_env().await;
         let updated_config = ArcSwap::from_pointee(new_config.clone());
 

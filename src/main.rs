@@ -180,29 +180,19 @@ pub(crate) async fn onchain_monitor(
                     }
                 }
                 DataType::Future => {
-                    if is_long_tail_asset(pair) {
-                        vec![tokio::spawn(Box::pin(
-                            processing::future::process_long_tail_asset(
+                    vec![
+                        tokio::spawn(Box::pin(processing::future::process_data_by_pair(
+                            pool.clone(),
+                            pair.clone(),
+                        ))),
+                        tokio::spawn(Box::pin(
+                            processing::future::process_data_by_pair_and_sources(
                                 pool.clone(),
                                 pair.clone(),
                                 sources.to_vec(),
                             ),
-                        ))]
-                    } else {
-                        vec![
-                            tokio::spawn(Box::pin(processing::future::process_data_by_pair(
-                                pool.clone(),
-                                pair.clone(),
-                            ))),
-                            tokio::spawn(Box::pin(
-                                processing::future::process_data_by_pair_and_sources(
-                                    pool.clone(),
-                                    pair.clone(),
-                                    sources.to_vec(),
-                                ),
-                            )),
-                        ]
-                    }
+                        )),
+                    ]
                 }
             })
             .collect();
