@@ -20,7 +20,7 @@ services:
       - grafana-data:/var/lib/grafana
 
   alertmanager:
-    image: prom/alertmanager:v0.23.0
+    image: prom/alertmanager:v0.27.0
     restart: unless-stopped
     ports:
       - "9093:9093"

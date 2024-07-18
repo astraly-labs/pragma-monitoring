@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use lazy_static::lazy_static;
 use phf::phf_map;
 use prometheus::{opts, register_gauge_vec, register_int_gauge_vec, GaugeVec, IntGaugeVec};
@@ -19,6 +21,52 @@ pub(crate) static COINGECKO_IDS: phf::Map<&'static str, &'static str> = phf_map!
 };
 
 lazy_static! {
+    /// TODO: Current storage of long tail assets here is not really good.
+    /// We should probably store them either in a yaml config file or a
+    /// database (cons of a database => update the threshold/pairs without restarting
+    /// the monitoring service).
+    pub static ref LONG_TAIL_ASSETS: HashMap<String, f64> = {
+        let mut map = HashMap::new();
+        map.insert("ZEND/USD".to_string(), 0.1);
+        map.insert("NSTR/USD".to_string(), 0.15);
+        map
+    };
+
+    /// We have a list of assets that are defined as long tail assets.
+    /// They have lower liquidity and higher volatilty - thus, it is trickier
+    /// to track their prices and have good alerting.
+    /// Our way of dealing with those assets is:
+    /// - we don't use the usual metrics "price_deviation" below
+    /// - instead, we compare all the sources one to one and if the deviation
+    /// between the two is greater than a certain threshold, we send an alert.
+    ///
+    /// "LONG_TAIL_ASSET_THRESHOLD" will contain the long tail assets pairs
+    /// and the threshold.
+    /// "LONG_TAIL_ASSET_DEVIATION" will contain the deviation between two sources.
+    ///
+    /// We define all the long tail assets in the config::init_long_tail_asset_configuration
+    /// function.
+    ///
+    pub static ref LONG_TAIL_ASSET_THRESHOLD: GaugeVec = register_gauge_vec!(
+        opts!(
+            "long_tail_asset_threshold",
+            "Deviation threshold configuration for long tail assets"
+        ),
+        &["pair"]
+    )
+    .unwrap();
+
+    pub static ref LONG_TAIL_ASSET_DEVIATION: GaugeVec = register_gauge_vec!(
+        opts!(
+            "long_tail_asset_deviation",
+            "Deviation between two sources for long tail assets"
+        ),
+        &["network", "pair", "type", "source1", "source2"]
+    )
+    .unwrap();
+
+    // Regular metrics below
+
     pub static ref TIME_SINCE_LAST_UPDATE_PUBLISHER: GaugeVec = register_gauge_vec!(
         opts!(
             "time_since_last_update_seconds",
@@ -43,7 +91,7 @@ lazy_static! {
     pub static ref PRICE_DEVIATION: GaugeVec = register_gauge_vec!(
         opts!(
             "price_deviation",
-            "Price deviation from the reference price."
+            "Price deviation for a source compared to a reference price (DefiLlama)."
         ),
         &["network", "pair", "source", "type"]
     )
@@ -51,7 +99,7 @@ lazy_static! {
     pub static ref PRICE_DEVIATION_SOURCE: GaugeVec = register_gauge_vec!(
         opts!(
             "price_deviation_source",
-            "Price deviation from the reference price."
+            "Price deviation for a source compared to our oracle price."
         ),
         &["network", "pair", "source", "type"]
     )
@@ -80,7 +128,7 @@ lazy_static! {
     pub static ref API_PRICE_DEVIATION: GaugeVec = register_gauge_vec!(
         opts!(
             "api_price_deviation",
-            "Price deviation from the reference price."
+            "Price deviation for our API compared to a reference price (DefiLlama)."
         ),
         &["network", "pair"]
     )
@@ -88,7 +136,7 @@ lazy_static! {
     pub static ref ON_OFF_PRICE_DEVIATION: GaugeVec = register_gauge_vec!(
         opts!(
             "on_off_price_deviation",
-            "On chain price deviation from the reference price"
+            "Median on chain price deviation compared to a reference price (Defillama)."
         ),
         &["network", "pair", "type"]
     )

@@ -49,6 +49,14 @@ pub async fn process_data_by_pair(pair: String) -> Result<(), MonitoringError> {
     Ok(())
 }
 
+// TODO: Currently not possible to retrieve the last price for a given source
+pub async fn process_long_tail_assets(
+    _pair: String,
+    _sources: Vec<String>,
+) -> Result<(), MonitoringError> {
+    Ok(())
+}
+
 pub async fn process_sequencer_data() -> Result<(), MonitoringError> {
     let pair = "ETH/STRK".to_string();
 

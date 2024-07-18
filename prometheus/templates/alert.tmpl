@@ -9,16 +9,20 @@
 {{ end }}
 {{ end }}
 
-{{ define "__pragma_text_alert_list" }}{{ range . }}
+{{ define "__pragma_text_alert_list" }}
+{{ range . }}
 ---
 🪪 <b>{{ .Labels.alertname }}</b>
 {{- if .Annotations.summary }}
-📝 {{ .Annotations.summary }}{{ end }}
+📝 {{ .Annotations.summary }}
+{{ end }}
 {{- if .Annotations.description }}
-📖 {{ .Annotations.description }}{{ end }}
+📖 {{ .Annotations.description }}
+{{ end }}
 
 🌍 **Network:** {{ .Labels.network }}
 🧩 **Publisher:** {{ .Labels.publisher }}
 🔍 **Severity:** {{ .Labels.severity | toUpper }}
 💿 **Data Type:** {{ .Labels.type | title }}
+{{ end }}
 {{ end }}

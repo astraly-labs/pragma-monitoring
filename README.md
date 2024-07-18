@@ -13,6 +13,8 @@ It then processes the data and computes the following metrics:
 - `time_since_last_update_pair_id{network, pair, type}`: Time since an update has been published for a given pair. (in seconds)
 - `price_deviation{network, pair, source, type}`: Deviation of the price from a reference price (DefiLlama API) given source and pair. (in percents)
 - `price_deviation_source{network, pair, source, type}`: Deviation of the price from the on-chain aggregated median price given source and pair. (in percents)
+- `long_tail_asset_threshold{pair}`: Deviation threshold configuration for long tail assets.
+- `long_tail_asset_deviation{network, pair, type, source1, source2}`: Deviation between two sources for long tail assets.
 - `publisher_balance{network, publisher}`: Balance of a publisher. (in ETH)
 - `vrf_balance{network}`: Balance of the VRF contract. (in ETH)
 - `vrf_requests_count{network, status}`: Number of VRF requests handled for a given network.
@@ -60,7 +62,7 @@ IGNORE_SOURCES=BITSTAMP,DEFILLAMA
 IGNORE_PUBLISHERS=BINANCE
 
 # Prometheus
-TELEGRAM_BOT_TOKEN=
+TELEGRAM_TOKEN=
 OPSGENIE_API_KEY=
 ```
 

@@ -18,7 +18,10 @@ use strum::{Display, EnumString, IntoStaticStr};
 use tokio::sync::OnceCell;
 use url::Url;
 
-use crate::{constants::CONFIG_UPDATE_INTERVAL, utils::try_felt_to_u32};
+use crate::{
+    constants::{CONFIG_UPDATE_INTERVAL, LONG_TAIL_ASSETS, LONG_TAIL_ASSET_THRESHOLD},
+    utils::try_felt_to_u32,
+};
 
 #[derive(Debug, Clone, EnumString, IntoStaticStr)]
 pub enum NetworkName {
@@ -197,6 +200,8 @@ pub async fn periodic_config_update() {
     let mut next_update = Instant::now() + interval;
 
     loop {
+        log::info!("[CONFIG] Updating config...");
+
         let new_config = Config::create_from_env().await;
         let updated_config = ArcSwap::from_pointee(new_config.clone());
 
@@ -438,6 +443,18 @@ async fn init_future_config(
         pairs,
         sources,
         table_name: "future_entry".to_string(),
+    }
+}
+
+#[allow(dead_code)]
+/// Fill the LONG_TAIL_ASSET_THRESHOLD metrics with every long tail assets configuration
+/// fetched from LONG_TAIL_ASSETS.
+/// TODO: LONG_TAIL_ASSETS should be an independent (db, yaml...) configuration?
+pub fn init_long_tail_asset_configuration() {
+    for (pair, threshold) in LONG_TAIL_ASSETS.iter() {
+        LONG_TAIL_ASSET_THRESHOLD
+            .with_label_values(&[pair])
+            .set(*threshold);
     }
 }
 
