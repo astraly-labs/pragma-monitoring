@@ -27,8 +27,10 @@ lazy_static! {
     /// the monitoring service).
     pub static ref LONG_TAIL_ASSETS: HashMap<String, f64> = {
         let mut map = HashMap::new();
-        map.insert("ZEND/USD".to_string(), 0.1);
-        map.insert("NSTR/USD".to_string(), 0.15);
+        map.insert("ZEND/USD".to_string(), 0.05);
+        map.insert("NSTR/USD".to_string(), 0.05);
+        map.insert("LUSD/USD".to_string(), 0.05);
+        map.insert("LORDS/USD".to_string(), 0.05);
         map
     };
 
