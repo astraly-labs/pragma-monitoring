@@ -1,4 +1,4 @@
- # syntax=docker/dockerfile-upstream:master
+# syntax=docker/dockerfile-upstream:master
 
 ARG RUST_VERSION=1.72.0
 FROM lukemathwalker/cargo-chef:latest-rust-${RUST_VERSION}-slim-bullseye AS cargo-chef
@@ -22,18 +22,17 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
 RUN cargo chef cook --profile release --recipe-path recipe.json 
 COPY . .
 RUN cargo build --locked --release
-ARG APP_NAME=pragma-monitoring
-ENV APP_NAME $APP_NAME
-RUN cp /app/target/release/$APP_NAME /bin/server
 
 FROM debian:bullseye-slim AS final
-RUN apt-get update && DEBIEN_FRONTEND=noninteractive apt-get install -y \ 
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \ 
     libpq-dev \
     libssl1.1 \
     procps \
     && rm -rf /var/lib/apt/lists/*
 
-COPY --from=builder /bin/server /bin/
+ARG APP_NAME=pragma-monitoring
+ENV APP_NAME $APP_NAME
+COPY --from=builder /app/target/release/${APP_NAME} /bin/server
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 
 RUN adduser \
@@ -50,4 +49,4 @@ EXPOSE 8080
 
 ENV RUST_LOG=info
 
-CMD ["/bin/server"]￼
+CMD ["/bin/server"]
