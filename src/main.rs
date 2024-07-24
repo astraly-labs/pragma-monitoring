@@ -179,6 +179,7 @@ pub(crate) async fn onchain_monitor(
                         ]
                     }
                 }
+                // TODO: Long tail assets aren't treated as such for Future data
                 DataType::Future => {
                     vec![
                         tokio::spawn(Box::pin(processing::future::process_data_by_pair(

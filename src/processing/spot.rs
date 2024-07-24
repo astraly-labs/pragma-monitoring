@@ -2,9 +2,9 @@ extern crate diesel;
 extern crate dotenv;
 
 use crate::config::get_config;
+use crate::config::get_long_tail_threshold;
 use crate::config::DataType;
 use crate::config::NetworkName;
-use crate::constants::LONG_TAIL_ASSET_DEVIATION;
 use crate::constants::NUM_SOURCES;
 use crate::constants::ON_OFF_PRICE_DEVIATION;
 use crate::constants::PAIR_PRICE;
@@ -12,6 +12,7 @@ use crate::constants::PRICE_DEVIATION;
 use crate::constants::PRICE_DEVIATION_SOURCE;
 use crate::constants::TIME_SINCE_LAST_UPDATE_PAIR_ID;
 use crate::constants::TIME_SINCE_LAST_UPDATE_PUBLISHER;
+use crate::constants::{LONG_TAIL_ASSET_DEVIATING_SOURCES, LONG_TAIL_ASSET_TOTAL_SOURCES};
 use crate::diesel::QueryDsl;
 use crate::error::MonitoringError;
 use crate::models::SpotEntry;
@@ -217,53 +218,82 @@ pub async fn process_long_tail_asset(
     pair: String,
     sources: Vec<String>,
 ) -> Result<u64, MonitoringError> {
+    let config = get_config(None).await;
+    let network_env = &config.network_str();
+    let decimals = *config.decimals(DataType::Spot).get(&pair).unwrap();
+
+    let mut timestamps = Vec::with_capacity(sources.len());
+    let mut deviations = Vec::with_capacity(sources.len());
+
+    for source in sources.iter() {
+        log::info!("Processing data for pair: {} and source: {}", pair, source);
+        let (timestamp, price_deviation) =
+            get_price_deviation_for_source_from_chain(pool.clone(), &pair, source, decimals)
+                .await?;
+        timestamps.push(timestamp);
+        deviations.push(price_deviation);
+    }
+
+    let threshold = get_long_tail_threshold(&pair, sources.len()).unwrap();
+
+    // Count deviating sources
+    let deviating_sources = deviations
+        .iter()
+        .filter(|&&deviation| deviation > threshold)
+        .count();
+
+    // Set the metric for the number of deviating sources
+    LONG_TAIL_ASSET_DEVIATING_SOURCES
+        .with_label_values(&[network_env, &pair])
+        .set(deviating_sources as f64);
+
+    // Set the metric for the total number of sources
+    LONG_TAIL_ASSET_TOTAL_SOURCES
+        .with_label_values(&[network_env, &pair])
+        .set(sources.len() as f64);
+
+    Ok(timestamps.last().copied().unwrap())
+}
+
+pub async fn get_price_deviation_for_source_from_chain(
+    pool: deadpool::managed::Pool<AsyncDieselConnectionManager<AsyncPgConnection>>,
+    pair: &str,
+    source: &str,
+    decimals: u32,
+) -> Result<(u64, f64), MonitoringError> {
     let mut conn = pool.get().await.map_err(MonitoringError::Connection)?;
 
     let config = get_config(None).await;
-    let network_env = &config.network_str();
-    let data_type = "spot";
 
-    let decimals = *config.decimals(DataType::Spot).get(&pair).unwrap();
+    let filtered_by_source_result: Result<SpotEntry, _> = match config.network().name {
+        NetworkName::Testnet => {
+            testnet_dsl::spot_entry
+                .filter(testnet_dsl::pair_id.eq(pair))
+                .filter(testnet_dsl::source.eq(source))
+                .order(testnet_dsl::block_timestamp.desc())
+                .first(&mut conn)
+                .await
+        }
+        NetworkName::Mainnet => {
+            mainnet_dsl::mainnet_spot_entry
+                .filter(mainnet_dsl::pair_id.eq(pair))
+                .filter(mainnet_dsl::source.eq(source))
+                .order(mainnet_dsl::block_timestamp.desc())
+                .first(&mut conn)
+                .await
+        }
+    };
 
-    let mut prices = Vec::new();
-    for src in &sources {
-        let result: Result<SpotEntry, _> = match config.network().name {
-            NetworkName::Testnet => {
-                testnet_dsl::spot_entry
-                    .filter(testnet_dsl::pair_id.eq(&pair))
-                    .filter(testnet_dsl::source.eq(src))
-                    .order(testnet_dsl::block_timestamp.desc())
-                    .first(&mut conn)
-                    .await
-            }
-            NetworkName::Mainnet => {
-                mainnet_dsl::mainnet_spot_entry
-                    .filter(mainnet_dsl::pair_id.eq(&pair))
-                    .filter(mainnet_dsl::source.eq(src))
-                    .order(mainnet_dsl::block_timestamp.desc())
-                    .first(&mut conn)
-                    .await
-            }
-        };
-
-        if let Ok(data) = result {
+    match filtered_by_source_result {
+        Ok(data) => {
+            let time = time_since_last_update(&data);
             let price_as_f64 = data.price.to_f64().ok_or(MonitoringError::Price(
                 "Failed to convert price to f64".to_string(),
             ))?;
             let normalized_price = price_as_f64 / (10_u64.pow(decimals)) as f64;
-            prices.push((src.clone(), normalized_price));
+            let (source_deviation, _) = source_deviation(&data, normalized_price).await?;
+            Ok((time, source_deviation))
         }
+        Err(e) => Err(e.into()),
     }
-
-    // Calculate deviations between sources
-    for (i, (src1, price1)) in prices.iter().enumerate() {
-        for (src2, price2) in prices.iter().skip(i + 1) {
-            let deviation = (price1 - price2).abs() / price1;
-            LONG_TAIL_ASSET_DEVIATION
-                .with_label_values(&[network_env, &pair, data_type, src1, src2])
-                .set(deviation);
-        }
-    }
-
-    Ok(0)
 }

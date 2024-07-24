@@ -64,14 +64,35 @@ groups:
           summary: "Price deviation is too high"
           description: "The median on-chain price of {{ $labels.pair }} has deviated for more than 2.5% with the reference price from DefiLlama."
 
-      - alert: LongTailAssetDeviation
-        expr: abs(long_tail_asset_deviation) > on(pair) group_left long_tail_asset_threshold
+      - alert: LongTailAssetCriticalDeviation
+        expr: |
+          (
+            long_tail_asset_deviating_sources >= 2
+            and
+            long_tail_asset_total_sources <= 6
+          )
+          or
+          (
+            long_tail_asset_deviating_sources / long_tail_asset_total_sources >= 0.25
+            and
+            long_tail_asset_total_sources > 6
+          )
         for: 5m
         labels:
-          severity: warning
+          severity: critical
         annotations:
-          summary: "Long tail asset deviation is too high"
-          description: 'The deviation between sources for {{ $labels.pair }} ({{ $labels.type }}) from {{ $labels.source1 }} vs {{ $labels.source2 }} has exceeded the configured threshold of {{ $value | printf "%.2f" }}.'
+          summary: "Long tail asset critical deviation detected"
+          description: |
+            {{ $deviating := printf "%.0f" $value }}
+            {{ $total := printf "%.0f" (long_tail_asset_total_sources) }}
+            {{ $threshold := printf "%.2f" (
+              (long_tail_asset_total_sources <= 6)
+              * 100 * last_over_time(long_tail_asset_threshold{type="low"}[1h])
+              or
+              (long_tail_asset_total_sources > 6)
+              * 100 * last_over_time(long_tail_asset_threshold{type="high"}[1h])
+            ) }}
+            {{ $deviating }} out of {{ $total }} sources for {{ $labels.pair }} have deviated from the onchain price beyond {{ $threshold }}%.
 
   - name: API
     rules:
