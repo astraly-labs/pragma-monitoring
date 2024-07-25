@@ -89,7 +89,7 @@ groups:
             {{ if gt $total 6.0 }}
               {{ $threshold = long_tail_asset_threshold{type="high"} }}
             {{ end }}
-            {{ printf "%.0f" $deviating }} out of {{ printf "%.0f" $total }} sources for {{ $labels.pair }} have deviated from the onchain price beyond {{ printf "%.2f" (100 * $threshold) }}%.
+            {{ printf "%.0f" $deviating }} out of {{ printf "%.0f" $total }} sources for {{ $labels.pair }} ({{ $labels.type }}) have deviated from the onchain price beyond {{ printf "%.2f" (100 * $threshold) }}%.
 
   - name: API
     rules:

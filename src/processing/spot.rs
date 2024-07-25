@@ -236,20 +236,21 @@ pub async fn process_long_tail_asset(
 
     let threshold = get_long_tail_threshold(&pair, sources.len()).unwrap();
 
+    // TODO: Maybe we should only consider recent sources, i.e in the last hour?
     // Count deviating sources
     let deviating_sources = deviations
         .iter()
-        .filter(|&&deviation| deviation > threshold)
+        .filter(|&&deviation| deviation >= threshold)
         .count();
 
     // Set the metric for the number of deviating sources
     LONG_TAIL_ASSET_DEVIATING_SOURCES
-        .with_label_values(&[network_env, &pair])
+        .with_label_values(&[network_env, &pair, "spot"])
         .set(deviating_sources as f64);
 
     // Set the metric for the total number of sources
     LONG_TAIL_ASSET_TOTAL_SOURCES
-        .with_label_values(&[network_env, &pair])
+        .with_label_values(&[network_env, &pair, "spot"])
         .set(sources.len() as f64);
 
     Ok(timestamps.last().copied().unwrap())

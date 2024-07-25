@@ -31,10 +31,10 @@ lazy_static! {
     ///     - `high`: the pair has more than 6 sources.
     pub static ref LONG_TAIL_ASSETS: HashMap<String, (f64, f64)> = {
         let mut map = HashMap::new();
-        map.insert("ZEND/USD".to_string(), (0.05, 0.025));
-        map.insert("NSTR/USD".to_string(), (0.05, 0.025));
-        map.insert("LUSD/USD".to_string(), (0.05, 0.025));
-        map.insert("LORDS/USD".to_string(), (0.05, 0.025));
+        map.insert("ZEND/USD".to_string(), (0.05, 0.03));
+        map.insert("NSTR/USD".to_string(), (0.05, 0.03));
+        map.insert("LUSD/USD".to_string(), (0.05, 0.03));
+        map.insert("LORDS/USD".to_string(), (0.05, 0.03));
         map
     };
 
@@ -67,7 +67,7 @@ lazy_static! {
             "long_tail_asset_deviating_sources",
             "Number of sources deviating for long tail assets"
         ),
-        &["network", "pair"]
+        &["network", "pair", "type"]
     ).unwrap();
 
     pub static ref LONG_TAIL_ASSET_TOTAL_SOURCES: GaugeVec = register_gauge_vec!(
@@ -75,7 +75,7 @@ lazy_static! {
             "long_tail_asset_total_sources",
             "Total number of sources for long tail assets"
         ),
-        &["network", "pair"]
+        &["network", "pair", "type"]
     ).unwrap();
 
     // Regular metrics below
