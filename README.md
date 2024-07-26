@@ -15,7 +15,7 @@ It then processes the data and computes the following metrics:
 - `price_deviation_source{network, pair, source, type}`: Deviation of the price from the on-chain aggregated median price given source and pair. (in percents)
 - `long_tail_asset_threshold{pair, type}`: Deviation threshold configuration for long tail assets. Type can be either "low" for when the pair has less than 7 sources else "high".
 - `long_tail_asset_deviating_sources{network, pair, type}`: Deviation between two sources for long tail assets.
-- `long_tail_asset_total_sources{network, pair, type}`: Current number of sources available for a given pair. 
+- `long_tail_asset_total_sources{network, pair, type}`: Current number of sources available for a given pair.
 - `publisher_balance{network, publisher}`: Balance of a publisher. (in ETH)
 - `vrf_balance{network}`: Balance of the VRF contract. (in ETH)
 - `vrf_requests_count{network, status}`: Number of VRF requests handled for a given network.
