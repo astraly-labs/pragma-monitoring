@@ -19,7 +19,9 @@ use tokio::sync::OnceCell;
 use url::Url;
 
 use crate::{
-    constants::{CONFIG_UPDATE_INTERVAL, LONG_TAIL_ASSETS, LONG_TAIL_ASSET_THRESHOLD},
+    constants::{
+        CONFIG_UPDATE_INTERVAL, LONG_TAIL_ASSETS, LONG_TAIL_ASSET_THRESHOLD, LOW_SOURCES_THRESHOLD,
+    },
     utils::{is_long_tail_asset, try_felt_to_u32},
 };
 
@@ -469,7 +471,7 @@ pub fn get_long_tail_threshold(pair: &str, number_of_sources: usize) -> Option<f
     };
     let (threshold_low, threshold_high) = LONG_TAIL_ASSETS.get(pair).unwrap();
 
-    if number_of_sources <= 6 {
+    if number_of_sources <= LOW_SOURCES_THRESHOLD {
         Some(*threshold_low)
     } else {
         Some(*threshold_high)

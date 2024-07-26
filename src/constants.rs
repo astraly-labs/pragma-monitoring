@@ -4,6 +4,8 @@ use lazy_static::lazy_static;
 use phf::phf_map;
 use prometheus::{opts, register_gauge_vec, register_int_gauge_vec, GaugeVec, IntGaugeVec};
 
+pub(crate) static LOW_SOURCES_THRESHOLD: usize = 6;
+
 #[allow(unused)]
 pub(crate) static COINGECKO_IDS: phf::Map<&'static str, &'static str> = phf_map! {
     "BTC/USD" => "bitcoin",
