@@ -202,10 +202,13 @@ pub async fn process_long_tail_asset(
     let network_env = &config.network_str();
     let decimals = *config.decimals(DataType::Spot).get(&pair).unwrap();
 
-    let mut deviations: Vec<Deviation> = Vec::with_capacity(sources.len());
-
+    let mut latest_time_since_update: u64 = 0;
     for source in sources.iter() {
-        log::info!("Processing data for pair: {} and source: {}", pair, source);
+        log::info!(
+            "Processing long tail asset for pair: {} and source: {}",
+            pair,
+            source
+        );
         let deviation =
             get_price_deviation_for_source_from_chain(pool.clone(), &pair, source, decimals)
                 .await?;
@@ -215,7 +218,7 @@ pub async fn process_long_tail_asset(
             .with_label_values(&[network_env, &pair, "spot", source])
             .set(deviation.price);
 
-        deviations.push(deviation);
+        latest_time_since_update = deviation.time_since_last_update;
     }
 
     // Set the metric for the total number of sources
@@ -223,7 +226,7 @@ pub async fn process_long_tail_asset(
         .with_label_values(&[network_env, &pair, "spot"])
         .set(sources.len() as f64);
 
-    Ok(deviations.last().copied().unwrap().time_since_last_update)
+    Ok(latest_time_since_update)
 }
 
 pub async fn get_price_deviation_for_source_from_chain(
