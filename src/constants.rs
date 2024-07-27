@@ -63,15 +63,13 @@ lazy_static! {
         &["pair", "type"]
     )
     .unwrap();
-
-    pub static ref LONG_TAIL_ASSET_DEVIATING_SOURCES: GaugeVec = register_gauge_vec!(
+    pub static ref LONG_TAIL_ASSET_SOURCE_DEVIATION: GaugeVec = register_gauge_vec!(
         opts!(
-            "long_tail_asset_deviating_sources",
-            "Number of sources deviating for long tail assets"
+            "long_tail_asset_source_deviation",
+            "Deviation of each source from our price for long tail assets"
         ),
-        &["network", "pair", "type"]
+        &["network", "pair", "type", "source"]
     ).unwrap();
-
     pub static ref LONG_TAIL_ASSET_TOTAL_SOURCES: GaugeVec = register_gauge_vec!(
         opts!(
             "long_tail_asset_total_sources",

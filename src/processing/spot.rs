@@ -2,7 +2,6 @@ extern crate diesel;
 extern crate dotenv;
 
 use crate::config::get_config;
-use crate::config::get_long_tail_threshold;
 use crate::config::DataType;
 use crate::config::NetworkName;
 use crate::constants::NUM_SOURCES;
@@ -12,7 +11,7 @@ use crate::constants::PRICE_DEVIATION;
 use crate::constants::PRICE_DEVIATION_SOURCE;
 use crate::constants::TIME_SINCE_LAST_UPDATE_PAIR_ID;
 use crate::constants::TIME_SINCE_LAST_UPDATE_PUBLISHER;
-use crate::constants::{LONG_TAIL_ASSET_DEVIATING_SOURCES, LONG_TAIL_ASSET_TOTAL_SOURCES};
+use crate::constants::{LONG_TAIL_ASSET_SOURCE_DEVIATION, LONG_TAIL_ASSET_TOTAL_SOURCES};
 use crate::diesel::QueryDsl;
 use crate::error::MonitoringError;
 use crate::models::SpotEntry;
@@ -210,24 +209,14 @@ pub async fn process_long_tail_asset(
         let deviation =
             get_price_deviation_for_source_from_chain(pool.clone(), &pair, source, decimals)
                 .await?;
+
+        // Set the deviation metric for each source
+        LONG_TAIL_ASSET_SOURCE_DEVIATION
+            .with_label_values(&[network_env, &pair, "spot", source])
+            .set(deviation.price);
+
         deviations.push(deviation);
     }
-
-    // NOTE: Safe to unwrap because we're sure that only long tails assets enter
-    // the [process_long_tail_asset] function because we used [is_long_tail_asset] earlier.
-    let threshold = get_long_tail_threshold(&pair, sources.len()).unwrap();
-
-    // TODO: Maybe we should only consider recent sources, i.e in the last hour?
-    // Count deviating sources
-    let deviating_sources = deviations
-        .iter()
-        .filter(|&&deviation| deviation.price >= threshold)
-        .count();
-
-    // Set the metric for the number of deviating sources
-    LONG_TAIL_ASSET_DEVIATING_SOURCES
-        .with_label_values(&[network_env, &pair, "spot"])
-        .set(deviating_sources as f64);
 
     // Set the metric for the total number of sources
     LONG_TAIL_ASSET_TOTAL_SOURCES
