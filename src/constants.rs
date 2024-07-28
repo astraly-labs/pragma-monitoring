@@ -66,7 +66,7 @@ lazy_static! {
     pub static ref LONG_TAIL_ASSET_SOURCE_DEVIATION: GaugeVec = register_gauge_vec!(
         opts!(
             "long_tail_asset_source_deviation",
-            "Deviation of each source from our price for long tail assets"
+            "Deviation of each source from our onchain aggregated price for long tail assets"
         ),
         &["network", "pair", "type", "source"]
     ).unwrap();
