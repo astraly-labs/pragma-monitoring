@@ -19,8 +19,10 @@ use tokio::sync::OnceCell;
 use url::Url;
 
 use crate::{
-    constants::{CONFIG_UPDATE_INTERVAL, LONG_TAIL_ASSETS, LONG_TAIL_ASSET_THRESHOLD},
-    utils::try_felt_to_u32,
+    constants::{
+        CONFIG_UPDATE_INTERVAL, LONG_TAIL_ASSETS, LONG_TAIL_ASSET_THRESHOLD, LOW_SOURCES_THRESHOLD,
+    },
+    utils::{is_long_tail_asset, try_felt_to_u32},
 };
 
 #[derive(Debug, Clone, EnumString, IntoStaticStr)]
@@ -451,10 +453,28 @@ async fn init_future_config(
 /// fetched from LONG_TAIL_ASSETS.
 /// TODO: LONG_TAIL_ASSETS should be an independent (db, yaml...) configuration?
 pub fn init_long_tail_asset_configuration() {
-    for (pair, threshold) in LONG_TAIL_ASSETS.iter() {
+    for (pair, (threshold_low, threshold_high)) in LONG_TAIL_ASSETS.iter() {
         LONG_TAIL_ASSET_THRESHOLD
-            .with_label_values(&[pair])
-            .set(*threshold);
+            .with_label_values(&[pair, "low"])
+            .set(*threshold_low);
+        LONG_TAIL_ASSET_THRESHOLD
+            .with_label_values(&[pair, "high"])
+            .set(*threshold_high);
+    }
+}
+
+#[allow(dead_code)]
+/// Retrieves the long tail asset threshold configuration depending on the number of sources.
+pub fn get_long_tail_threshold(pair: &str, number_of_sources: usize) -> Option<f64> {
+    if !is_long_tail_asset(pair) {
+        return None;
+    };
+    let (threshold_low, threshold_high) = LONG_TAIL_ASSETS.get(pair).unwrap();
+
+    if number_of_sources <= LOW_SOURCES_THRESHOLD {
+        Some(*threshold_low)
+    } else {
+        Some(*threshold_high)
     }
 }
 

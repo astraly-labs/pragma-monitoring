@@ -60,7 +60,7 @@ jobs:
         with:
           context: .
           file: Dockerfile
-          platforms:  ${{ format('linux/{0}', matrix.platform) }}
+          platforms: ${{ format('linux/{0}', matrix.platform) }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=registry,ref=${{ env.REGISTRY_IMAGE }}:cache-${{ matrix.platform }},mode=max
           cache-to: type=registry,ref=${{ env.REGISTRY_IMAGE }}:cache-${{ matrix.platform }},mode=max

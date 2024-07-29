@@ -4,6 +4,8 @@ use lazy_static::lazy_static;
 use phf::phf_map;
 use prometheus::{opts, register_gauge_vec, register_int_gauge_vec, GaugeVec, IntGaugeVec};
 
+pub(crate) static LOW_SOURCES_THRESHOLD: usize = 6;
+
 #[allow(unused)]
 pub(crate) static COINGECKO_IDS: phf::Map<&'static str, &'static str> = phf_map! {
     "BTC/USD" => "bitcoin",
@@ -25,12 +27,16 @@ lazy_static! {
     /// We should probably store them either in a yaml config file or a
     /// database (cons of a database => update the threshold/pairs without restarting
     /// the monitoring service).
-    pub static ref LONG_TAIL_ASSETS: HashMap<String, f64> = {
+    ///
+    /// Stores the threshold for when:
+    ///     - `low`: the pair has 6 sources or less
+    ///     - `high`: the pair has more than 6 sources.
+    pub static ref LONG_TAIL_ASSETS: HashMap<String, (f64, f64)> = {
         let mut map = HashMap::new();
-        map.insert("ZEND/USD".to_string(), 0.05);
-        map.insert("NSTR/USD".to_string(), 0.05);
-        map.insert("LUSD/USD".to_string(), 0.05);
-        map.insert("LORDS/USD".to_string(), 0.05);
+        map.insert("ZEND/USD".to_string(), (0.05, 0.03));
+        map.insert("NSTR/USD".to_string(), (0.05, 0.03));
+        map.insert("LUSD/USD".to_string(), (0.05, 0.03));
+        map.insert("LORDS/USD".to_string(), (0.05, 0.03));
         map
     };
 
@@ -54,18 +60,23 @@ lazy_static! {
             "long_tail_asset_threshold",
             "Deviation threshold configuration for long tail assets"
         ),
-        &["pair"]
+        &["pair", "type"]
     )
     .unwrap();
-
-    pub static ref LONG_TAIL_ASSET_DEVIATION: GaugeVec = register_gauge_vec!(
+    pub static ref LONG_TAIL_ASSET_SOURCE_DEVIATION: GaugeVec = register_gauge_vec!(
         opts!(
-            "long_tail_asset_deviation",
-            "Deviation between two sources for long tail assets"
+            "long_tail_asset_source_deviation",
+            "Deviation of each source from our onchain aggregated price for long tail assets"
         ),
-        &["network", "pair", "type", "source1", "source2"]
-    )
-    .unwrap();
+        &["network", "pair", "type", "source"]
+    ).unwrap();
+    pub static ref LONG_TAIL_ASSET_TOTAL_SOURCES: GaugeVec = register_gauge_vec!(
+        opts!(
+            "long_tail_asset_total_sources",
+            "Total number of sources for long tail assets"
+        ),
+        &["network", "pair", "type"]
+    ).unwrap();
 
     // Regular metrics below
 

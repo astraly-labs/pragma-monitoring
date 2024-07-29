@@ -7,6 +7,23 @@ use crate::{
 };
 
 #[allow(dead_code)]
+#[derive(Debug, Clone, Copy)]
+pub struct Deviation {
+    pub price: f64,
+    pub time_since_last_update: u64,
+}
+
+#[allow(dead_code)]
+impl Deviation {
+    pub fn new(price: f64, time_since_last_update: u64) -> Self {
+        Deviation {
+            price,
+            time_since_last_update,
+        }
+    }
+}
+
+#[allow(dead_code)]
 pub trait Entry {
     fn pair_id(&self) -> &str;
     fn source(&self) -> &str;
