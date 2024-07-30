@@ -87,7 +87,6 @@ groups:
             Total sources: {{ $labels.total_sources }}
             Threshold: {{ $labels.threshold }}
 
-
       - alert: LongTailAssetMultipleSourcesDeviation
         expr: |
           (
