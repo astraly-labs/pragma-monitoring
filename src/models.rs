@@ -89,3 +89,31 @@ pub struct VrfRequest {
     pub _cursor: (Bound<i64>, Bound<i64>),
     pub data_id: String,
 }
+
+
+#[derive(Queryable, Debug, QueryableByName, Selectable)]
+#[diesel(primary_key(data_id))]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+#[diesel(table_name = crate::schema::oo_requests)]
+pub struct OORequest {
+    pub network: String, 
+    pub data_id: String, 
+    assertion_id: BigDecimal, 
+    domain_id: BigDecimal, 
+    claim: String, 
+    asserter: String, 
+    disputer: String, 
+    disputed: bool, 
+    callback_recipient: String, 
+    escalation_manager: String, 
+    caller: String, 
+    expiration_timestamp: NaiveDateTime, 
+    settlement_resolution: bool, 
+    settle_caller: String, 
+    currency: String, 
+    bond: BigDecimal, 
+    _cursor:  (Bound<i64>, Bound<i64>),
+    identifier: String, 
+    pub updated_at: NaiveDateTime,
+    pub updated_at_tx: String,
+}

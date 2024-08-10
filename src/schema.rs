@@ -177,8 +177,8 @@ diesel::table! {
         #[max_length = 255]
         network -> Varchar,
         data_id -> Varchar,
-        assertion_id -> Varchar,
-        domain_id -> Varchar,
+        assertion_id -> Numeric,
+        domain_id -> Numeric,
         claim -> Text,
         #[max_length = 255]
         asserter -> Varchar,
@@ -191,7 +191,7 @@ diesel::table! {
         escalation_manager -> Varchar,
         #[max_length = 255]
         caller -> Varchar,
-        expiration_timestamp -> Numeric,
+        expiration_timestamp -> Timestamp,
         settlement_resolution -> Bool,
         #[max_length = 255]
         settle_caller -> Varchar,
