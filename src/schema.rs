@@ -1,5 +1,4 @@
 // @generated automatically by Diesel CLI.
-
 diesel::table! {
     future_entry (data_id) {
         #[max_length = 255]
@@ -171,6 +170,42 @@ diesel::table! {
         data_id -> Varchar,
     }
 }
+
+
+diesel::table! {
+    oo_requests (data_id) {
+        #[max_length = 255]
+        network -> Varchar,
+        data_id -> Varchar,
+        assertion_id -> Varchar,
+        domain_id -> Varchar,
+        claim -> Text,
+        #[max_length = 255]
+        asserter -> Varchar,
+        #[max_length = 255]
+        disputer -> Varchar,
+        disputed -> Bool,
+        #[max_length = 255]
+        callback_recipient -> Varchar,
+        #[max_length = 255]
+        escalation_manager -> Varchar,
+        #[max_length = 255]
+        caller -> Varchar,
+        expiration_timestamp -> Numeric,
+        settlement_resolution -> Bool,
+        #[max_length = 255]
+        settle_caller -> Varchar,
+        #[max_length = 255]
+        currency -> Varchar,
+        bond -> Numeric,
+        _cursor -> Int8range,
+        identifier -> Varchar,
+        updated_at -> Timestamp,
+        #[max_length = 255]
+        updated_at_tx -> Varchar,
+    }
+}
+
 
 diesel::allow_tables_to_appear_in_same_query!(
     future_entry,
