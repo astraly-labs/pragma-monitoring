@@ -183,8 +183,8 @@ diesel::table! {
         #[max_length = 255]
         asserter -> Varchar,
         #[max_length = 255]
-        disputer -> Varchar,
-        disputed -> Bool,
+        disputer -> Nullable<Varchar>,
+        disputed -> Nullable<Bool>,
         #[max_length = 255]
         callback_recipient -> Varchar,
         #[max_length = 255]
@@ -192,10 +192,10 @@ diesel::table! {
         #[max_length = 255]
         caller -> Varchar,
         expiration_timestamp -> Timestamp,
-        settled -> Bool,
-        settlement_resolution -> Bool,
+        settled -> Nullable<Bool>,
+        settlement_resolution -> Nullable<Bool>,
         #[max_length = 255]
-        settle_caller -> Varchar,
+        settle_caller -> Nullable<Varchar>,
         #[max_length = 255]
         currency -> Varchar,
         bond -> Numeric,
