@@ -177,8 +177,8 @@ diesel::table! {
         #[max_length = 255]
         network -> Varchar,
         data_id -> Varchar,
-        assertion_id -> Numeric,
-        domain_id -> Numeric,
+        assertion_id -> Varchar,
+        domain_id -> Varchar,
         claim -> Text,
         #[max_length = 255]
         asserter -> Varchar,

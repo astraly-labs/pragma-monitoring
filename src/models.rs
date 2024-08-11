@@ -98,8 +98,8 @@ pub struct VrfRequest {
 pub struct OORequest {
     pub network: String, 
     pub data_id: String, 
-    pub assertion_id: BigDecimal, 
-    pub domain_id: BigDecimal, 
+    pub assertion_id: String, 
+    pub domain_id: String, 
     pub claim: String, 
     pub asserter: String, 
     pub disputer: String, 
