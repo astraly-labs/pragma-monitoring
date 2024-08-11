@@ -107,7 +107,7 @@ pub struct OORequest {
     pub callback_recipient: String, 
     pub escalation_manager: String, 
     pub caller: String, 
-    pub expiration_timestamp: NaiveDateTime, 
+    pub expiration_timestamp: i64, 
     pub settled: Option<bool>,
     pub settlement_resolution: Option<bool>, 
     pub settle_caller: Option<String>, 
