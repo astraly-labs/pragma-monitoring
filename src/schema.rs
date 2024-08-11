@@ -192,6 +192,7 @@ diesel::table! {
         #[max_length = 255]
         caller -> Varchar,
         expiration_timestamp -> Timestamp,
+        settled -> Bool,
         settlement_resolution -> Bool,
         #[max_length = 255]
         settle_caller -> Varchar,

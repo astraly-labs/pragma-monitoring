@@ -108,6 +108,7 @@ pub struct OORequest {
     pub escalation_manager: String, 
     pub caller: String, 
     pub expiration_timestamp: NaiveDateTime, 
+    pub settled: bool,
     pub settlement_resolution: bool, 
     pub settle_caller: String, 
     pub currency: String, 
