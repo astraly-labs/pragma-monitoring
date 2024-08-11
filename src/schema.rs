@@ -198,7 +198,7 @@ diesel::table! {
         settle_caller -> Nullable<Varchar>,
         #[max_length = 255]
         currency -> Varchar,
-        bond -> Numeric,
+        bond -> Varchar,
         _cursor -> Int8range,
         identifier -> Varchar,
         updated_at -> Timestamp,

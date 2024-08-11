@@ -112,7 +112,7 @@ pub struct OORequest {
     pub settlement_resolution: Option<bool>, 
     pub settle_caller: Option<String>, 
     pub currency: String, 
-    pub bond: BigDecimal, 
+    pub bond: String, 
     pub _cursor:  (Bound<i64>, Bound<i64>),
     pub identifier: String, 
     pub updated_at: NaiveDateTime,
