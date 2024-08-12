@@ -191,14 +191,14 @@ diesel::table! {
         escalation_manager -> Varchar,
         #[max_length = 255]
         caller -> Varchar,
-        expiration_timestamp -> Numeric,
+        expiration_timestamp -> Timestamp,
         settled -> Nullable<Bool>,
         settlement_resolution -> Nullable<Bool>,
         #[max_length = 255]
         settle_caller -> Nullable<Varchar>,
         #[max_length = 255]
         currency -> Varchar,
-        bond -> Varchar,
+        bond -> Numeric,
         _cursor -> Int8range,
         identifier -> Varchar,
         updated_at -> Timestamp,
