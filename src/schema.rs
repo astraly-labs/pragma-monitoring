@@ -191,7 +191,7 @@ diesel::table! {
         escalation_manager -> Varchar,
         #[max_length = 255]
         caller -> Varchar,
-        expiration_timestamp -> BigInt,
+        expiration_timestamp -> Numeric,
         settled -> Nullable<Bool>,
         settlement_resolution -> Nullable<Bool>,
         #[max_length = 255]
