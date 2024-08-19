@@ -186,6 +186,8 @@ diesel::table! {
         disputer -> Nullable<Varchar>,
         disputed -> Nullable<Bool>,
         #[max_length = 255]
+        dispute_id -> Nullable<Varchar>,
+        #[max_length = 255]
         callback_recipient -> Varchar,
         #[max_length = 255]
         escalation_manager -> Varchar,
