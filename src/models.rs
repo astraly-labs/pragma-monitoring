@@ -104,6 +104,7 @@ pub struct OORequest {
     pub asserter: String, 
     pub disputer: Option<String>, 
     pub disputed: Option<bool>, 
+    pub dispute_id: Option<String>,
     pub callback_recipient: String, 
     pub escalation_manager: String, 
     pub caller: String, 
