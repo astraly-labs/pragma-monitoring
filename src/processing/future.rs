@@ -50,6 +50,7 @@ pub async fn process_data_by_pair(
                 .first(&mut conn)
                 .await?
         }
+        NetworkName::PragmaDevnet => unreachable!(),
     };
 
     log::info!("Processing data for pair: {}", pair);
@@ -129,6 +130,7 @@ pub async fn process_data_by_pair_and_source(
                 .first(&mut conn)
                 .await?
         }
+        NetworkName::PragmaDevnet => unreachable!(),
     };
 
     let network_env = &config.network_str();
@@ -181,6 +183,7 @@ pub async fn process_data_by_publisher(
                 .first(&mut conn)
                 .await?
         }
+        NetworkName::PragmaDevnet => unreachable!(),
     };
 
     log::info!("Processing data for publisher: {}", publisher);

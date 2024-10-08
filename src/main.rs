@@ -59,6 +59,7 @@ async fn main() {
     // Monitor spot/future in parallel
     let spot_monitoring = tokio::spawn(onchain_monitor(pool.clone(), true, &DataType::Spot));
     let future_monitoring = tokio::spawn(onchain_monitor(pool.clone(), true, &DataType::Future));
+    let pragmagix_monitoring = tokio::spawn(pragmagix_monitor(pool.clone(), true, &DataType::Spot));
     let publisher_monitoring = tokio::spawn(publisher_monitor(pool.clone(), false));
     let api_monitoring = tokio::spawn(api_monitor());
     let vrf_monitoring = tokio::spawn(vrf_monitor(pool.clone()));
@@ -271,5 +272,58 @@ pub(crate) async fn vrf_monitor(pool: Pool<AsyncDieselConnectionManager<AsyncPgC
 
         let results: Vec<_> = futures::future::join_all(tasks).await;
         log_tasks_results("VRF", results);
+    }
+}
+
+
+pub(crate) async fn pragmagix_monitor(
+    pool: Pool<AsyncDieselConnectionManager<AsyncPgConnection>>,
+    wait_for_syncing: bool,
+    data_type: &DataType,
+) {
+    let monitoring_config = get_config(None).await;
+
+    let mut interval = interval(Duration::from_secs(30));
+
+    loop {
+        interval.tick().await; // Wait for the next tick
+
+        // Skip if indexer is still syncing
+        if wait_for_syncing && !indexers_are_synced(data_type).await {
+            continue;
+        }
+
+        let tasks: Vec<_> = monitoring_config
+            .sources(data_type.clone())
+            .iter()
+            .flat_map(|(pair, sources)| {
+                if is_long_tail_asset(pair) {
+                    vec![tokio::spawn(Box::pin(
+                        processing::spot::process_long_tail_asset(
+                            pool.clone(),
+                            pair.clone(),
+                            sources.to_vec(),
+                        ),
+                    ))]
+                } else {
+                    vec![
+                        tokio::spawn(Box::pin(processing::spot::process_data_by_pair(
+                            pool.clone(),
+                            pair.clone(),
+                        ))),
+                        tokio::spawn(Box::pin(
+                            processing::spot::process_data_by_pair_and_sources(
+                                pool.clone(),
+                                pair.clone(),
+                                sources.to_vec(),
+                            ),
+                        )),
+                    ]
+                }
+            })
+            .collect();
+
+        let results: Vec<_> = futures::future::join_all(tasks).await;
+        log_tasks_results(data_type.into(), results);
     }
 }

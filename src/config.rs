@@ -31,6 +31,8 @@ pub enum NetworkName {
     Mainnet,
     #[strum(ascii_case_insensitive)]
     Testnet,
+    #[strum(ascii_case_insensitive, serialize = "pragma-devnet")]
+    PragmaDevnet,
 }
 
 #[derive(Debug, EnumString, IntoStaticStr, PartialEq, Eq, Hash, Clone, Display)]
@@ -162,6 +164,7 @@ impl Config {
         match self.network.name {
             NetworkName::Mainnet => format!("mainnet_{}", table_name),
             NetworkName::Testnet => table_name.to_string(),
+            NetworkName::PragmaDevnet => table_name.to_string(),
         }
     }
 
