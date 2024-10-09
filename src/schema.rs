@@ -295,7 +295,7 @@ diesel::table! {
         transaction_hash -> Varchar,
         hyperlane_message_nonce -> Numeric,
         feeds_updated -> Nullable<Array<Text>>,
-        _cursor -> Int8range,
+        _cursor -> Int8,
     }
 }
 

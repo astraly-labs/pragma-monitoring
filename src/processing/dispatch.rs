@@ -8,7 +8,7 @@ use crate::constants::{
     DISPATCH_EVENT_NB_FEEDS_UPDATED,
 };
 use crate::schema::pragma_devnet_dispatch_event::dsl as dispatch_dsl;
-use crate::{config::get_config, error::MonitoringError, models::PragmaDevnetDispatchEvent};
+use crate::{config::get_config, error::MonitoringError, models::FeedDispatch};
 
 /// Read the database of the indexed Dispatch events and populate the metrics:
 /// * dispatch_event_latest_block,
@@ -26,7 +26,7 @@ pub async fn process_dispatch_events(
     let latest_event = dispatch_dsl::pragma_devnet_dispatch_event
         .filter(dispatch_dsl::network.eq(network))
         .order(dispatch_dsl::block_number.desc())
-        .first::<PragmaDevnetDispatchEvent>(&mut conn)
+        .first::<FeedDispatch>(&mut conn)
         .await
         .optional()?;
 
