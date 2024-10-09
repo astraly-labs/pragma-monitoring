@@ -41,7 +41,6 @@ pub async fn process_data_by_pair(
     let data: SpotEntry = match config.network().name {
         NetworkName::Testnet => {
             testnet_dsl::spot_entry
-                .filter(testnet_dsl::network.eq("testnet"))
                 .filter(testnet_dsl::pair_id.eq(pair.clone()))
                 .order(testnet_dsl::block_timestamp.desc())
                 .first(&mut conn)
@@ -56,7 +55,6 @@ pub async fn process_data_by_pair(
         }
         NetworkName::PragmaDevnet => {
             pragma_devnet_dsl::pragma_devnet_spot_entry
-                .filter(pragma_devnet_dsl::network.eq("pragma-devnet"))
                 .filter(pragma_devnet_dsl::pair_id.eq(pair.clone()))
                 .order(pragma_devnet_dsl::block_timestamp.desc())
                 .first(&mut conn)
@@ -122,7 +120,6 @@ pub async fn process_data_by_pair_and_source(
     let data: SpotEntry = match config.network().name {
         NetworkName::Testnet => {
             testnet_dsl::spot_entry
-                .filter(testnet_dsl::network.eq("testnet"))
                 .filter(testnet_dsl::pair_id.eq(pair))
                 .filter(testnet_dsl::source.eq(src))
                 .order(testnet_dsl::block_timestamp.desc())
@@ -131,7 +128,6 @@ pub async fn process_data_by_pair_and_source(
         }
         NetworkName::PragmaDevnet => {
             pragma_devnet_dsl::pragma_devnet_spot_entry
-                .filter(pragma_devnet_dsl::network.eq("pragma-devnet"))
                 .filter(pragma_devnet_dsl::pair_id.eq(pair))
                 .filter(pragma_devnet_dsl::source.eq(src))
                 .order(pragma_devnet_dsl::block_timestamp.desc())
@@ -186,7 +182,6 @@ pub async fn process_data_by_publisher(
     let data: SpotEntry = match config.network().name {
         NetworkName::Testnet => {
             testnet_dsl::spot_entry
-                .filter(testnet_dsl::network.eq("testnet"))
                 .filter(testnet_dsl::publisher.eq(publisher.clone()))
                 .order(testnet_dsl::block_timestamp.desc())
                 .first(&mut conn)
@@ -194,7 +189,6 @@ pub async fn process_data_by_publisher(
         }
         NetworkName::PragmaDevnet => {
             pragma_devnet_dsl::pragma_devnet_spot_entry
-                .filter(pragma_devnet_dsl::network.eq("pragma-devnet"))
                 .filter(pragma_devnet_dsl::publisher.eq(publisher.clone()))
                 .order(pragma_devnet_dsl::block_timestamp.desc())
                 .first(&mut conn)
@@ -271,7 +265,6 @@ pub async fn get_price_deviation_for_source_from_chain(
     let data: SpotEntry = match config.network().name {
         NetworkName::Testnet => {
             testnet_dsl::spot_entry
-                .filter(testnet_dsl::network.eq("testnet"))
                 .filter(testnet_dsl::pair_id.eq(pair))
                 .filter(testnet_dsl::source.eq(source))
                 .order(testnet_dsl::block_timestamp.desc())
@@ -280,7 +273,6 @@ pub async fn get_price_deviation_for_source_from_chain(
         }
         NetworkName::PragmaDevnet => {
             pragma_devnet_dsl::pragma_devnet_spot_entry
-                .filter(pragma_devnet_dsl::network.eq("pragma-devnet"))
                 .filter(pragma_devnet_dsl::pair_id.eq(pair))
                 .filter(pragma_devnet_dsl::source.eq(source))
                 .order(pragma_devnet_dsl::block_timestamp.desc())
