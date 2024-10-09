@@ -22,6 +22,11 @@ It then processes the data and computes the following metrics:
 - `vrf_time_since_last_handle_request{network}`: Time since the last VRF request was handled for a given network.
 - `vrf_time_since_oldest_request_in_pending_status{network}`: Time in seconds that the oldest pending VRF request has been in the pending status for a given network.
 
+Metrics specifics to our Pragma App Chain:
+- `dispatch_event_latest_block`: The latest block that triggered a Dispatch event from Hyperlane,
+- `dispatch_event_feed_latest_block_update`: The latest block that triggered a Dispatch event from Hyperlane for a specific Feed ID,
+- `dispatch_event_nb_feeds_updated`: The number of feeds updated per Dispatch event at a given block.
+
 ## Shared Public Access
 
 Monitoring is not publicicly available yet but databases will soon be in read-only mode.

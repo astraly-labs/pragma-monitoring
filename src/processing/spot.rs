@@ -60,7 +60,7 @@ pub async fn process_data_by_pair(
                 .order(testnet_dsl::block_timestamp.desc())
                 .first(&mut conn)
                 .await?
-        },
+        }
     };
 
     log::info!("Processing data for pair: {}", pair);
