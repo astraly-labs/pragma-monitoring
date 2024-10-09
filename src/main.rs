@@ -302,6 +302,8 @@ pub(crate) async fn hyperlane_dispatch_monitor(
     let mut interval = interval(Duration::from_secs(5));
 
     loop {
+        interval.tick().await; // Wait for the next tick
+
         // Skip if indexer is still syncing
         if wait_for_syncing && !indexers_are_synced("pragma_devnet_dispatch_event").await {
             continue;
@@ -312,7 +314,5 @@ pub(crate) async fn hyperlane_dispatch_monitor(
         ))];
         let results: Vec<_> = futures::future::join_all(tasks).await;
         log_tasks_results("Dispatch", results);
-
-        interval.tick().await; // Wait for the next tick
     }
 }
