@@ -37,7 +37,7 @@ use tokio::task::JoinHandle;
 use tokio::time::interval;
 
 use config::{get_config, init_long_tail_asset_configuration, periodic_config_update, DataType};
-use processing::common::{check_publisher_balance, indexers_are_synced};
+use processing::common::{check_publisher_balance, data_indexers_are_synced, indexers_are_synced};
 use utils::{is_long_tail_asset, log_monitoring_results, log_tasks_results};
 
 struct MonitoringTask {
@@ -167,7 +167,7 @@ pub(crate) async fn onchain_monitor(
         interval.tick().await; // Wait for the next tick
 
         // Skip if indexer is still syncing
-        if wait_for_syncing && !indexers_are_synced(data_type).await {
+        if wait_for_syncing && !data_indexers_are_synced(data_type).await {
             continue;
         }
 
@@ -237,7 +237,7 @@ pub(crate) async fn publisher_monitor(
         interval.tick().await; // Wait for the next tick
 
         // Skip if indexer is still syncing
-        if wait_for_syncing && !indexers_are_synced(&DataType::Spot).await {
+        if wait_for_syncing && !data_indexers_are_synced(&DataType::Spot).await {
             continue;
         }
 
@@ -299,13 +299,12 @@ pub(crate) async fn hyperlane_dispatch_monitor(
     pool: Pool<AsyncDieselConnectionManager<AsyncPgConnection>>,
     wait_for_syncing: bool,
 ) {
-    let mut interval = interval(Duration::from_secs(30));
+    let mut interval = interval(Duration::from_secs(5));
 
     loop {
         // Skip if indexer is still syncing
-        if wait_for_syncing {
-            // TODO: Adapt this for dispatch events
-            log::info!("Not implemented yet. TODO");
+        if wait_for_syncing && !indexers_are_synced("pragma_devnet_dispatch_event").await {
+            continue;
         }
 
         let tasks: Vec<_> = vec![tokio::spawn(Box::pin(
