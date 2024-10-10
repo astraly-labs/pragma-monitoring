@@ -100,6 +100,10 @@ async fn spawn_monitoring_tasks(
             name: "Hyperlane Dispatches Monitoring".to_string(),
             handle: tokio::spawn(hyperlane_dispatch_monitor(pool.clone(), true)),
         });
+        tasks.push(MonitoringTask {
+            name: "EVM Chains Monitoring".to_string(),
+            handle: tokio::spawn(evm_monitor()),
+        });
     } else {
         tasks.push(MonitoringTask {
             name: "API Monitoring".to_string(),
