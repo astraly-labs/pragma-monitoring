@@ -40,6 +40,10 @@ impl FeedId{
         alloy::sol_types::private::FixedBytes::from_hex(self.feed_id.to_hex_string())
                     .map_err(|e| MonitoringError::Evm(e.to_string()))
     }
+
+    pub fn to_hex_string(&self) -> String{
+        self.feed_id.to_hex_string()
+    }
 }
 
 pub async fn get_all_feed_ids(config: &Guard<Arc<Config>>, client : &Arc<JsonRpcClient<HttpTransport>>) -> Result<Vec<FeedId>, MonitoringError> {
@@ -121,7 +125,7 @@ pub async fn check_feed_update_state() -> Result<(), MonitoringError> {
                         )))
                     }
                 },
-                1 => match variant {
+                1 => match feed.variant {
                     0 => {
                         let result = chain
                             .pragma
@@ -142,7 +146,7 @@ pub async fn check_feed_update_state() -> Result<(), MonitoringError> {
                         )))
                     }
                 },
-                2 => match variant {
+                2 => match feed.variant {
                     0 => {
                         let result = chain
                             .pragma
