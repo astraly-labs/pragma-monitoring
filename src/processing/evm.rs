@@ -9,30 +9,6 @@ use starknet::providers::Provider;
 use crate::constants::EVM_TIME_SINCE_LAST_FEED_UPDATE;
 use crate::{config::get_config, error::MonitoringError};
 
-// /// Try to construct a FeedType from the provided FeedTypeId.
-// fn from_id(id: FeedTypeId) -> Result<FeedType, FeedTypeError> {
-//     let main_type = (id & FEED_TYPE_MAIN_MASK) / FEED_TYPE_MAIN_SHIFT;
-//     let variant = id & FEED_TYPE_VARIANT_MASK;
-
-//     match main_type {
-//         0 => match variant {
-//             0 => Result::Ok(FeedType::Unique(UniqueVariant::SpotMedian)),
-//             1 => Result::Ok(FeedType::Unique(UniqueVariant::PerpMedian)),
-//             2 => Result::Ok(FeedType::Unique(UniqueVariant::SpotMean)),
-//             _ => Result::Err(FeedTypeError::IdConversion('Unknown feed type variant')),
-//         },
-//         1 => match variant {
-//             0 => Result::Ok(FeedType::Twap(TwapVariant::SpotMedianOneDay)),
-//             _ => Result::Err(FeedTypeError::IdConversion('Unknown feed type variant')),
-//         },
-//         2 => match variant {
-//             0 => Result::Ok(FeedType::RealizedVolatility(RealizedVolatilityVariant::OneWeek)),
-//             _ => Result::Err(FeedTypeError::IdConversion('Unknown feed type variant')),
-//         },
-//         _ => Result::Err(FeedTypeError::IdConversion('Unknown feed type')),
-//     }
-// }
-
 pub async fn check_feed_update_state() -> Result<(), MonitoringError> {
     let config = get_config(None).await;
     let evm_config = config.evm_configs();
