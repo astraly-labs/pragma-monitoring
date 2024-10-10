@@ -28,6 +28,7 @@ mod tests;
 use std::time::Duration;
 use std::{env, vec};
 
+use alloy::primitives::address;
 use deadpool::managed::Pool;
 use diesel_async::pooled_connection::AsyncDieselConnectionManager;
 use diesel_async::AsyncPgConnection;
@@ -37,6 +38,7 @@ use tokio::time::interval;
 use config::{get_config, init_long_tail_asset_configuration, periodic_config_update, DataType};
 use processing::common::{check_publisher_balance, indexers_are_synced};
 use utils::{is_long_tail_asset, log_tasks_results};
+
 
 #[tokio::main]
 async fn main() {
