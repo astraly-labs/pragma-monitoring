@@ -207,6 +207,14 @@ lazy_static! {
         &["network"]
     )
     .unwrap();
+    pub static ref EVM_TIME_SINCE_LAST_FEED_UPDATE: GaugeVec = register_gauge_vec!(
+        opts!(
+            "evm_time_since_last_feed_update",
+            "Time in seconds that the oldest feed update has been performed on a specific network."
+        ),
+        &["chain", "feed_id"]
+    )
+    .unwrap();
 }
 
 #[allow(unused)]

@@ -21,6 +21,8 @@ mod constants;
 mod types;
 // Utils
 mod utils;
+// Evm Config utils
+mod evm;
 
 #[cfg(test)]
 mod tests;
@@ -273,5 +275,20 @@ pub(crate) async fn vrf_monitor(pool: Pool<AsyncDieselConnectionManager<AsyncPgC
 
         let results: Vec<_> = futures::future::join_all(tasks).await;
         log_tasks_results("VRF", results);
+    }
+}
+
+
+pub(crate) async fn evm_monitor() {
+    log::info!("[EVM] Monitoring EVM..");
+    let mut interval = interval(Duration::from_secs(30));
+
+    loop {
+        interval.tick().await; // Wait for the next tick
+
+        let tasks: Vec<_> = vec![tokio::spawn(Box::pin(processing::evm::check_feed_update_state()))];
+
+        let results: Vec<_> = futures::future::join_all(tasks).await;
+        log_tasks_results("EVM", results);
     }
 }

@@ -12,6 +12,7 @@ pub enum MonitoringError {
     OnChain(String),
     Provider(ProviderError),
     InvalidTimestamp(u64),
+    EVM(String),
 }
 
 impl StdError for MonitoringError {}
@@ -27,6 +28,7 @@ impl fmt::Display for MonitoringError {
             MonitoringError::OnChain(e) => write!(f, "OnChain Error: {}", e),
             MonitoringError::Provider(e) => write!(f, "Provider Error: {}", e),
             MonitoringError::InvalidTimestamp(e) => write!(f, "Invalid Timestamp: {}", e),
+            MonitoringError::EVM(e) => write!(f, "EVM Monitoring Error: {}", e),
         }
     }
 }
