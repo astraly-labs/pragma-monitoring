@@ -21,6 +21,8 @@ mod constants;
 mod types;
 // Utils
 mod utils;
+// Evm Config utils
+mod evm;
 
 #[cfg(test)]
 mod tests;
@@ -96,6 +98,10 @@ async fn spawn_monitoring_tasks(
         tasks.push(MonitoringTask {
             name: "Hyperlane Dispatches Monitoring".to_string(),
             handle: tokio::spawn(hyperlane_dispatch_monitor(pool.clone(), true)),
+        });
+        tasks.push(MonitoringTask {
+            name: "EVM Chains Monitoring".to_string(),
+            handle: tokio::spawn(evm_monitor()),
         });
     } else {
         tasks.push(MonitoringTask {
@@ -303,8 +309,7 @@ pub(crate) async fn hyperlane_dispatch_monitor(
 
     loop {
         interval.tick().await; // Wait for the next tick
-
-        // Skip if indexer is still syncing
+                               // Skip if indexer is still syncing
         if wait_for_syncing && !indexers_are_synced("pragma_devnet_dispatch_event").await {
             continue;
         }
@@ -314,5 +319,19 @@ pub(crate) async fn hyperlane_dispatch_monitor(
         ))];
         let results: Vec<_> = futures::future::join_all(tasks).await;
         log_tasks_results("Dispatch", results);
+    }
+}
+
+pub(crate) async fn evm_monitor() {
+    log::info!("[EVM] Monitoring EVM..");
+    let mut interval = interval(Duration::from_secs(30));
+    loop {
+        interval.tick().await; // Wait for the next tick
+        let tasks: Vec<_> = vec![tokio::spawn(Box::pin(
+            processing::evm::check_feed_update_state(),
+        ))];
+
+        let results: Vec<_> = futures::future::join_all(tasks).await;
+        log_tasks_results("EVM", results);
     }
 }
