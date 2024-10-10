@@ -50,7 +50,7 @@ pub async fn check_feed_update_state() -> Result<(), MonitoringError> {
             BlockId::Tag(BlockTag::Pending),
         )
         .await
-        .map_err(|e| MonitoringError::EVM(e.to_string()))?;
+        .map_err(|e| MonitoringError::Evm(e.to_string()))?;
     feed_list.remove(0);
 
     for chain in evm_config.iter() {
@@ -96,7 +96,7 @@ pub async fn check_feed_update_state() -> Result<(), MonitoringError> {
                             .set(result.metadata.timestamp as f64);
                     }
                     va => {
-                        return Err(MonitoringError::EVM(format!(
+                        return Err(MonitoringError::Evm(format!(
                             "unknown variant {va} for main type Unique"
                         )))
                     }
@@ -117,7 +117,7 @@ pub async fn check_feed_update_state() -> Result<(), MonitoringError> {
                             .set(result.metadata.timestamp as f64);
                     }
                     va => {
-                        return Err(MonitoringError::EVM(format!(
+                        return Err(MonitoringError::Evm(format!(
                             "unknown variant {va} for main type Twap"
                         )))
                     }
@@ -138,13 +138,13 @@ pub async fn check_feed_update_state() -> Result<(), MonitoringError> {
                             .set(result.metadata.timestamp as f64);
                     }
                     va => {
-                        return Err(MonitoringError::EVM(format!(
+                        return Err(MonitoringError::Evm(format!(
                             "unknown variant {va} for main type Realized Volatility"
                         )))
                     }
                 },
                 va => {
-                    return Err(MonitoringError::EVM(format!(
+                    return Err(MonitoringError::Evm(format!(
                         "unknown variant {va} for main type Unique"
                     )))
                 }

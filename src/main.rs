@@ -31,7 +31,6 @@ use std::collections::HashMap;
 use std::time::Duration;
 use std::{env, vec};
 
-use alloy::primitives::address;
 use deadpool::managed::Pool;
 use diesel_async::pooled_connection::AsyncDieselConnectionManager;
 use diesel_async::AsyncPgConnection;

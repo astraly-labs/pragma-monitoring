@@ -1,7 +1,7 @@
 use std::{
     collections::HashMap,
     fs::File,
-    path::{Path, PathBuf},
+    path::PathBuf,
     str::FromStr,
     sync::Arc,
     time::{Duration, Instant},
@@ -68,6 +68,7 @@ pub struct DataInfo {
 }
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct EvmConfig {
     pub name: String,
     pub pragma: PragmaContract,
