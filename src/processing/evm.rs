@@ -14,7 +14,7 @@ pub async fn check_feed_update_state() -> Result<(), MonitoringError> {
     let evm_config = config.evm_configs();
     let feed_registry_address = config
         .feed_registry_address()
-        .expect("failed to retrieve feed registry address");
+        .ok_or(MonitoringError::Evm("Failed to parse feed registry address".to_string()))?;
     let client = &config.network().provider;
     let mut feed_list = client
         .call(
