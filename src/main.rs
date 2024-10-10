@@ -25,6 +25,7 @@ mod utils;
 #[cfg(test)]
 mod tests;
 
+use std::collections::HashMap;
 use std::time::Duration;
 use std::{env, vec};
 
@@ -32,11 +33,17 @@ use deadpool::managed::Pool;
 use diesel_async::pooled_connection::AsyncDieselConnectionManager;
 use diesel_async::AsyncPgConnection;
 use dotenv::dotenv;
+use tokio::task::JoinHandle;
 use tokio::time::interval;
 
 use config::{get_config, init_long_tail_asset_configuration, periodic_config_update, DataType};
-use processing::common::{check_publisher_balance, indexers_are_synced};
-use utils::{is_long_tail_asset, log_tasks_results};
+use processing::common::{check_publisher_balance, data_indexers_are_synced, indexers_are_synced};
+use utils::{is_long_tail_asset, log_monitoring_results, log_tasks_results};
+
+struct MonitoringTask {
+    name: String,
+    handle: JoinHandle<()>,
+}
 
 #[tokio::main]
 async fn main() {
@@ -56,47 +63,61 @@ async fn main() {
 
     // Set the long tail asset list
     init_long_tail_asset_configuration();
+
     // Monitor spot/future in parallel
-    let spot_monitoring = tokio::spawn(onchain_monitor(pool.clone(), true, &DataType::Spot));
-    let future_monitoring = tokio::spawn(onchain_monitor(pool.clone(), true, &DataType::Future));
-    let publisher_monitoring = tokio::spawn(publisher_monitor(pool.clone(), false));
-    let api_monitoring = tokio::spawn(api_monitor());
-    let vrf_monitoring = tokio::spawn(vrf_monitor(pool.clone()));
+    let monitoring_tasks = spawn_monitoring_tasks(pool.clone(), &monitoring_config).await;
+    handle_task_results(monitoring_tasks).await;
+}
 
-    let config_update = tokio::spawn(periodic_config_update());
+async fn spawn_monitoring_tasks(
+    pool: Pool<AsyncDieselConnectionManager<AsyncPgConnection>>,
+    monitoring_config: &config::Config,
+) -> Vec<MonitoringTask> {
+    let mut tasks = vec![
+        MonitoringTask {
+            name: "Config Update".to_string(),
+            handle: tokio::spawn(periodic_config_update()),
+        },
+        MonitoringTask {
+            name: "Spot Monitoring".to_string(),
+            handle: tokio::spawn(onchain_monitor(pool.clone(), true, &DataType::Spot)),
+        },
+        MonitoringTask {
+            name: "Future Monitoring".to_string(),
+            handle: tokio::spawn(onchain_monitor(pool.clone(), true, &DataType::Future)),
+        },
+        MonitoringTask {
+            name: "Publisher Monitoring".to_string(),
+            handle: tokio::spawn(publisher_monitor(pool.clone(), false)),
+        },
+    ];
 
-    // Wait for the monitoring to finish
-    let results = futures::future::join_all(vec![
-        spot_monitoring,
-        future_monitoring,
-        api_monitoring,
-        publisher_monitoring,
-        vrf_monitoring,
-        config_update,
-    ])
-    .await;
-
-    // Check if any of the monitoring tasks failed
-    if let Err(e) = &results[0] {
-        log::error!("[SPOT] Monitoring failed: {:?}", e);
-    }
-    if let Err(e) = &results[1] {
-        log::error!("[FUTURE] Monitoring failed: {:?}", e);
-    }
-    if let Err(e) = &results[2] {
-        log::error!("[API] Monitoring failed: {:?}", e);
-    }
-    if let Err(e) = &results[3] {
-        log::error!("[PUBLISHERS] Monitoring failed: {:?}", e);
+    if monitoring_config.is_pragma_chain() {
+        tasks.push(MonitoringTask {
+            name: "Hyperlane Dispatches Monitoring".to_string(),
+            handle: tokio::spawn(hyperlane_dispatch_monitor(pool.clone(), true)),
+        });
+    } else {
+        tasks.push(MonitoringTask {
+            name: "API Monitoring".to_string(),
+            handle: tokio::spawn(api_monitor()),
+        });
+        tasks.push(MonitoringTask {
+            name: "VRF Monitoring".to_string(),
+            handle: tokio::spawn(vrf_monitor(pool.clone())),
+        });
     }
 
-    if let Err(e) = &results[4] {
-        log::error!("[VRF] Monitoring failed: {:?}", e);
-    }
+    tasks
+}
 
-    if let Err(e) = &results[5] {
-        log::error!("[CONFIG] Config Update failed: {:?}", e);
+async fn handle_task_results(tasks: Vec<MonitoringTask>) {
+    let mut results = HashMap::new();
+    for task in tasks {
+        let result = task.handle.await;
+        results.insert(task.name, result);
     }
+    log_monitoring_results(results);
 }
 
 pub(crate) async fn api_monitor() {
@@ -146,7 +167,7 @@ pub(crate) async fn onchain_monitor(
         interval.tick().await; // Wait for the next tick
 
         // Skip if indexer is still syncing
-        if wait_for_syncing && !indexers_are_synced(data_type).await {
+        if wait_for_syncing && !data_indexers_are_synced(data_type).await {
             continue;
         }
 
@@ -216,7 +237,7 @@ pub(crate) async fn publisher_monitor(
         interval.tick().await; // Wait for the next tick
 
         // Skip if indexer is still syncing
-        if wait_for_syncing && !indexers_are_synced(&DataType::Spot).await {
+        if wait_for_syncing && !data_indexers_are_synced(&DataType::Spot).await {
             continue;
         }
 
@@ -271,5 +292,27 @@ pub(crate) async fn vrf_monitor(pool: Pool<AsyncDieselConnectionManager<AsyncPgC
 
         let results: Vec<_> = futures::future::join_all(tasks).await;
         log_tasks_results("VRF", results);
+    }
+}
+
+pub(crate) async fn hyperlane_dispatch_monitor(
+    pool: Pool<AsyncDieselConnectionManager<AsyncPgConnection>>,
+    wait_for_syncing: bool,
+) {
+    let mut interval = interval(Duration::from_secs(5));
+
+    loop {
+        interval.tick().await; // Wait for the next tick
+
+        // Skip if indexer is still syncing
+        if wait_for_syncing && !indexers_are_synced("pragma_devnet_dispatch_event").await {
+            continue;
+        }
+
+        let tasks: Vec<_> = vec![tokio::spawn(Box::pin(
+            processing::dispatch::process_dispatch_events(pool.clone()),
+        ))];
+        let results: Vec<_> = futures::future::join_all(tasks).await;
+        log_tasks_results("Dispatch", results);
     }
 }

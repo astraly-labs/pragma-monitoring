@@ -20,7 +20,7 @@ pub struct IndexerServerStatus {
 
 /// Checks if indexers of the given data type are still syncing
 /// Returns true if any of the indexers is still syncing
-pub async fn is_syncing(data_type: &DataType) -> Result<bool, MonitoringError> {
+pub async fn data_is_syncing(data_type: &DataType) -> Result<bool, MonitoringError> {
     let config = get_config(None).await;
 
     let table_name = config.table_name(data_type.clone());
@@ -44,8 +44,8 @@ pub async fn is_syncing(data_type: &DataType) -> Result<bool, MonitoringError> {
 }
 
 /// Check if the indexers are still syncing
-pub async fn indexers_are_synced(data_type: &DataType) -> bool {
-    match is_syncing(data_type).await {
+pub async fn data_indexers_are_synced(data_type: &DataType) -> bool {
+    match data_is_syncing(data_type).await {
         Ok(true) => {
             log::info!("[{data_type}] Indexers are still syncing ♻️");
             false
@@ -57,6 +57,50 @@ pub async fn indexers_are_synced(data_type: &DataType) -> bool {
         Err(e) => {
             log::error!(
                 "[{data_type}] Failed to check if indexers are syncing: {:?}",
+                e
+            );
+            false
+        }
+    }
+}
+
+/// Checks if indexers of the given data type are still syncing
+/// Returns true if any of the indexers is still syncing
+pub async fn is_syncing(table_name: &str) -> Result<bool, MonitoringError> {
+    let config = get_config(None).await;
+
+    let status = get_sink_status(table_name, config.indexer_url()).await?;
+
+    let provider = &config.network().provider;
+
+    let blocks_left = blocks_left(&status, provider).await?;
+
+    // Update the prometheus metric
+    INDEXER_BLOCKS_LEFT
+        .with_label_values(&[
+            (&config.network().name).into(),
+            &table_name.to_string().to_ascii_lowercase(),
+        ])
+        .set(blocks_left.unwrap_or(0) as i64);
+
+    // Check if any indexer is still syncing
+    Ok(blocks_left.is_some())
+}
+
+/// Check if the indexers are still syncing
+pub async fn indexers_are_synced(table_name: &str) -> bool {
+    match is_syncing(table_name).await {
+        Ok(true) => {
+            log::info!("[{table_name}] Indexers are still syncing ♻️");
+            false
+        }
+        Ok(false) => {
+            log::info!("[{table_name}] Indexers are synced ✅");
+            true
+        }
+        Err(e) => {
+            log::error!(
+                "[{table_name}] Failed to check if indexers are syncing: {:?}",
                 e
             );
             false

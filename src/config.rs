@@ -31,6 +31,8 @@ pub enum NetworkName {
     Mainnet,
     #[strum(ascii_case_insensitive)]
     Testnet,
+    #[strum(ascii_case_insensitive, serialize = "pragma-devnet")]
+    PragmaDevnet,
 }
 
 #[derive(Debug, EnumString, IntoStaticStr, PartialEq, Eq, Hash, Clone, Display)]
@@ -162,11 +164,17 @@ impl Config {
         match self.network.name {
             NetworkName::Mainnet => format!("mainnet_{}", table_name),
             NetworkName::Testnet => table_name.to_string(),
+            NetworkName::PragmaDevnet => format!("pragma_devnet_{}", table_name),
         }
     }
 
     pub fn all_publishers(&self) -> &HashMap<String, Felt> {
         &self.publishers
+    }
+
+    /// Check if the configuration is set for a Pragma Chain
+    pub fn is_pragma_chain(&self) -> bool {
+        matches!(self.network.name, NetworkName::PragmaDevnet)
     }
 }
 
