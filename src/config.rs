@@ -1,5 +1,10 @@
 use std::{
-    collections::HashMap, fs::File, path::{Path, PathBuf}, str::FromStr, sync::Arc, time::{Duration, Instant}
+    collections::HashMap,
+    fs::File,
+    path::{Path, PathBuf},
+    str::FromStr,
+    sync::Arc,
+    time::{Duration, Instant},
 };
 
 use alloy::{hex::FromHex, primitives::Address, providers::ProviderBuilder};
@@ -20,7 +25,9 @@ use url::Url;
 use crate::{
     constants::{
         CONFIG_UPDATE_INTERVAL, LONG_TAIL_ASSETS, LONG_TAIL_ASSET_THRESHOLD, LOW_SOURCES_THRESHOLD,
-    }, evm::pragma::{Pragma, PragmaContract}, utils::{is_long_tail_asset, try_felt_to_u32}
+    },
+    evm::pragma::{Pragma, PragmaContract},
+    utils::{is_long_tail_asset, try_felt_to_u32},
 };
 
 #[derive(Debug, Clone, EnumString, IntoStaticStr)]
@@ -60,20 +67,22 @@ pub struct DataInfo {
     pub table_name: String,
 }
 
-
 #[derive(Debug, Clone)]
 pub struct EvmConfig {
     pub name: String,
-    pub pragma: PragmaContract
+    pub pragma: PragmaContract,
 }
 
 impl EvmConfig {
     pub fn new(network_name: String, mut contract_adress: String, rpc_url: Url) -> Self {
-        let provider = ProviderBuilder::new().with_recommended_fillers().on_http(rpc_url);
+        let provider = ProviderBuilder::new()
+            .with_recommended_fillers()
+            .on_http(rpc_url);
         if contract_adress.starts_with("0x") {
             contract_adress = contract_adress.replace("0x", "");
         }
-        let address = Address::from_hex(contract_adress).expect("Invalid Pragma Address specified. Make sure it is an hexadecimal address.");
+        let address = Address::from_hex(contract_adress)
+            .expect("Invalid Pragma Address specified. Make sure it is an hexadecimal address.");
         let pragma = Pragma::new(address, provider);
         Self {
             name: network_name,
@@ -96,7 +105,7 @@ pub struct Config {
     network: Network,
     indexer_url: String,
     evm_config: Vec<EvmConfig>,
-    feed_registry_address: Option<Felt>
+    feed_registry_address: Option<Felt>,
 }
 
 /// We are using `ArcSwap` as it allow us to replace the new `Config` with
@@ -137,25 +146,29 @@ impl Config {
             .collect::<HashMap<DataType, DataInfo>>();
 
         let file = File::open(config_input.config_path).expect("cannot open config file");
-        let config: HashMap<String, EvmChainConfig> = serde_yaml::from_reader(file).expect("failed to parse config");
+        let config: HashMap<String, EvmChainConfig> =
+            serde_yaml::from_reader(file).expect("failed to parse config");
 
         let evm_config = config
-        .into_iter()
-        .filter_map(|(network_name, chain_config)| {
-            if !chain_config.contract_address.is_empty() {
-                match Url::parse(&chain_config.rpc_url) {
-                    Ok(rpc_url) => Some(Ok(EvmConfig::new(
-                        network_name,
-                        chain_config.contract_address,
-                        rpc_url,
-                    ))),
-                    Err(e) => Some(Err(format!("Invalid URL for {}: {}", network_name, e).into())),
+            .into_iter()
+            .filter_map(|(network_name, chain_config)| {
+                if !chain_config.contract_address.is_empty() {
+                    match Url::parse(&chain_config.rpc_url) {
+                        Ok(rpc_url) => Some(Ok(EvmConfig::new(
+                            network_name,
+                            chain_config.contract_address,
+                            rpc_url,
+                        ))),
+                        Err(e) => Some(Err(
+                            format!("Invalid URL for {}: {}", network_name, e).into()
+                        )),
+                    }
+                } else {
+                    None
                 }
-            } else {
-                None
-            }
-        })
-        .collect::<Result<Vec<_>, Box<dyn std::error::Error>>>().expect("failed to retrieve configs");
+            })
+            .collect::<Result<Vec<_>, Box<dyn std::error::Error>>>()
+            .expect("failed to retrieve configs");
 
         Self {
             indexer_url,
@@ -183,9 +196,13 @@ impl Config {
 
         let feed_registry_address = match network.starts_with("pragma") {
             true => {
-                let env_var = std::env::var("FEED_REGISTRY_ADDRESS").expect("FEED_REGISTRY_ADDRESS must be set for pragma chains");
-                Some(Felt::from_hex(env_var.as_str()).expect("failed to parse feed registry address"))
-            },
+                let env_var = std::env::var("FEED_REGISTRY_ADDRESS")
+                    .expect("FEED_REGISTRY_ADDRESS must be set for pragma chains");
+                Some(
+                    Felt::from_hex(env_var.as_str())
+                        .expect("failed to parse feed registry address"),
+                )
+            }
             false => None,
         };
 
@@ -238,10 +255,10 @@ impl Config {
         &self.evm_config
     }
 
-    pub fn feed_registry_address(&self) -> &Option<Felt>{
+    pub fn feed_registry_address(&self) -> &Option<Felt> {
         &self.feed_registry_address
     }
-    
+
     /// Check if the configuration is set for a Pragma Chain
     pub fn is_pragma_chain(&self) -> bool {
         matches!(self.network.name, NetworkName::PragmaDevnet)

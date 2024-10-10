@@ -48,7 +48,6 @@ struct MonitoringTask {
     handle: JoinHandle<()>,
 }
 
-
 #[tokio::main]
 async fn main() {
     env_logger::init();
@@ -299,8 +298,6 @@ pub(crate) async fn vrf_monitor(pool: Pool<AsyncDieselConnectionManager<AsyncPgC
     }
 }
 
-
-
 pub(crate) async fn hyperlane_dispatch_monitor(
     pool: Pool<AsyncDieselConnectionManager<AsyncPgConnection>>,
     wait_for_syncing: bool,
@@ -309,28 +306,29 @@ pub(crate) async fn hyperlane_dispatch_monitor(
 
     loop {
         interval.tick().await; // Wait for the next tick
-               // Skip if indexer is still syncing
+        // Skip if indexer is still syncing
         if wait_for_syncing && !indexers_are_synced("pragma_devnet_dispatch_event").await {
-                continue;
-            }
-    
-            let tasks: Vec<_> = vec![tokio::spawn(Box::pin(
-                processing::dispatch::process_dispatch_events(pool.clone()),
-            ))];
-            let results: Vec<_> = futures::future::join_all(tasks).await;
-            log_tasks_results("Dispatch", results);
+            continue;
         }
-    }
 
-    pub(crate) async fn evm_monitor() {
-        log::info!("[EVM] Monitoring EVM..");
-        let mut interval = interval(Duration::from_secs(30));
-        loop {
-            interval.tick().await; // Wait for the next tick
-        let tasks: Vec<_> = vec![tokio::spawn(Box::pin(processing::evm::check_feed_update_state()))];
+        let tasks: Vec<_> = vec![tokio::spawn(Box::pin(
+            processing::dispatch::process_dispatch_events(pool.clone()),
+        ))];
+        let results: Vec<_> = futures::future::join_all(tasks).await;
+        log_tasks_results("Dispatch", results);
+    }
+}
+
+pub(crate) async fn evm_monitor() {
+    log::info!("[EVM] Monitoring EVM..");
+    let mut interval = interval(Duration::from_secs(30));
+    loop {
+        interval.tick().await; // Wait for the next tick
+        let tasks: Vec<_> = vec![tokio::spawn(Box::pin(
+            processing::evm::check_feed_update_state(),
+        ))];
 
         let results: Vec<_> = futures::future::join_all(tasks).await;
         log_tasks_results("EVM", results);
     }
 }
- 
