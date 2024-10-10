@@ -1,21 +1,23 @@
+use std::sync::Arc;
+
 use alloy::hex::FromHex;
 use alloy::primitives::FixedBytes;
+use arc_swap::Guard;
 use bigdecimal::ToPrimitive;
 use num_bigint::BigInt;
-use starknet::core::types::{BlockId, BlockTag, FunctionCall};
+use starknet::core::types::{BlockId, BlockTag, Felt, FunctionCall};
 use starknet::macros::selector;
-use starknet::providers::Provider;
+use starknet::providers::jsonrpc::HttpTransport;
+use starknet::providers::{JsonRpcClient, Provider};
 
+use crate::config::Config;
 use crate::constants::EVM_TIME_SINCE_LAST_FEED_UPDATE;
 use crate::{config::get_config, error::MonitoringError};
 
-pub async fn check_feed_update_state() -> Result<(), MonitoringError> {
-    let config = get_config(None).await;
-    let evm_config = config.evm_configs();
+pub async fn get_all_feed_ids(config: &Guard<Arc<Config>>, client : &Arc<JsonRpcClient<HttpTransport>>) -> Vec<Felt> {
     let feed_registry_address = config
         .feed_registry_address()
         .ok_or(MonitoringError::Evm("Failed to parse feed registry address".to_string()))?;
-    let client = &config.network().provider;
     let mut feed_list = client
         .call(
             FunctionCall {
@@ -28,6 +30,15 @@ pub async fn check_feed_update_state() -> Result<(), MonitoringError> {
         .await
         .map_err(|e| MonitoringError::Evm(e.to_string()))?;
     feed_list.remove(0);
+    feed_list
+}
+
+pub async fn check_feed_update_state() -> Result<(), MonitoringError> {
+    let config = get_config(None).await;
+    let evm_config = config.evm_configs();
+    
+    let client = &config.network().provider;
+    let feed_list = get_all_feed_ids(&config, client).await;
 
     for chain in evm_config.iter() {
         let fl = feed_list.clone();
