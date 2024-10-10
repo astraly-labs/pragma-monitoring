@@ -309,7 +309,7 @@ pub(crate) async fn hyperlane_dispatch_monitor(
 
     loop {
         interval.tick().await; // Wait for the next tick
-        // Skip if indexer is still syncing
+                               // Skip if indexer is still syncing
         if wait_for_syncing && !indexers_are_synced("pragma_devnet_dispatch_event").await {
             continue;
         }
