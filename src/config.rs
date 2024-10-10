@@ -95,7 +95,7 @@ impl EvmConfig {
 #[derive(Debug, Deserialize)]
 struct EvmChainConfig {
     rpc_url: String,
-    contract_address: String,
+    pragma_contract_address: String,
 }
 
 #[derive(Debug, Clone)]
@@ -153,11 +153,11 @@ impl Config {
         let evm_config = config
             .into_iter()
             .filter_map(|(network_name, chain_config)| {
-                if !chain_config.contract_address.is_empty() {
+                if !chain_config.pragma_contract_address.is_empty() {
                     match Url::parse(&chain_config.rpc_url) {
                         Ok(rpc_url) => Some(Ok(EvmConfig::new(
                             network_name,
-                            chain_config.contract_address,
+                            chain_config.pragma_contract_address,
                             rpc_url,
                         ))),
                         Err(e) => Some(Err(

@@ -1,47 +1,47 @@
 mainnet:
   rpc_url: "https://mainnet.infura.io/v3/${INFURA_PROJECT_ID}"
-  contract_address: ""
+  pragma_contract_address: ""
 
 sepolia:
   rpc_url: "https://sepolia.infura.io/v3/${INFURA_PROJECT_ID}"
-  contract_address: ""
+  pragma_contract_address: ""
 
 holesky:
   rpc_url: "https://holesky.infura.io/v3/${INFURA_PROJECT_ID}"
-  contract_address: "0x50fEbf423F5Fc61C2512bb5F9c6B1878d37C50DF"
+  pragma_contract_address: "0x50fEbf423F5Fc61C2512bb5F9c6B1878d37C50DF"
 
 bsc:
   rpc_url: "https://bsc-dataseed1.defibit.io/"
-  contract_address: ""
+  pragma_contract_address: ""
 
 bscTestnet:
   rpc_url: "https://data-seed-prebsc-1-s1.binance.org:8545"
-  contract_address: ""
+  pragma_contract_address: ""
 
 polygon:
   rpc_url: "https://polygon-rpc.com/"
-  contract_address: ""
+  pragma_contract_address: ""
 
 polygonTestnet:
   rpc_url: "https://rpc-mumbai.maticvigil.com"
-  contract_address: ""
+  pragma_contract_address: ""
 
 avalanche:
   rpc_url: "https://api.avax.network/ext/bc/C/rpc"
-  contract_address: ""
+  pragma_contract_address: ""
 
 fantom:
   rpc_url: "https://rpc.ftm.tools/"
-  contract_address: ""
+  pragma_contract_address: ""
 
 arbitrum:
   rpc_url: "https://arb1.arbitrum.io/rpc"
-  contract_address: ""
+  pragma_contract_address: ""
 
 optimism:
   rpc_url: "https://rpc.ankr.com/optimism"
-  contract_address: ""
+  pragma_contract_address: ""
 
 base:
   rpc_url: "https://mainnet.base.org"
-  contract_address: ""
+  pragma_contract_address: ""
