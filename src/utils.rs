@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use std::{collections::HashMap, fmt::Display};
 
 use num_bigint::BigUint;
 use starknet::core::types::Felt;
@@ -37,6 +37,17 @@ pub(crate) fn log_tasks_results<T, E: Display>(
                 Err(e) => log::error!("[{category}]: Task failed with error: {e}"),
             },
             Err(e) => log::error!("[{category}]: Task failed with error: {:?}", e),
+        }
+    }
+}
+
+/// Process or output the results of tokio monitoring tasks
+#[allow(dead_code)]
+pub(crate) fn log_monitoring_results(results: HashMap<String, Result<(), tokio::task::JoinError>>) {
+    for (task_name, result) in results {
+        match result {
+            Ok(_) => log::info!("[{}] Monitoring completed successfully", task_name),
+            Err(e) => log::error!("[{}] Monitoring failed: {:?}", task_name, e),
         }
     }
 }

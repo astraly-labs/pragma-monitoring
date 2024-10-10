@@ -17,6 +17,15 @@ It then processes the data and computes the following metrics:
 - `long_tail_asset_source_deviation{network, pair, type}`: Deviation of a source from the on-chain aggregated median price given source and pair. (in percents)
 - `long_tail_asset_total_sources{network, pair, type}`: Current number of sources available for a given pair.
 - `publisher_balance{network, publisher}`: Balance of a publisher. (in ETH)
+
+Metrics specifics to our Pragma App Chains:
+
+- `dispatch_event_latest_block`: The latest block that triggered a Dispatch event from Hyperlane,
+- `dispatch_event_feed_latest_block_update`: The latest block that triggered a Dispatch event from Hyperlane for a specific Feed ID,
+- `dispatch_event_nb_feeds_updated`: The number of feeds updated per Dispatch event at a given block.
+
+Metrics specifics to Starknet (mainnet/sepolia):
+
 - `vrf_balance{network}`: Balance of the VRF contract. (in ETH)
 - `vrf_requests_count{network, status}`: Number of VRF requests handled for a given network.
 - `vrf_time_since_last_handle_request{network}`: Time since the last VRF request was handled for a given network.

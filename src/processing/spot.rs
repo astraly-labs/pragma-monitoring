@@ -20,6 +20,7 @@ use crate::monitoring::{
 };
 
 use crate::schema::mainnet_spot_entry::dsl as mainnet_dsl;
+use crate::schema::pragma_devnet_spot_entry::dsl as pragma_devnet_dsl;
 use crate::schema::spot_entry::dsl as testnet_dsl;
 
 use bigdecimal::ToPrimitive;
@@ -49,6 +50,13 @@ pub async fn process_data_by_pair(
             mainnet_dsl::mainnet_spot_entry
                 .filter(mainnet_dsl::pair_id.eq(pair.clone()))
                 .order(mainnet_dsl::block_timestamp.desc())
+                .first(&mut conn)
+                .await?
+        }
+        NetworkName::PragmaDevnet => {
+            pragma_devnet_dsl::pragma_devnet_spot_entry
+                .filter(pragma_devnet_dsl::pair_id.eq(pair.clone()))
+                .order(pragma_devnet_dsl::block_timestamp.desc())
                 .first(&mut conn)
                 .await?
         }
@@ -118,6 +126,14 @@ pub async fn process_data_by_pair_and_source(
                 .first(&mut conn)
                 .await?
         }
+        NetworkName::PragmaDevnet => {
+            pragma_devnet_dsl::pragma_devnet_spot_entry
+                .filter(pragma_devnet_dsl::pair_id.eq(pair))
+                .filter(pragma_devnet_dsl::source.eq(src))
+                .order(pragma_devnet_dsl::block_timestamp.desc())
+                .first(&mut conn)
+                .await?
+        }
         NetworkName::Mainnet => {
             mainnet_dsl::mainnet_spot_entry
                 .filter(mainnet_dsl::pair_id.eq(pair))
@@ -168,6 +184,13 @@ pub async fn process_data_by_publisher(
             testnet_dsl::spot_entry
                 .filter(testnet_dsl::publisher.eq(publisher.clone()))
                 .order(testnet_dsl::block_timestamp.desc())
+                .first(&mut conn)
+                .await?
+        }
+        NetworkName::PragmaDevnet => {
+            pragma_devnet_dsl::pragma_devnet_spot_entry
+                .filter(pragma_devnet_dsl::publisher.eq(publisher.clone()))
+                .order(pragma_devnet_dsl::block_timestamp.desc())
                 .first(&mut conn)
                 .await?
         }
@@ -245,6 +268,14 @@ pub async fn get_price_deviation_for_source_from_chain(
                 .filter(testnet_dsl::pair_id.eq(pair))
                 .filter(testnet_dsl::source.eq(source))
                 .order(testnet_dsl::block_timestamp.desc())
+                .first(&mut conn)
+                .await?
+        }
+        NetworkName::PragmaDevnet => {
+            pragma_devnet_dsl::pragma_devnet_spot_entry
+                .filter(pragma_devnet_dsl::pair_id.eq(pair))
+                .filter(pragma_devnet_dsl::source.eq(source))
+                .order(pragma_devnet_dsl::block_timestamp.desc())
                 .first(&mut conn)
                 .await?
         }
