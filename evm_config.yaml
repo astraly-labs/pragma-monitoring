@@ -1,13 +1,13 @@
 mainnet:
-  rpc_url: "https://mainnet.infura.io/v3/${INFURA_PROJECT_ID}"
+  rpc_url: "https://rpc.mevblocker.io"
   pragma_contract_address: ""
 
 sepolia:
-  rpc_url: "https://sepolia.infura.io/v3/${INFURA_PROJECT_ID}"
+  rpc_url: "https://sepolia.drpc.org"
   pragma_contract_address: ""
 
 holesky:
-  rpc_url: "https://holesky.infura.io/v3/${INFURA_PROJECT_ID}"
+  rpc_url: "https://holesky.drpc.org"
   pragma_contract_address: "0x50fEbf423F5Fc61C2512bb5F9c6B1878d37C50DF"
 
 bsc:
