@@ -21,7 +21,10 @@ impl TryFrom<FeedId> for Feed {
 }
 
 impl Feed {
-    pub async fn get_latest_update_timestamp(self, chain: &EvmConfig) -> Result<u64, MonitoringError> {
+    pub async fn get_latest_update_timestamp(
+        self,
+        chain: &EvmConfig,
+    ) -> Result<u64, MonitoringError> {
         match self.feed_type {
             FeedType::Unique(unique_variant) => {
                 unique_variant
