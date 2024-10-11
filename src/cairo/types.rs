@@ -16,7 +16,7 @@ impl TryFrom<FeedId> for Feed {
 
     fn try_from(feed_id: FeedId) -> Result<Self, Self::Error> {
         let feed_type = FeedType::try_from(feed_id.0)?;
-        Ok(Self {feed_id, feed_type })
+        Ok(Self { feed_id, feed_type })
     }
 }
 
@@ -24,7 +24,9 @@ impl Feed {
     pub async fn get_latest_update_timestamp(self, chain: &EvmConfig) -> Result<u64, MonitoringError> {
         match self.feed_type {
             FeedType::Unique(unique_variant) => {
-                unique_variant.get_latest_update_timestamp(chain, self.feed_id).await
+                unique_variant
+                    .get_latest_update_timestamp(chain, self.feed_id)
+                    .await
             }
         }
     }
