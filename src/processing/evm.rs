@@ -47,10 +47,10 @@ pub async fn check_feed_update_state() -> Result<(), MonitoringError> {
         let fl = feed_list.clone();
         for feedid in fl.into_iter() {
             let feed = Feed::try_from(feedid.clone())?;
-            let latest_data = feed.get_latest_update_timestamp(chain).await?;
+            let latest_update_timestamp = feed.get_latest_update_timestamp(chain).await?;
             EVM_TIME_SINCE_LAST_FEED_UPDATE
                 .with_label_values(&[chain.name.as_str(), feedid.to_hex_string().as_str()])
-                .set(get_time_diff(latest_data));
+                .set(get_time_diff(latest_update_timestamp));
         }
     }
 
