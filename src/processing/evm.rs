@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use alloy::hex::FromHex;
 use alloy::primitives::FixedBytes;
@@ -85,7 +86,7 @@ impl Variant for UniqueVariant {
                     .expect("failed to retrieve spot median feed");
                 EVM_TIME_SINCE_LAST_FEED_UPDATE
                     .with_label_values(&[chain.name.as_str(), feed_id.to_hex_string().as_str()])
-                    .set(result.metadata.timestamp as f64);
+                    .set(get_time_diff(result.metadata.timestamp));
                 Ok(())
             }
             UniqueVariant::PerpMedian => {
@@ -98,7 +99,7 @@ impl Variant for UniqueVariant {
                     .expect("failed to retrieve spot perp feed");
                 EVM_TIME_SINCE_LAST_FEED_UPDATE
                     .with_label_values(&[chain.name.as_str(), feed_id.to_hex_string().as_str()])
-                    .set(result.metadata.timestamp as f64);
+                    .set(get_time_diff(result.metadata.timestamp));
                 Ok(())
             }
         }
@@ -117,7 +118,7 @@ impl Variant for TwapVariant {
                     .expect("failed to retrieve twap feed");
                 EVM_TIME_SINCE_LAST_FEED_UPDATE
                     .with_label_values(&[chain.name.as_str(), feed_id.to_hex_string().as_str()])
-                    .set(result.metadata.timestamp as f64);
+                    .set(get_time_diff(result.metadata.timestamp));
                 Ok(())
             }
         }
@@ -167,6 +168,15 @@ pub async fn get_all_feed_ids(
     let feedids = feed_list.iter().map(|elem| FeedId::new(*elem)).collect();
 
     Ok(feedids)
+}
+
+fn get_time_diff(timestamp: u64) -> f64 {
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("Time went backwards")
+        .as_secs_f64();
+
+    now - timestamp as f64
 }
 
 pub async fn check_feed_update_state() -> Result<(), MonitoringError> {
