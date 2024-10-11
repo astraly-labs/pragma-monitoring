@@ -38,7 +38,7 @@ enum UniqueVariant {
 
 #[derive(Clone, PartialEq, Debug)]
 enum TwapVariant {
-    SpotTwap = 0,
+    SpotTwap,
 }
 
 // let main_type = (id & 0xFF00) / 0x100;
