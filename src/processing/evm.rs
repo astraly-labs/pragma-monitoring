@@ -74,11 +74,11 @@ impl TryFrom<Felt> for FeedType {
     }
 }
 
-pub trait Variant: Clone + Send + Sync {
+pub trait DataFetcher: Clone + Send + Sync {
     async fn update_data(&self, chain: &EvmConfig, feed_id: FeedId) -> Result<(), MonitoringError>;
 }
 
-impl Variant for UniqueVariant {
+impl DataFetcher for UniqueVariant {
     async fn update_data(&self, chain: &EvmConfig, feed_id: FeedId) -> Result<(), MonitoringError> {
         match self {
             UniqueVariant::SpotMedian => {
@@ -110,7 +110,7 @@ impl Variant for UniqueVariant {
     }
 }
 
-impl Variant for TwapVariant {
+impl DataFetcher for TwapVariant {
     async fn update_data(&self, chain: &EvmConfig, feed_id: FeedId) -> Result<(), MonitoringError> {
         match self {
             TwapVariant::SpotTwap => {
