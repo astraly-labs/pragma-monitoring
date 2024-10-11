@@ -23,6 +23,8 @@ mod types;
 mod utils;
 // Evm Config utils
 mod evm;
+// Cairo utils
+mod cairo;
 
 #[cfg(test)]
 mod tests;

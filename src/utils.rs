@@ -57,3 +57,10 @@ pub(crate) fn log_monitoring_results(results: HashMap<String, Result<(), tokio::
 pub(crate) fn is_long_tail_asset(pair: &str) -> bool {
     LONG_TAIL_ASSETS.contains_key(pair)
 }
+
+#[allow(dead_code)]
+pub fn get_time_diff(timestamp: u64) -> f64 {
+    let now = chrono::Utc::now().timestamp() as f64;
+
+    now - timestamp as f64
+}
