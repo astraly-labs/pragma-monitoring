@@ -34,10 +34,10 @@ impl TryFrom<FeedId> for Feed {
 }
 
 impl Feed {
-    async fn update_data(self, chain: &EvmConfig) -> Result<(), MonitoringError> {
+    async fn get_latest_data(self, chain: &EvmConfig) -> Result<(), MonitoringError> {
         match self.feed_type {
-            FeedType::Unique(unique_variant) => unique_variant.update_data(chain, self.feed_id).await,
-            FeedType::Twap(twap_variant) => twap_variant.update_data(chain, self.feed_id).await,
+            FeedType::Unique(unique_variant) => unique_variant.get_latest_data(chain, self.feed_id).await,
+            FeedType::Twap(twap_variant) => twap_variant.get_latest_data(chain, self.feed_id).await,
         }
     }
 }
@@ -46,15 +46,6 @@ impl Feed {
 enum FeedType {
     Unique(UniqueVariant),
     Twap(TwapVariant),
-}
-
-impl FeedType {
-    async fn update_data(&self, chain: &EvmConfig, feed_id: FeedId) -> Result<(), MonitoringError> {
-        match self {
-            FeedType::Unique(unique_variant) => unique_variant.update_data(chain, feed_id).await,
-            FeedType::Twap(twap_variant) => twap_variant.update_data(chain, feed_id).await,
-        }
-    }
 }
 
 #[derive(Clone, PartialEq, Debug)]
@@ -102,11 +93,11 @@ impl TryFrom<Felt> for FeedType {
 }
 
 pub trait DataFetcher: Clone + Send + Sync {
-    async fn update_data(&self, chain: &EvmConfig, feed_id: FeedId) -> Result<(), MonitoringError>;
+    async fn get_latest_data(&self, chain: &EvmConfig, feed_id: FeedId) -> Result<(), MonitoringError>;
 }
 
 impl DataFetcher for UniqueVariant {
-    async fn update_data(&self, chain: &EvmConfig, feed_id: FeedId) -> Result<(), MonitoringError> {
+    async fn get_latest_data(&self, chain: &EvmConfig, feed_id: FeedId) -> Result<(), MonitoringError> {
         match self {
             UniqueVariant::SpotMedian => {
                 let result = chain
@@ -138,7 +129,7 @@ impl DataFetcher for UniqueVariant {
 }
 
 impl DataFetcher for TwapVariant {
-    async fn update_data(&self, chain: &EvmConfig, feed_id: FeedId) -> Result<(), MonitoringError> {
+    async fn get_latest_data(&self, chain: &EvmConfig, feed_id: FeedId) -> Result<(), MonitoringError> {
         match self {
             TwapVariant::SpotTwap => {
                 let result = chain
@@ -221,7 +212,7 @@ pub async fn check_feed_update_state() -> Result<(), MonitoringError> {
         let fl = feed_list.clone();
         for feedid in fl.into_iter() {
             let feed = Feed::try_from(feedid)?;
-            feed.update_data(chain).await?;
+            feed.get_latest_data(chain).await?;
         }
     }
 
