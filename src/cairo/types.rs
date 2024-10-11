@@ -4,8 +4,7 @@ use num_bigint::BigInt;
 use starknet::core::types::Felt;
 
 use crate::{
-    config::EvmConfig, constants::EVM_TIME_SINCE_LAST_FEED_UPDATE, error::MonitoringError,
-    utils::get_time_diff,
+    config::EvmConfig, error::MonitoringError,
 };
 
 #[derive(Clone)]
@@ -27,7 +26,7 @@ impl TryFrom<FeedId> for Feed {
 }
 
 impl Feed {
-    pub async fn get_latest_data(self, chain: &EvmConfig) -> Result<(), MonitoringError> {
+    pub async fn get_latest_data(self, chain: &EvmConfig) -> Result<u64, MonitoringError> {
         match self.feed_type {
             FeedType::Unique(unique_variant) => {
                 unique_variant.get_latest_data(chain, self.feed_id).await
@@ -79,7 +78,7 @@ pub trait DataFetcher: Clone + Send + Sync {
         &self,
         chain: &EvmConfig,
         feed_id: FeedId,
-    ) -> Result<(), MonitoringError>;
+    ) -> Result<u64, MonitoringError>;
 }
 
 impl DataFetcher for UniqueVariant {
@@ -87,7 +86,7 @@ impl DataFetcher for UniqueVariant {
         &self,
         chain: &EvmConfig,
         feed_id: FeedId,
-    ) -> Result<(), MonitoringError> {
+    ) -> Result<u64, MonitoringError> {
         match self {
             UniqueVariant::SpotMedian => {
                 let result = chain
@@ -96,10 +95,7 @@ impl DataFetcher for UniqueVariant {
                     .call()
                     .await
                     .expect("failed to retrieve spot median feed");
-                EVM_TIME_SINCE_LAST_FEED_UPDATE
-                    .with_label_values(&[chain.name.as_str(), feed_id.to_hex_string().as_str()])
-                    .set(get_time_diff(result.metadata.timestamp));
-                Ok(())
+                Ok(result.metadata.timestamp)
             }
         }
     }
