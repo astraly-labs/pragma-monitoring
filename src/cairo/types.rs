@@ -3,9 +3,7 @@ use bigdecimal::ToPrimitive;
 use num_bigint::BigInt;
 use starknet::core::types::Felt;
 
-use crate::{
-    config::EvmConfig, error::MonitoringError,
-};
+use crate::{config::EvmConfig, error::MonitoringError};
 
 #[derive(Clone)]
 pub struct Feed {
@@ -26,10 +24,10 @@ impl TryFrom<FeedId> for Feed {
 }
 
 impl Feed {
-    pub async fn get_latest_data(self, chain: &EvmConfig) -> Result<u64, MonitoringError> {
+    pub async fn get_latest_update_timestamp(self, chain: &EvmConfig) -> Result<u64, MonitoringError> {
         match self.feed_type {
             FeedType::Unique(unique_variant) => {
-                unique_variant.get_latest_data(chain, self.feed_id).await
+                unique_variant.get_latest_update_timestamp(chain, self.feed_id).await
             }
         }
     }
@@ -74,7 +72,7 @@ impl TryFrom<Felt> for FeedType {
 }
 
 pub trait DataFetcher: Clone + Send + Sync {
-    async fn get_latest_data(
+    async fn get_latest_update_timestamp(
         &self,
         chain: &EvmConfig,
         feed_id: FeedId,
@@ -82,7 +80,7 @@ pub trait DataFetcher: Clone + Send + Sync {
 }
 
 impl DataFetcher for UniqueVariant {
-    async fn get_latest_data(
+    async fn get_latest_update_timestamp(
         &self,
         chain: &EvmConfig,
         feed_id: FeedId,
