@@ -15,7 +15,7 @@ use crate::config::{Config, EvmConfig};
 use crate::constants::EVM_TIME_SINCE_LAST_FEED_UPDATE;
 use crate::{config::get_config, error::MonitoringError};
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Debug)]
 enum FeedType {
     Unique(UniqueVariant),
     Twap(TwapVariant),
@@ -30,31 +30,35 @@ impl FeedType {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Debug)]
 enum UniqueVariant {
     SpotMedian,
     PerpMedian,
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Debug)]
 enum TwapVariant {
     SpotTwap = 0,
 }
+
+// let main_type = (id & 0xFF00) / 0x100;
+// let variant = id & 0x00FF;
 
 impl TryFrom<Felt> for FeedType {
     type Error = MonitoringError;
 
     fn try_from(feed_id: Felt) -> Result<Self, Self::Error> {
-        let feed_type = ((feed_id.to_bigint() & BigInt::from(65280)) / BigInt::from(256))
+        // Retrieving FeedIdType by dividing as bitshifting on bigint is impossible
+        let feed_id_type = feed_id.to_bigint() / BigInt::from(2).pow(216);
+        let feed_type = ((feed_id_type.clone() & BigInt::from(65280)) / BigInt::from(256))
             .to_u64()
             .ok_or(MonitoringError::Evm("invalid main type".to_string()))?;
-        let variant =
-            (feed_id.to_bigint() & BigInt::from(255))
-                .to_u64()
-                .ok_or(MonitoringError::Evm(format!(
-                    "invalid variant for main type {}",
-                    feed_type
-                )))?;
+        let variant = (feed_id_type & BigInt::from(255))
+            .to_u64()
+            .ok_or(MonitoringError::Evm(format!(
+                "invalid variant for main type {}",
+                feed_type
+            )))?;
         match feed_type {
             0 => match variant {
                 0 => Ok(FeedType::Unique(UniqueVariant::SpotMedian)),
@@ -195,4 +199,34 @@ pub async fn check_feed_update_state() -> Result<(), MonitoringError> {
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use starknet::core::types::Felt;
+
+    use crate::processing::evm::{TwapVariant, UniqueVariant};
+
+    use super::FeedType;
+
+    #[test]
+    fn feed_id_parse_test() {
+        let unique_perp_median_feedid =
+            Felt::from_hex("0x100000000000000000000000000000000000000004254432f555344").unwrap();
+        let unique_spot_median_feedid = Felt::from_hex("0x4254432f555344").unwrap();
+        let twap_spot_twap_feedid =
+            Felt::from_hex("0x10000000000000000000000000000000000000000004254432f555344").unwrap();
+        assert_eq!(
+            FeedType::try_from(unique_perp_median_feedid).unwrap(),
+            FeedType::Unique(UniqueVariant::PerpMedian)
+        );
+        assert_eq!(
+            FeedType::try_from(unique_spot_median_feedid).unwrap(),
+            FeedType::Unique(UniqueVariant::SpotMedian)
+        );
+        assert_eq!(
+            FeedType::try_from(twap_spot_twap_feedid).unwrap(),
+            FeedType::Twap(TwapVariant::SpotTwap)
+        );
+    }
 }
