@@ -51,7 +51,6 @@ enum FeedType {
 #[derive(Clone, PartialEq, Debug)]
 enum UniqueVariant {
     SpotMedian,
-    PerpMedian,
 }
 
 #[derive(Clone, PartialEq, Debug)]
@@ -80,7 +79,6 @@ impl TryFrom<Felt> for FeedType {
         match feed_type {
             0 => match variant {
                 0 => Ok(FeedType::Unique(UniqueVariant::SpotMedian)),
-                1 => Ok(FeedType::Unique(UniqueVariant::PerpMedian)),
                 _ => unreachable!(),
             },
             1 => match variant {
@@ -106,19 +104,6 @@ impl DataFetcher for UniqueVariant {
                     .call()
                     .await
                     .expect("failed to retrieve spot median feed");
-                EVM_TIME_SINCE_LAST_FEED_UPDATE
-                    .with_label_values(&[chain.name.as_str(), feed_id.to_hex_string().as_str()])
-                    .set(get_time_diff(result.metadata.timestamp));
-                Ok(())
-            }
-            UniqueVariant::PerpMedian => {
-                //TODO: must be changed with real fn
-                let result = chain
-                    .pragma
-                    .perpFeeds(feed_id.to_calldata()?)
-                    .call()
-                    .await
-                    .expect("failed to retrieve spot perp feed");
                 EVM_TIME_SINCE_LAST_FEED_UPDATE
                     .with_label_values(&[chain.name.as_str(), feed_id.to_hex_string().as_str()])
                     .set(get_time_diff(result.metadata.timestamp));
@@ -229,15 +214,9 @@ mod tests {
 
     #[test]
     fn feed_id_parse_test() {
-        let unique_perp_median_feedid =
-            Felt::from_hex("0x100000000000000000000000000000000000000004254432f555344").unwrap();
         let unique_spot_median_feedid = Felt::from_hex("0x4254432f555344").unwrap();
         let twap_spot_twap_feedid =
             Felt::from_hex("0x10000000000000000000000000000000000000000004254432f555344").unwrap();
-        assert_eq!(
-            FeedType::try_from(unique_perp_median_feedid).unwrap(),
-            FeedType::Unique(UniqueVariant::PerpMedian)
-        );
         assert_eq!(
             FeedType::try_from(unique_spot_median_feedid).unwrap(),
             FeedType::Unique(UniqueVariant::SpotMedian)
