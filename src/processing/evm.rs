@@ -37,7 +37,6 @@ impl Feed {
     async fn get_latest_data(self, chain: &EvmConfig) -> Result<(), MonitoringError> {
         match self.feed_type {
             FeedType::Unique(unique_variant) => unique_variant.get_latest_data(chain, self.feed_id).await,
-            FeedType::Twap(twap_variant) => twap_variant.get_latest_data(chain, self.feed_id).await,
         }
     }
 }
@@ -45,17 +44,11 @@ impl Feed {
 #[derive(Clone, PartialEq, Debug)]
 enum FeedType {
     Unique(UniqueVariant),
-    Twap(TwapVariant),
 }
 
 #[derive(Clone, PartialEq, Debug)]
 enum UniqueVariant {
     SpotMedian,
-}
-
-#[derive(Clone, PartialEq, Debug)]
-enum TwapVariant {
-    SpotTwap,
 }
 
 // let main_type = (id & 0xFF00) / 0x100;
@@ -79,10 +72,6 @@ impl TryFrom<Felt> for FeedType {
         match feed_type {
             0 => match variant {
                 0 => Ok(FeedType::Unique(UniqueVariant::SpotMedian)),
-                _ => unreachable!(),
-            },
-            1 => match variant {
-                0 => Ok(FeedType::Twap(TwapVariant::SpotTwap)),
                 _ => unreachable!(),
             },
             _ => unreachable!(),
@@ -113,24 +102,6 @@ impl DataFetcher for UniqueVariant {
     }
 }
 
-impl DataFetcher for TwapVariant {
-    async fn get_latest_data(&self, chain: &EvmConfig, feed_id: FeedId) -> Result<(), MonitoringError> {
-        match self {
-            TwapVariant::SpotTwap => {
-                let result = chain
-                    .pragma
-                    .twapFeeds(feed_id.to_calldata()?)
-                    .call()
-                    .await
-                    .expect("failed to retrieve twap feed");
-                EVM_TIME_SINCE_LAST_FEED_UPDATE
-                    .with_label_values(&[chain.name.as_str(), feed_id.to_hex_string().as_str()])
-                    .set(get_time_diff(result.metadata.timestamp));
-                Ok(())
-            }
-        }
-    }
-}
 
 #[derive(Clone)]
 pub struct FeedId {
@@ -208,22 +179,16 @@ pub async fn check_feed_update_state() -> Result<(), MonitoringError> {
 mod tests {
     use starknet::core::types::Felt;
 
-    use crate::processing::evm::{TwapVariant, UniqueVariant};
+    use crate::processing::evm::UniqueVariant;
 
     use super::FeedType;
 
     #[test]
     fn feed_id_parse_test() {
         let unique_spot_median_feedid = Felt::from_hex("0x4254432f555344").unwrap();
-        let twap_spot_twap_feedid =
-            Felt::from_hex("0x10000000000000000000000000000000000000000004254432f555344").unwrap();
         assert_eq!(
             FeedType::try_from(unique_spot_median_feedid).unwrap(),
             FeedType::Unique(UniqueVariant::SpotMedian)
-        );
-        assert_eq!(
-            FeedType::try_from(twap_spot_twap_feedid).unwrap(),
-            FeedType::Twap(TwapVariant::SpotTwap)
         );
     }
 }
