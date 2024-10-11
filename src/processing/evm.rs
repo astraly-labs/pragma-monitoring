@@ -15,6 +15,33 @@ use crate::config::{Config, EvmConfig};
 use crate::constants::EVM_TIME_SINCE_LAST_FEED_UPDATE;
 use crate::{config::get_config, error::MonitoringError};
 
+#[derive(Clone)]
+struct Feed {
+    feed_id: FeedId,
+    feed_type: FeedType,
+}
+
+impl TryFrom<FeedId> for Feed {
+    type Error = MonitoringError;
+
+    fn try_from(feed_id: FeedId) -> Result<Self, Self::Error>{
+        let feed_type =  FeedType::try_from(feed_id.feed_id)?;
+        Ok(Self {
+            feed_id,
+            feed_type: feed_type,
+        })
+    }
+}
+
+impl Feed {
+    async fn update_data(self, chain: &EvmConfig) -> Result<(), MonitoringError> {
+        match self.feed_type {
+            FeedType::Unique(unique_variant) => unique_variant.update_data(chain, self.feed_id).await,
+            FeedType::Twap(twap_variant) => twap_variant.update_data(chain, self.feed_id).await,
+        }
+    }
+}
+
 #[derive(Clone, PartialEq, Debug)]
 enum FeedType {
     Unique(UniqueVariant),
@@ -192,9 +219,9 @@ pub async fn check_feed_update_state() -> Result<(), MonitoringError> {
 
     for chain in evm_config.iter() {
         let fl = feed_list.clone();
-        for feed in fl.into_iter() {
-            let feed_handler = FeedType::try_from(feed.feed_id)?;
-            feed_handler.update_data(chain, feed).await?;
+        for feedid in fl.into_iter() {
+            let feed = Feed::try_from(feedid)?;
+            feed.update_data(chain).await?;
         }
     }
 
