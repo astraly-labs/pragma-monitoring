@@ -25,7 +25,7 @@ impl TryFrom<FeedId> for Feed {
     type Error = MonitoringError;
 
     fn try_from(feed_id: FeedId) -> Result<Self, Self::Error>{
-        let feed_type =  FeedType::try_from(feed_id.feed_id)?;
+        let feed_type =  FeedType::try_from(feed_id.0)?;
         Ok(Self {
             feed_id,
             feed_type: feed_type,
@@ -104,22 +104,20 @@ impl DataFetcher for UniqueVariant {
 
 
 #[derive(Clone)]
-pub struct FeedId {
-    pub feed_id: Felt,
-}
+pub struct FeedId(Felt);
 
 impl FeedId {
     pub fn new(feed_id: Felt) -> Self {
-        Self { feed_id }
+        Self(feed_id)
     }
 
     pub fn to_calldata(&self) -> Result<FixedBytes<32>, MonitoringError> {
-        alloy::sol_types::private::FixedBytes::from_hex(self.feed_id.to_hex_string())
+        alloy::sol_types::private::FixedBytes::from_hex(self.to_hex_string())
             .map_err(|e| MonitoringError::Evm(e.to_string()))
     }
 
     pub fn to_hex_string(&self) -> String {
-        self.feed_id.to_hex_string()
+        self.0.to_hex_string()
     }
 }
 
