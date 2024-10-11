@@ -147,10 +147,7 @@ pub async fn get_all_feed_ids(
 }
 
 fn get_time_diff(timestamp: u64) -> f64 {
-    let now = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .expect("Time went backwards")
-        .as_secs_f64();
+    let now = chrono::Utc::now().timestamp() as f64;
 
     now - timestamp as f64
 }
