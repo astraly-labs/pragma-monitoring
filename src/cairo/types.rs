@@ -16,10 +16,7 @@ impl TryFrom<FeedId> for Feed {
 
     fn try_from(feed_id: FeedId) -> Result<Self, Self::Error> {
         let feed_type = FeedType::try_from(feed_id.0)?;
-        Ok(Self {
-            feed_id,
-            feed_type,
-        })
+        Ok(Self {feed_id, feed_type })
     }
 }
 
