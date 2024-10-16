@@ -53,7 +53,7 @@ pub async fn price_deviation<T: Entry>(
 
     let request_url = if let Ok(api_key) = api_key {
         format!(
-            "https://coins.llama.fi/prices/historical/{timestamp}/coingecko:{id}?apikey={apikey}",
+            "https://pro-api.llama.fi/{apikey}/coins//prices/historical/{timestamp}/coingecko:{id}?apikey={apikey}",
             timestamp = query.timestamp().timestamp(),
             id = coingecko_id,
             apikey = api_key
@@ -101,7 +101,7 @@ pub async fn raw_price_deviation(pair_id: &String, price: f64) -> Result<f64, Mo
 
     let request_url = if let Ok(api_key) = api_key {
         format!(
-            "https://coins.llama.fi/prices/historical/{timestamp}/coingecko:{id}?apikey={apikey}",
+            "https://pro-api.llama.fi/{apikey}/coins/prices/historical/{timestamp}/coingecko:{id}?apikey={apikey}",
             timestamp = chrono::Utc::now().timestamp(),
             id = coingecko_id,
             apikey = api_key

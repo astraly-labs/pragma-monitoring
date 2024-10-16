@@ -83,7 +83,7 @@ pub async fn on_off_price_deviation(
 
             let request_url = if let Ok(api_key) = api_key {
                 format!(
-                    "https://coins.llama.fi/prices/historical/{timestamp}/coingecko:{id}?apikey={apikey}",
+                    "https://pro-api.llama.fi/{apikey}/coins/prices/historical/{timestamp}/coingecko:{id}",
                     timestamp = timestamp,
                     id = coingecko_id,
                     apikey = api_key
