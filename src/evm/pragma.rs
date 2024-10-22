@@ -14,7 +14,7 @@ sol!(
             uint16 numberOfSources;
             uint8 decimals;
         }
-        
+
         struct SpotMedian {
             Metadata metadata;
             uint256 price;
