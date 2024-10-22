@@ -26,7 +26,7 @@ use crate::{
     constants::{
         CONFIG_UPDATE_INTERVAL, LONG_TAIL_ASSETS, LONG_TAIL_ASSET_THRESHOLD, LOW_SOURCES_THRESHOLD,
     },
-    evm::pragma::{Pragma, PragmaContract},
+    evm::pragma::{IPragma, PragmaContract},
     utils::{is_long_tail_asset, try_felt_to_u32},
 };
 
@@ -84,7 +84,7 @@ impl EvmConfig {
         }
         let address = Address::from_hex(contract_adress)
             .expect("Invalid Pragma Address specified. Make sure it is an hexadecimal address.");
-        let pragma = Pragma::new(address, provider);
+        let pragma = IPragma::new(address, provider);
         Self {
             name: network_name,
             pragma,

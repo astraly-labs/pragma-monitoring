@@ -95,7 +95,7 @@ impl DataFetcher for UniqueVariant {
                     .call()
                     .await
                     .expect("failed to retrieve spot median feed");
-                Ok(result.metadata.timestamp)
+                Ok(result._0.metadata.timestamp)
             }
         }
     }
