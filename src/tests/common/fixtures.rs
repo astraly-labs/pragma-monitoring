@@ -31,6 +31,8 @@ pub async fn test_config() -> Guard<Arc<Config>> {
         ),
         spot_pairs: vec!["ETH/USD".to_string(), "BTC/USD".to_string()],
         future_pairs: vec!["ETH/USD".to_string(), "BTC/USD".to_string()],
+        config_path: "".into(),
+        feed_registry_address: None,
     })
     .await;
     get_config(None).await
