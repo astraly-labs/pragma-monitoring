@@ -1,4 +1,5 @@
 use crate::monitoring::balance::get_on_chain_balance;
+use crate::monitoring::price_deviation::CoinPricesDTO;
 use crate::{
     config::{get_config, DataType},
     constants::{INDEXER_BLOCKS_LEFT, PUBLISHER_BALANCE},
@@ -235,6 +236,48 @@ pub async fn query_pragma_api(
             )));
         }
     }
+}
+
+/// Queries Defillama API
+/// See docs [here](https://defillama.com/pro-api/docs)
+/// NOTE: it will use the PRO api if we find an api key in the `DEFILLAMA_API_KEY` env var
+/// else it will use the regular api endpoint.
+pub async fn query_defillama_api(
+    timestamp: u64,
+    coingecko_id: &str,
+) -> Result<CoinPricesDTO, MonitoringError> {
+    let api_key = std::env::var("DEFILLAMA_API_KEY");
+
+    let request_url = if let Ok(api_key) = api_key {
+        format!(
+            "https://pro-api.llama.fi/{apikey}/coins/prices/historical/{timestamp}/coingecko:{id}",
+            timestamp = timestamp,
+            id = coingecko_id,
+            apikey = api_key
+        )
+    } else {
+        format!(
+            "https://coins.llama.fi/prices/historical/{timestamp}/coingecko:{id}",
+            timestamp = timestamp,
+            id = coingecko_id,
+        )
+    };
+
+    let response = reqwest::get(&request_url)
+        .await
+        .map_err(|e| MonitoringError::Api(e.to_string()))?;
+
+    let response_text = response
+        .text()
+        .await
+        .map_err(|e| MonitoringError::Api(format!("Failed to get response text: {}", e)))?;
+
+    Ok(serde_json::from_str(&response_text).map_err(|e| {
+        MonitoringError::Api(format!(
+            "Failed to parse JSON: {}. Response: {}",
+            e, response_text
+        ))
+    })?)
 }
 
 pub async fn check_publisher_balance(

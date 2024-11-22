@@ -8,7 +8,7 @@ use starknet::{
     providers::Provider,
 };
 
-use crate::monitoring::price_deviation::CoinPricesDTO;
+use crate::processing::common::query_defillama_api;
 use crate::{
     config::{get_config, DataType},
     constants::COINGECKO_IDS,
@@ -79,39 +79,7 @@ pub async fn on_off_price_deviation(
         DataType::Spot => {
             let coingecko_id = *ids.get(&pair_id).expect("Failed to get coingecko id");
 
-            let api_key = std::env::var("DEFILLAMA_API_KEY");
-
-            let request_url = if let Ok(api_key) = api_key {
-                format!(
-                    "https://pro-api.llama.fi/{apikey}/coins/prices/historical/{timestamp}/coingecko:{id}",
-                    timestamp = timestamp,
-                    id = coingecko_id,
-                    apikey = api_key
-                )
-            } else {
-                format!(
-                    "https://coins.llama.fi/prices/historical/{timestamp}/coingecko:{id}",
-                    timestamp = timestamp,
-                    id = coingecko_id,
-                )
-            };
-
-            let response = reqwest::get(&request_url)
-                .await
-                .map_err(|e| MonitoringError::Api(e.to_string()))?;
-
-            let response_text = response
-                .text()
-                .await
-                .map_err(|e| MonitoringError::Api(format!("Failed to get response text: {}", e)))?;
-
-            let coins_prices: CoinPricesDTO =
-                serde_json::from_str(&response_text).map_err(|e| {
-                    MonitoringError::Api(format!(
-                        "Failed to parse JSON: {}. Response: {}",
-                        e, response_text
-                    ))
-                })?;
+            let coins_prices = query_defillama_api(timestamp, coingecko_id).await?;
 
             let api_id = format!("coingecko:{}", coingecko_id);
 

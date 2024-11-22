@@ -1,6 +1,9 @@
 use std::collections::HashMap;
 
-use crate::{constants::COINGECKO_IDS, error::MonitoringError, types::Entry};
+use crate::{
+    constants::COINGECKO_IDS, error::MonitoringError, processing::common::query_defillama_api,
+    types::Entry,
+};
 
 /// Data Transfer Object for Defillama API
 /// e.g
@@ -49,33 +52,11 @@ pub async fn price_deviation<T: Entry>(
     let pair_id = query.pair_id().to_string();
     let coingecko_id = *ids.get(&pair_id).expect("Failed to get coingecko id");
 
-    let api_key = std::env::var("DEFILLAMA_API_KEY");
-
-    let request_url = if let Ok(api_key) = api_key {
-        format!(
-            "https://pro-api.llama.fi/{apikey}/coins//prices/historical/{timestamp}/coingecko:{id}?apikey={apikey}",
-            timestamp = query.timestamp().timestamp(),
-            id = coingecko_id,
-            apikey = api_key
-        )
-    } else {
-        format!(
-            "https://coins.llama.fi/prices/historical/{timestamp}/coingecko:{id}",
-            timestamp = query.timestamp().timestamp(),
-            id = coingecko_id,
-        )
-    };
-
-    let response = reqwest::get(&request_url)
-        .await
-        .map_err(|e| MonitoringError::Api(e.to_string()))?;
-
-    let coins_prices: CoinPricesDTO = response.json().await.map_err(|e| {
-        MonitoringError::Api(format!(
-            "Failed to convert to DTO object, got error {:?}",
-            e.to_string()
-        ))
-    })?;
+    let coins_prices = query_defillama_api(
+        query.timestamp().timestamp().try_into().unwrap(),
+        coingecko_id,
+    )
+    .await?;
 
     let api_id = format!("coingecko:{}", coingecko_id);
 
@@ -97,33 +78,11 @@ pub async fn raw_price_deviation(pair_id: &String, price: f64) -> Result<f64, Mo
 
     let coingecko_id = *ids.get(pair_id).expect("Failed to get coingecko id");
 
-    let api_key = std::env::var("DEFILLAMA_API_KEY");
-
-    let request_url = if let Ok(api_key) = api_key {
-        format!(
-            "https://pro-api.llama.fi/{apikey}/coins/prices/historical/{timestamp}/coingecko:{id}?apikey={apikey}",
-            timestamp = chrono::Utc::now().timestamp(),
-            id = coingecko_id,
-            apikey = api_key
-        )
-    } else {
-        format!(
-            "https://coins.llama.fi/prices/historical/{timestamp}/coingecko:{id}",
-            timestamp = chrono::Utc::now().timestamp(),
-            id = coingecko_id,
-        )
-    };
-
-    let response = reqwest::get(&request_url)
-        .await
-        .map_err(|e| MonitoringError::Api(e.to_string()))?;
-
-    let coins_prices: CoinPricesDTO = response.json().await.map_err(|e| {
-        MonitoringError::Api(format!(
-            "Failed to convert to DTO object, got error {:?}",
-            e.to_string()
-        ))
-    })?;
+    let coins_prices = query_defillama_api(
+        chrono::Utc::now().timestamp().try_into().unwrap(),
+        coingecko_id,
+    )
+    .await?;
 
     let api_id = format!("coingecko:{}", coingecko_id);
 
