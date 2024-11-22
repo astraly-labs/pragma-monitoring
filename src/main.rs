@@ -37,7 +37,7 @@ use tokio::task::JoinHandle;
 use tokio::time::interval;
 
 use config::{get_config, init_long_tail_asset_configuration, periodic_config_update, DataType};
-use processing::common::{check_publisher_balance, data_indexers_are_synced, indexers_are_synced};
+use processing::common::{check_publisher_balance, data_indexers_are_synced};
 use utils::{is_long_tail_asset, log_monitoring_results, log_tasks_results};
 
 struct MonitoringTask {
@@ -73,48 +73,39 @@ async fn main() {
     init_long_tail_asset_configuration();
 
     // Monitor spot/future in parallel
-    let monitoring_tasks = spawn_monitoring_tasks(pool.clone(), &monitoring_config).await;
+    let monitoring_tasks = spawn_monitoring_tasks(pool.clone()).await;
     handle_task_results(monitoring_tasks).await;
 }
 
 async fn spawn_monitoring_tasks(
     pool: Pool<AsyncDieselConnectionManager<AsyncPgConnection>>,
-    monitoring_config: &config::Config,
 ) -> Vec<MonitoringTask> {
-    let mut tasks = vec![
-        // MonitoringTask {
-        //     name: "Config Update".to_string(),
-        //     handle: tokio::spawn(periodic_config_update()),
-        // },
+    let tasks = vec![
+        MonitoringTask {
+            name: "Config Update".to_string(),
+            handle: tokio::spawn(periodic_config_update()),
+        },
         MonitoringTask {
             name: "Spot Monitoring".to_string(),
             handle: tokio::spawn(onchain_monitor(pool.clone(), true, &DataType::Spot)),
         },
-        // MonitoringTask {
-        //     name: "Future Monitoring".to_string(),
-        //     handle: tokio::spawn(onchain_monitor(pool.clone(), true, &DataType::Future)),
-        // },
-        // MonitoringTask {
-        //     name: "Publisher Monitoring".to_string(),
-        //     handle: tokio::spawn(publisher_monitor(pool.clone(), false)),
-        // },
+        MonitoringTask {
+            name: "Future Monitoring".to_string(),
+            handle: tokio::spawn(onchain_monitor(pool.clone(), true, &DataType::Future)),
+        },
+        MonitoringTask {
+            name: "Publisher Monitoring".to_string(),
+            handle: tokio::spawn(publisher_monitor(pool.clone(), false)),
+        },
+        MonitoringTask {
+            name: "API Monitoring".to_string(),
+            handle: tokio::spawn(api_monitor()),
+        },
+        MonitoringTask {
+            name: "VRF Monitoring".to_string(),
+            handle: tokio::spawn(vrf_monitor(pool.clone())),
+        },
     ];
-
-    // if monitoring_config.is_pragma_chain() {
-    //     tasks.push(MonitoringTask {
-    //         name: "Hyperlane Dispatches Monitoring".to_string(),
-    //         handle: tokio::spawn(hyperlane_dispatch_monitor(pool.clone(), true)),
-    //     });
-    // } else {
-    // tasks.push(MonitoringTask {
-    //     name: "API Monitoring".to_string(),
-    //     handle: tokio::spawn(api_monitor()),
-    // });
-    //     tasks.push(MonitoringTask {
-    //         name: "VRF Monitoring".to_string(),
-    //         handle: tokio::spawn(vrf_monitor(pool.clone())),
-    //     });
-    // }
 
     tasks
 }
@@ -300,27 +291,5 @@ pub(crate) async fn vrf_monitor(pool: Pool<AsyncDieselConnectionManager<AsyncPgC
 
         let results: Vec<_> = futures::future::join_all(tasks).await;
         log_tasks_results("VRF", results);
-    }
-}
-
-pub(crate) async fn hyperlane_dispatch_monitor(
-    pool: Pool<AsyncDieselConnectionManager<AsyncPgConnection>>,
-    wait_for_syncing: bool,
-) {
-    let mut interval = interval(Duration::from_secs(5));
-
-    loop {
-        interval.tick().await; // Wait for the next tick
-
-        // Skip if indexer is still syncing
-        if wait_for_syncing && !indexers_are_synced("pragma_devnet_dispatch_event").await {
-            continue;
-        }
-
-        let tasks: Vec<_> = vec![tokio::spawn(Box::pin(
-            processing::dispatch::process_dispatch_events(pool.clone()),
-        ))];
-        let results: Vec<_> = futures::future::join_all(tasks).await;
-        log_tasks_results("Dispatch", results);
     }
 }

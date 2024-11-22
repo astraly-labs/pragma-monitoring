@@ -66,6 +66,7 @@ pub async fn data_indexers_are_synced(data_type: &DataType) -> bool {
 
 /// Checks if indexers of the given data type are still syncing
 /// Returns true if any of the indexers is still syncing
+#[allow(unused)]
 pub async fn is_syncing(table_name: &str) -> Result<bool, MonitoringError> {
     let config = get_config(None).await;
 
@@ -88,6 +89,7 @@ pub async fn is_syncing(table_name: &str) -> Result<bool, MonitoringError> {
 }
 
 /// Check if the indexers are still syncing
+#[allow(unused)]
 pub async fn indexers_are_synced(table_name: &str) -> bool {
     match is_syncing(table_name).await {
         Ok(true) => {
