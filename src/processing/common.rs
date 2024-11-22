@@ -228,13 +228,10 @@ pub async fn query_pragma_api(
             }
         }
         reqwest::StatusCode::UNAUTHORIZED => Err(MonitoringError::Api("Unauthorized".to_string())),
-        other => {
-            println!("failed req url: {:?}", request_url);
-            return Err(MonitoringError::Api(format!(
-                "Unexpected response status: {}",
-                other
-            )));
-        }
+        other => Err(MonitoringError::Api(format!(
+            "Unexpected response status: {}",
+            other
+        ))),
     }
 }
 
