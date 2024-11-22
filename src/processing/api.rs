@@ -30,7 +30,6 @@ pub async fn process_data_by_pair(pair: String) -> Result<(), MonitoringError> {
     // sleep for rate limiting
     tokio::time::sleep(Duration::from_secs(5)).await;
 
-
     // Parse the hex string price
     let parsed_price = BigInt::from_str_radix(&result.price[2..], 16)
         .unwrap()
@@ -71,7 +70,6 @@ pub async fn process_sequencer_data() -> Result<(), MonitoringError> {
     let network_env = config.network_str();
 
     let result = query_pragma_api(&pair, network_env, "twap", "2h").await?;
-
 
     // Parse the hex string price
     let parsed_price = BigInt::from_str_radix(&result.price[2..], 16)

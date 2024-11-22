@@ -100,12 +100,20 @@ pub async fn on_off_price_deviation(
                 .await
                 .map_err(|e| MonitoringError::Api(e.to_string()))?;
 
-            let coins_prices: CoinPricesDTO = response.json().await.map_err(|e| {
-                MonitoringError::Api(format!(
-                    "Failed to convert to DTO object, got error {:?}",
-                    e.to_string()
-                ))
-            })?;
+            let response_text = response
+                .text()
+                .await
+                .map_err(|e| MonitoringError::Api(format!("Failed to get response text: {}", e)))?;
+
+            println!("Response JSON: {}", response_text);
+
+            let coins_prices: CoinPricesDTO =
+                serde_json::from_str(&response_text).map_err(|e| {
+                    MonitoringError::Api(format!(
+                        "Failed to parse JSON: {}. Response: {}",
+                        e, response_text
+                    ))
+                })?;
 
             let api_id = format!("coingecko:{}", coingecko_id);
 

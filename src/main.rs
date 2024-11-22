@@ -47,7 +47,15 @@ struct MonitoringTask {
 
 #[tokio::main]
 async fn main() {
-    env_logger::init();
+    // Start configuring a `fmt` subscriber
+    let subscriber = tracing_subscriber::fmt()
+        .compact()
+        .with_file(true)
+        .with_line_number(true)
+        .with_thread_ids(true)
+        .with_target(false)
+        .finish();
+    tracing::subscriber::set_global_default(subscriber).unwrap();
 
     // Load environment variables from .env file
     dotenv().ok();
@@ -78,10 +86,10 @@ async fn spawn_monitoring_tasks(
         //     name: "Config Update".to_string(),
         //     handle: tokio::spawn(periodic_config_update()),
         // },
-        // MonitoringTask {
-        //     name: "Spot Monitoring".to_string(),
-        //     handle: tokio::spawn(onchain_monitor(pool.clone(), true, &DataType::Spot)),
-        // },
+        MonitoringTask {
+            name: "Spot Monitoring".to_string(),
+            handle: tokio::spawn(onchain_monitor(pool.clone(), true, &DataType::Spot)),
+        },
         // MonitoringTask {
         //     name: "Future Monitoring".to_string(),
         //     handle: tokio::spawn(onchain_monitor(pool.clone(), true, &DataType::Future)),
@@ -98,10 +106,10 @@ async fn spawn_monitoring_tasks(
     //         handle: tokio::spawn(hyperlane_dispatch_monitor(pool.clone(), true)),
     //     });
     // } else {
-        tasks.push(MonitoringTask {
-            name: "API Monitoring".to_string(),
-            handle: tokio::spawn(api_monitor()),
-        });
+    // tasks.push(MonitoringTask {
+    //     name: "API Monitoring".to_string(),
+    //     handle: tokio::spawn(api_monitor()),
+    // });
     //     tasks.push(MonitoringTask {
     //         name: "VRF Monitoring".to_string(),
     //         handle: tokio::spawn(vrf_monitor(pool.clone())),
