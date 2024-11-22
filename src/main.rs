@@ -54,7 +54,7 @@ async fn main() {
 
     // Define the pairs to monitor
     let monitoring_config = get_config(None).await;
-    log::info!("Successfully fetched config: {:?}", monitoring_config);
+    tracing::info!("Successfully fetched config: {:?}", monitoring_config);
     tokio::spawn(server::run_metrics_server());
 
     let database_url: String = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
@@ -74,39 +74,39 @@ async fn spawn_monitoring_tasks(
     monitoring_config: &config::Config,
 ) -> Vec<MonitoringTask> {
     let mut tasks = vec![
-        MonitoringTask {
-            name: "Config Update".to_string(),
-            handle: tokio::spawn(periodic_config_update()),
-        },
-        MonitoringTask {
-            name: "Spot Monitoring".to_string(),
-            handle: tokio::spawn(onchain_monitor(pool.clone(), true, &DataType::Spot)),
-        },
-        MonitoringTask {
-            name: "Future Monitoring".to_string(),
-            handle: tokio::spawn(onchain_monitor(pool.clone(), true, &DataType::Future)),
-        },
-        MonitoringTask {
-            name: "Publisher Monitoring".to_string(),
-            handle: tokio::spawn(publisher_monitor(pool.clone(), false)),
-        },
+        // MonitoringTask {
+        //     name: "Config Update".to_string(),
+        //     handle: tokio::spawn(periodic_config_update()),
+        // },
+        // MonitoringTask {
+        //     name: "Spot Monitoring".to_string(),
+        //     handle: tokio::spawn(onchain_monitor(pool.clone(), true, &DataType::Spot)),
+        // },
+        // MonitoringTask {
+        //     name: "Future Monitoring".to_string(),
+        //     handle: tokio::spawn(onchain_monitor(pool.clone(), true, &DataType::Future)),
+        // },
+        // MonitoringTask {
+        //     name: "Publisher Monitoring".to_string(),
+        //     handle: tokio::spawn(publisher_monitor(pool.clone(), false)),
+        // },
     ];
 
-    if monitoring_config.is_pragma_chain() {
-        tasks.push(MonitoringTask {
-            name: "Hyperlane Dispatches Monitoring".to_string(),
-            handle: tokio::spawn(hyperlane_dispatch_monitor(pool.clone(), true)),
-        });
-    } else {
+    // if monitoring_config.is_pragma_chain() {
+    //     tasks.push(MonitoringTask {
+    //         name: "Hyperlane Dispatches Monitoring".to_string(),
+    //         handle: tokio::spawn(hyperlane_dispatch_monitor(pool.clone(), true)),
+    //     });
+    // } else {
         tasks.push(MonitoringTask {
             name: "API Monitoring".to_string(),
             handle: tokio::spawn(api_monitor()),
         });
-        tasks.push(MonitoringTask {
-            name: "VRF Monitoring".to_string(),
-            handle: tokio::spawn(vrf_monitor(pool.clone())),
-        });
-    }
+    //     tasks.push(MonitoringTask {
+    //         name: "VRF Monitoring".to_string(),
+    //         handle: tokio::spawn(vrf_monitor(pool.clone())),
+    //     });
+    // }
 
     tasks
 }
@@ -122,7 +122,7 @@ async fn handle_task_results(tasks: Vec<MonitoringTask>) {
 
 pub(crate) async fn api_monitor() {
     let monitoring_config = get_config(None).await;
-    log::info!("[API] Monitoring API..");
+    tracing::info!("[API] Monitoring API..");
 
     let mut interval = interval(Duration::from_secs(30));
 
@@ -228,7 +228,7 @@ pub(crate) async fn publisher_monitor(
     pool: Pool<AsyncDieselConnectionManager<AsyncPgConnection>>,
     wait_for_syncing: bool,
 ) {
-    log::info!("[PUBLISHERS] Monitoring Publishers..");
+    tracing::info!("[PUBLISHERS] Monitoring Publishers..");
 
     let mut interval = interval(Duration::from_secs(30));
     let monitoring_config: arc_swap::Guard<std::sync::Arc<config::Config>> = get_config(None).await;
@@ -268,7 +268,7 @@ pub(crate) async fn publisher_monitor(
 }
 
 pub(crate) async fn vrf_monitor(pool: Pool<AsyncDieselConnectionManager<AsyncPgConnection>>) {
-    log::info!("[VRF] Monitoring VRF requests..");
+    tracing::info!("[VRF] Monitoring VRF requests..");
 
     let monitoring_config = get_config(None).await;
     let mut interval = interval(Duration::from_secs(30));

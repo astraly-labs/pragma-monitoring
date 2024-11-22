@@ -60,7 +60,7 @@ pub async fn process_data_by_pair(
         }
     };
 
-    log::info!("Processing data for pair: {}", pair);
+    tracing::info!("Processing data for pair: {}", pair);
 
     let network_env = &config.network_str();
     let data_type = "future";
@@ -102,7 +102,7 @@ pub async fn process_data_by_pair_and_sources(
         .unwrap();
 
     for src in sources {
-        log::info!("Processing data for pair: {} and source: {}", pair, src);
+        tracing::info!("Processing data for pair: {} and source: {}", pair, src);
         let res = process_data_by_pair_and_source(pool.clone(), &pair, &src, decimals).await?;
         timestamps.push(res);
     }
@@ -206,7 +206,7 @@ pub async fn process_data_by_publisher(
         }
     };
 
-    log::info!("Processing data for publisher: {}", publisher);
+    tracing::info!("Processing data for publisher: {}", publisher);
 
     let network_env = &config.network_str();
 

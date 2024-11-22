@@ -33,10 +33,10 @@ pub(crate) fn log_tasks_results<T, E: Display>(
     for result in &results {
         match result {
             Ok(data) => match data {
-                Ok(_) => log::info!("[{category}]: Task finished successfully",),
-                Err(e) => log::error!("[{category}]: Task failed with error: {e}"),
+                Ok(_) => tracing::info!("[{category}]: Task finished successfully",),
+                Err(e) => tracing::error!("[{category}]: Task failed with error: {e}"),
             },
-            Err(e) => log::error!("[{category}]: Task failed with error: {:?}", e),
+            Err(e) => tracing::error!("[{category}]: Task failed with error: {:?}", e),
         }
     }
 }
@@ -46,8 +46,8 @@ pub(crate) fn log_tasks_results<T, E: Display>(
 pub(crate) fn log_monitoring_results(results: HashMap<String, Result<(), tokio::task::JoinError>>) {
     for (task_name, result) in results {
         match result {
-            Ok(_) => log::info!("[{}] Monitoring completed successfully", task_name),
-            Err(e) => log::error!("[{}] Monitoring failed: {:?}", task_name, e),
+            Ok(_) => tracing::info!("[{}] Monitoring completed successfully", task_name),
+            Err(e) => tracing::error!("[{}] Monitoring failed: {:?}", task_name, e),
         }
     }
 }

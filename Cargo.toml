@@ -32,7 +32,6 @@ env_logger = "0.10.1"
 futures = "0.3.28"
 hyper = "0.14.27"
 lazy_static = "1.4.0"
-log = "0.4.20"
 num-bigint = "0.4"
 phf = { version = "0.11", features = ["macros"] }
 prometheus = "0.13.3"
@@ -41,6 +40,7 @@ serde = { version = "1.0.130", features = ["derive"] }
 starknet = "0.11.0"
 strum = { version = "0.25.0", features = ["derive"] }
 tokio = { version = "1", features = ["full"] }
+tracing = "0.1"
 url = "2.5.0"
 uuid = { version = "1.4", features = ["fast-rng", "v4", "serde"] }
 

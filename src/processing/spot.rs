@@ -62,7 +62,7 @@ pub async fn process_data_by_pair(
         }
     };
 
-    log::info!("Processing data for pair: {}", pair);
+    tracing::info!("Processing data for pair: {}", pair);
 
     let network_env = &config.network_str();
     let data_type = "spot";
@@ -99,7 +99,7 @@ pub async fn process_data_by_pair_and_sources(
     let decimals = *config.decimals(DataType::Spot).get(&pair.clone()).unwrap();
 
     for src in sources {
-        log::info!("Processing data for pair: {} and source: {}", pair, src);
+        tracing::info!("Processing data for pair: {} and source: {}", pair, src);
         let res = process_data_by_pair_and_source(pool.clone(), &pair, &src, decimals).await?;
         timestamps.push(res);
     }
@@ -203,7 +203,7 @@ pub async fn process_data_by_publisher(
         }
     };
 
-    log::info!("Processing data for publisher: {}", publisher);
+    tracing::info!("Processing data for publisher: {}", publisher);
 
     let network_env = &config.network_str();
 
@@ -227,7 +227,7 @@ pub async fn process_long_tail_asset(
 
     let mut latest_time_since_update: u64 = 0;
     for source in sources.iter() {
-        log::info!(
+        tracing::info!(
             "Processing long tail asset for pair: {} and source: {}",
             pair,
             source

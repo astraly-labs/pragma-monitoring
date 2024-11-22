@@ -47,15 +47,15 @@ pub async fn data_is_syncing(data_type: &DataType) -> Result<bool, MonitoringErr
 pub async fn data_indexers_are_synced(data_type: &DataType) -> bool {
     match data_is_syncing(data_type).await {
         Ok(true) => {
-            log::info!("[{data_type}] Indexers are still syncing ♻️");
+            tracing::info!("[{data_type}] Indexers are still syncing ♻️");
             false
         }
         Ok(false) => {
-            log::info!("[{data_type}] Indexers are synced ✅");
+            tracing::info!("[{data_type}] Indexers are synced ✅");
             true
         }
         Err(e) => {
-            log::error!(
+            tracing::error!(
                 "[{data_type}] Failed to check if indexers are syncing: {:?}",
                 e
             );
@@ -91,15 +91,15 @@ pub async fn is_syncing(table_name: &str) -> Result<bool, MonitoringError> {
 pub async fn indexers_are_synced(table_name: &str) -> bool {
     match is_syncing(table_name).await {
         Ok(true) => {
-            log::info!("[{table_name}] Indexers are still syncing ♻️");
+            tracing::info!("[{table_name}] Indexers are still syncing ♻️");
             false
         }
         Ok(false) => {
-            log::info!("[{table_name}] Indexers are synced ✅");
+            tracing::info!("[{table_name}] Indexers are synced ✅");
             true
         }
         Err(e) => {
-            log::error!(
+            tracing::error!(
                 "[{table_name}] Failed to check if indexers are syncing: {:?}",
                 e
             );
@@ -200,7 +200,6 @@ pub async fn query_pragma_api(
         ),
         _ => panic!("Invalid network env"),
     };
-
     // Set headers
     let mut headers = HeaderMap::new();
     let api_key = std::env::var("PRAGMA_API_KEY").expect("PRAGMA_API_KEY must be set");
@@ -211,7 +210,7 @@ pub async fn query_pragma_api(
 
     let client = reqwest::Client::new();
     let response = client
-        .get(request_url)
+        .get(request_url.clone())
         .headers(headers)
         .send()
         .await
@@ -226,10 +225,13 @@ pub async fn query_pragma_api(
             }
         }
         reqwest::StatusCode::UNAUTHORIZED => Err(MonitoringError::Api("Unauthorized".to_string())),
-        other => Err(MonitoringError::Api(format!(
-            "Unexpected response status: {}",
-            other
-        ))),
+        other => {
+            println!("failed req url: {:?}", request_url);
+            return Err(MonitoringError::Api(format!(
+                "Unexpected response status: {}",
+                other
+            )));
+        }
     }
 }
 

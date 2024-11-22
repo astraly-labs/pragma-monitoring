@@ -1,6 +1,6 @@
 use axum::{routing::get, Router};
 use hyper::Server;
-use log::info;
+use tracing::info;
 use prometheus::{Encoder, TextEncoder};
 use std::net::SocketAddr;
 
