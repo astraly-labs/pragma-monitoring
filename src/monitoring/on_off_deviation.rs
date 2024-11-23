@@ -1,4 +1,5 @@
 use bigdecimal::ToPrimitive;
+use moka::future::Cache;
 use starknet::{
     core::{
         types::{BlockId, BlockTag, Felt, FunctionCall},
@@ -15,6 +16,8 @@ use crate::{
     error::MonitoringError,
     utils::try_felt_to_u32,
 };
+
+use super::price_deviation::CoinPricesDTO;
 
 /// On-chain price deviation from the reference price.
 /// Returns the deviation and the number of sources aggregated.
@@ -33,6 +36,7 @@ pub async fn on_off_price_deviation(
     pair_id: String,
     timestamp: u64,
     data_type: DataType,
+    cache: Cache<(String, u64), CoinPricesDTO>,
 ) -> Result<(f64, u32), MonitoringError> {
     let ids = &COINGECKO_IDS;
     let config = get_config(None).await;
@@ -79,7 +83,8 @@ pub async fn on_off_price_deviation(
         DataType::Spot => {
             let coingecko_id = *ids.get(&pair_id).expect("Failed to get coingecko id");
 
-            let coins_prices = query_defillama_api(timestamp, coingecko_id).await?;
+            let coins_prices =
+                query_defillama_api(timestamp, coingecko_id.to_owned(), cache).await?;
 
             let api_id = format!("coingecko:{}", coingecko_id);
 

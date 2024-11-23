@@ -15,6 +15,7 @@ use crate::constants::{LONG_TAIL_ASSET_SOURCE_DEVIATION, LONG_TAIL_ASSET_TOTAL_S
 use crate::diesel::QueryDsl;
 use crate::error::MonitoringError;
 use crate::models::SpotEntry;
+use crate::monitoring::price_deviation::CoinPricesDTO;
 use crate::monitoring::{
     on_off_price_deviation, price_deviation, source_deviation, time_since_last_update,
 };
@@ -28,11 +29,13 @@ use diesel::ExpressionMethods;
 use diesel_async::pooled_connection::AsyncDieselConnectionManager;
 use diesel_async::AsyncPgConnection;
 use diesel_async::RunQueryDsl;
+use moka::future::Cache;
 use pragma_monitoring::types::Deviation;
 
 pub async fn process_data_by_pair(
     pool: deadpool::managed::Pool<AsyncDieselConnectionManager<AsyncPgConnection>>,
     pair: String,
+    cache: Cache<(String, u64), CoinPricesDTO>,
 ) -> Result<u64, MonitoringError> {
     let mut conn = pool.get().await.map_err(MonitoringError::Connection)?;
 
@@ -76,6 +79,7 @@ pub async fn process_data_by_pair(
         pair.clone(),
         data.timestamp.timestamp() as u64,
         DataType::Spot,
+        cache,
     )
     .await?;
 
@@ -92,6 +96,7 @@ pub async fn process_data_by_pair_and_sources(
     pool: deadpool::managed::Pool<AsyncDieselConnectionManager<AsyncPgConnection>>,
     pair: String,
     sources: Vec<String>,
+    cache: Cache<(String, u64), CoinPricesDTO>,
 ) -> Result<u64, MonitoringError> {
     let mut timestamps = Vec::new();
     let config = get_config(None).await;
@@ -100,7 +105,9 @@ pub async fn process_data_by_pair_and_sources(
 
     for src in sources {
         tracing::info!("Processing data for pair: {} and source: {}", pair, src);
-        let res = process_data_by_pair_and_source(pool.clone(), &pair, &src, decimals).await?;
+        let res =
+            process_data_by_pair_and_source(pool.clone(), &pair, &src, decimals, cache.clone())
+                .await?;
         timestamps.push(res);
     }
 
@@ -112,6 +119,7 @@ pub async fn process_data_by_pair_and_source(
     pair: &str,
     src: &str,
     decimals: u32,
+    cache: Cache<(String, u64), CoinPricesDTO>,
 ) -> Result<u64, MonitoringError> {
     let mut conn = pool.get().await.map_err(MonitoringError::Connection)?;
 
@@ -160,7 +168,7 @@ pub async fn process_data_by_pair_and_source(
     ))?;
     let normalized_price = price_as_f64 / (10_u64.pow(decimals)) as f64;
 
-    let deviation = price_deviation(&data, normalized_price).await?;
+    let deviation = price_deviation(&data, normalized_price, cache).await?;
     let (source_deviation, _) = source_deviation(&data, normalized_price).await?;
 
     // Set the metrics

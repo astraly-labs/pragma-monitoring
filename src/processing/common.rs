@@ -5,6 +5,7 @@ use crate::{
     constants::{INDEXER_BLOCKS_LEFT, PUBLISHER_BALANCE},
     error::MonitoringError,
 };
+use moka::future::Cache;
 use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
 use serde::{Deserialize, Serialize};
 use starknet::core::types::Felt;
@@ -241,9 +242,15 @@ pub async fn query_pragma_api(
 /// else it will use the regular api endpoint.
 pub async fn query_defillama_api(
     timestamp: u64,
-    coingecko_id: &str,
+    coingecko_id: String,
+    cache: Cache<(String, u64), CoinPricesDTO>,
 ) -> Result<CoinPricesDTO, MonitoringError> {
     let api_key = std::env::var("DEFILLAMA_API_KEY");
+
+    if let Some(cached_value) = cache.get(&(coingecko_id.clone(), timestamp)).await {
+        tracing::info!("Using cached defillama value..");
+        return Ok(cached_value);
+    }
 
     let request_url = if let Ok(api_key) = api_key {
         format!(
@@ -269,12 +276,18 @@ pub async fn query_defillama_api(
         .await
         .map_err(|e| MonitoringError::Api(format!("Failed to get response text: {}", e)))?;
 
-    Ok(serde_json::from_str(&response_text).map_err(|e| {
+    let coin_prices: CoinPricesDTO = serde_json::from_str(&response_text).map_err(|e| {
         MonitoringError::Api(format!(
             "Failed to parse JSON: {}. Response: {}",
             e, response_text
         ))
-    })?)
+    })?;
+
+    cache
+        .insert((coingecko_id, timestamp), coin_prices.clone())
+        .await;
+
+    Ok(coin_prices)
 }
 
 pub async fn check_publisher_balance(

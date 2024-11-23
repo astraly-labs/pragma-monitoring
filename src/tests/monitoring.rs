@@ -11,6 +11,7 @@ use crate::{
 use arc_swap::Guard;
 use deadpool::managed::Pool;
 use diesel_async::pooled_connection::AsyncDieselConnectionManager;
+use moka::future::Cache;
 use rstest::rstest;
 use tokio::sync::Mutex;
 
@@ -27,10 +28,12 @@ async fn detects_publisher_down(
     let database = Arc::new(Mutex::new(database));
     let db_clone = database.clone();
 
+    let cache = Cache::new(10_000);
+
     // Spawn non-blocking monitor
     let monitor_handle = tokio::spawn(async move {
         let db = db_clone.lock().await;
-        onchain_monitor(db.clone(), false, &DataType::Spot).await;
+        onchain_monitor(db.clone(), false, &DataType::Spot, cache).await;
     });
 
     // Publish a wrong price

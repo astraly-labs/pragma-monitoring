@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 
+use moka::future::Cache;
+
 use crate::{
     constants::COINGECKO_IDS, error::MonitoringError, processing::common::query_defillama_api,
     types::Entry,
@@ -17,13 +19,13 @@ use crate::{
 //     }
 //   }
 // }
-#[derive(serde::Deserialize, Debug)]
+#[derive(serde::Deserialize, Debug, Clone)]
 pub struct CoinPricesDTO {
     coins: HashMap<String, CoinPriceDTO>,
 }
 
 #[allow(unused)]
-#[derive(serde::Deserialize, Debug)]
+#[derive(serde::Deserialize, Debug, Clone)]
 pub struct CoinPriceDTO {
     price: f64,
     symbol: String,
@@ -46,6 +48,7 @@ impl CoinPriceDTO {
 pub async fn price_deviation<T: Entry>(
     query: &T,
     normalized_price: f64,
+    cache: Cache<(String, u64), CoinPricesDTO>,
 ) -> Result<f64, MonitoringError> {
     let ids = &COINGECKO_IDS;
 
@@ -54,7 +57,8 @@ pub async fn price_deviation<T: Entry>(
 
     let coins_prices = query_defillama_api(
         query.timestamp().timestamp().try_into().unwrap(),
-        coingecko_id,
+        coingecko_id.to_owned(),
+        cache,
     )
     .await?;
 
@@ -73,14 +77,19 @@ pub async fn price_deviation<T: Entry>(
 }
 
 /// Calculates the raw deviation of the price from a trusted API (DefiLLama)
-pub async fn raw_price_deviation(pair_id: &String, price: f64) -> Result<f64, MonitoringError> {
+pub async fn raw_price_deviation(
+    pair_id: &String,
+    price: f64,
+    cache: Cache<(String, u64), CoinPricesDTO>,
+) -> Result<f64, MonitoringError> {
     let ids = &COINGECKO_IDS;
 
     let coingecko_id = *ids.get(pair_id).expect("Failed to get coingecko id");
 
     let coins_prices = query_defillama_api(
         chrono::Utc::now().timestamp().try_into().unwrap(),
-        coingecko_id,
+        coingecko_id.to_owned(),
+        cache,
     )
     .await?;
 
