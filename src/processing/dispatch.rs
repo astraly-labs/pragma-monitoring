@@ -14,6 +14,7 @@ use crate::{config::get_config, error::MonitoringError, models::FeedDispatch};
 /// * dispatch_event_latest_block,
 /// * dispatch_event_feed_latest_block_update,
 /// * dispatch_event_nb_feeds_updated.
+#[allow(unused)]
 pub async fn process_dispatch_events(
     pool: Pool<AsyncDieselConnectionManager<AsyncPgConnection>>,
 ) -> Result<(), MonitoringError> {

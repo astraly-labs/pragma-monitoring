@@ -14,6 +14,7 @@ use crate::constants::TIME_SINCE_LAST_UPDATE_PUBLISHER;
 use crate::diesel::QueryDsl;
 use crate::error::MonitoringError;
 use crate::models::FutureEntry;
+use crate::monitoring::price_deviation::CoinPricesDTO;
 use crate::monitoring::{
     on_off_price_deviation, price_deviation, source_deviation, time_since_last_update,
 };
@@ -27,10 +28,12 @@ use diesel::ExpressionMethods;
 use diesel_async::pooled_connection::AsyncDieselConnectionManager;
 use diesel_async::AsyncPgConnection;
 use diesel_async::RunQueryDsl;
+use moka::future::Cache;
 
 pub async fn process_data_by_pair(
     pool: deadpool::managed::Pool<AsyncDieselConnectionManager<AsyncPgConnection>>,
     pair: String,
+    cache: Cache<(String, u64), CoinPricesDTO>,
 ) -> Result<u64, MonitoringError> {
     let mut conn = pool.get().await.map_err(MonitoringError::Connection)?;
 
@@ -60,7 +63,7 @@ pub async fn process_data_by_pair(
         }
     };
 
-    log::info!("Processing data for pair: {}", pair);
+    tracing::info!("Processing data for pair: {}", pair);
 
     let network_env = &config.network_str();
     let data_type = "future";
@@ -76,6 +79,7 @@ pub async fn process_data_by_pair(
         pair.clone(),
         data.timestamp.timestamp() as u64,
         DataType::Future,
+        cache,
     )
     .await?;
 
@@ -91,6 +95,7 @@ pub async fn process_data_by_pair_and_sources(
     pool: deadpool::managed::Pool<AsyncDieselConnectionManager<AsyncPgConnection>>,
     pair: String,
     sources: Vec<String>,
+    cache: Cache<(String, u64), CoinPricesDTO>,
 ) -> Result<u64, MonitoringError> {
     let mut timestamps = Vec::new();
 
@@ -102,8 +107,10 @@ pub async fn process_data_by_pair_and_sources(
         .unwrap();
 
     for src in sources {
-        log::info!("Processing data for pair: {} and source: {}", pair, src);
-        let res = process_data_by_pair_and_source(pool.clone(), &pair, &src, decimals).await?;
+        tracing::info!("Processing data for pair: {} and source: {}", pair, src);
+        let res =
+            process_data_by_pair_and_source(pool.clone(), &pair, &src, decimals, cache.clone())
+                .await?;
         timestamps.push(res);
     }
 
@@ -115,6 +122,7 @@ pub async fn process_data_by_pair_and_source(
     pair: &str,
     src: &str,
     decimals: u32,
+    cache: Cache<(String, u64), CoinPricesDTO>,
 ) -> Result<u64, MonitoringError> {
     let mut conn = pool.get().await.map_err(MonitoringError::Connection)?;
 
@@ -163,7 +171,7 @@ pub async fn process_data_by_pair_and_source(
     ))?;
     let normalized_price = price_as_f64 / (10_u64.pow(decimals)) as f64;
 
-    let deviation = price_deviation(&data, normalized_price).await?;
+    let deviation = price_deviation(&data, normalized_price, cache.clone()).await?;
     let (source_deviation, _) = source_deviation(&data, normalized_price).await?;
 
     // Set the metrics
@@ -206,7 +214,7 @@ pub async fn process_data_by_publisher(
         }
     };
 
-    log::info!("Processing data for publisher: {}", publisher);
+    tracing::info!("Processing data for publisher: {}", publisher);
 
     let network_env = &config.network_str();
 

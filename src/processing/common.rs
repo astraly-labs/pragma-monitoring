@@ -1,9 +1,11 @@
 use crate::monitoring::balance::get_on_chain_balance;
+use crate::monitoring::price_deviation::CoinPricesDTO;
 use crate::{
     config::{get_config, DataType},
     constants::{INDEXER_BLOCKS_LEFT, PUBLISHER_BALANCE},
     error::MonitoringError,
 };
+use moka::future::Cache;
 use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
 use serde::{Deserialize, Serialize};
 use starknet::core::types::Felt;
@@ -47,15 +49,15 @@ pub async fn data_is_syncing(data_type: &DataType) -> Result<bool, MonitoringErr
 pub async fn data_indexers_are_synced(data_type: &DataType) -> bool {
     match data_is_syncing(data_type).await {
         Ok(true) => {
-            log::info!("[{data_type}] Indexers are still syncing ♻️");
+            tracing::info!("[{data_type}] Indexers are still syncing ♻️");
             false
         }
         Ok(false) => {
-            log::info!("[{data_type}] Indexers are synced ✅");
+            tracing::info!("[{data_type}] Indexers are synced ✅");
             true
         }
         Err(e) => {
-            log::error!(
+            tracing::error!(
                 "[{data_type}] Failed to check if indexers are syncing: {:?}",
                 e
             );
@@ -66,6 +68,7 @@ pub async fn data_indexers_are_synced(data_type: &DataType) -> bool {
 
 /// Checks if indexers of the given data type are still syncing
 /// Returns true if any of the indexers is still syncing
+#[allow(unused)]
 pub async fn is_syncing(table_name: &str) -> Result<bool, MonitoringError> {
     let config = get_config(None).await;
 
@@ -88,18 +91,19 @@ pub async fn is_syncing(table_name: &str) -> Result<bool, MonitoringError> {
 }
 
 /// Check if the indexers are still syncing
+#[allow(unused)]
 pub async fn indexers_are_synced(table_name: &str) -> bool {
     match is_syncing(table_name).await {
         Ok(true) => {
-            log::info!("[{table_name}] Indexers are still syncing ♻️");
+            tracing::info!("[{table_name}] Indexers are still syncing ♻️");
             false
         }
         Ok(false) => {
-            log::info!("[{table_name}] Indexers are synced ✅");
+            tracing::info!("[{table_name}] Indexers are synced ✅");
             true
         }
         Err(e) => {
-            log::error!(
+            tracing::error!(
                 "[{table_name}] Failed to check if indexers are syncing: {:?}",
                 e
             );
@@ -200,7 +204,6 @@ pub async fn query_pragma_api(
         ),
         _ => panic!("Invalid network env"),
     };
-
     // Set headers
     let mut headers = HeaderMap::new();
     let api_key = std::env::var("PRAGMA_API_KEY").expect("PRAGMA_API_KEY must be set");
@@ -211,7 +214,7 @@ pub async fn query_pragma_api(
 
     let client = reqwest::Client::new();
     let response = client
-        .get(request_url)
+        .get(request_url.clone())
         .headers(headers)
         .send()
         .await
@@ -231,6 +234,60 @@ pub async fn query_pragma_api(
             other
         ))),
     }
+}
+
+/// Queries Defillama API
+/// See docs [here](https://defillama.com/pro-api/docs)
+/// NOTE: it will use the PRO api if we find an api key in the `DEFILLAMA_API_KEY` env var
+/// else it will use the regular api endpoint.
+pub async fn query_defillama_api(
+    timestamp: u64,
+    coingecko_id: String,
+    cache: Cache<(String, u64), CoinPricesDTO>,
+) -> Result<CoinPricesDTO, MonitoringError> {
+    let api_key = std::env::var("DEFILLAMA_API_KEY");
+
+    if let Some(cached_value) = cache.get(&(coingecko_id.clone(), timestamp)).await {
+        tracing::info!("Using cached defillama value..");
+        return Ok(cached_value);
+    }
+
+    let request_url = if let Ok(api_key) = api_key {
+        format!(
+            "https://pro-api.llama.fi/{apikey}/coins/prices/historical/{timestamp}/coingecko:{id}",
+            timestamp = timestamp,
+            id = coingecko_id,
+            apikey = api_key
+        )
+    } else {
+        format!(
+            "https://coins.llama.fi/prices/historical/{timestamp}/coingecko:{id}",
+            timestamp = timestamp,
+            id = coingecko_id,
+        )
+    };
+
+    let response = reqwest::get(&request_url)
+        .await
+        .map_err(|e| MonitoringError::Api(e.to_string()))?;
+
+    let response_text = response
+        .text()
+        .await
+        .map_err(|e| MonitoringError::Api(format!("Failed to get response text: {}", e)))?;
+
+    let coin_prices: CoinPricesDTO = serde_json::from_str(&response_text).map_err(|e| {
+        MonitoringError::Api(format!(
+            "Failed to parse JSON: {}. Response: {}",
+            e, response_text
+        ))
+    })?;
+
+    cache
+        .insert((coingecko_id, timestamp), coin_prices.clone())
+        .await;
+
+    Ok(coin_prices)
 }
 
 pub async fn check_publisher_balance(

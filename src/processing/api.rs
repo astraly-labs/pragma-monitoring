@@ -1,4 +1,7 @@
+use std::time::Duration;
+
 use bigdecimal::{Num, ToPrimitive};
+use moka::future::Cache;
 use num_bigint::BigInt;
 use starknet::{
     core::types::{BlockId, BlockTag},
@@ -12,19 +15,25 @@ use crate::{
     },
     error::MonitoringError,
     monitoring::{
-        price_deviation::raw_price_deviation, time_since_last_update::raw_time_since_last_update,
+        price_deviation::{raw_price_deviation, CoinPricesDTO},
+        time_since_last_update::raw_time_since_last_update,
     },
     processing::common::query_pragma_api,
 };
 
-pub async fn process_data_by_pair(pair: String) -> Result<(), MonitoringError> {
+pub async fn process_data_by_pair(
+    pair: String,
+    cache: Cache<(String, u64), CoinPricesDTO>,
+) -> Result<(), MonitoringError> {
     // Query the Pragma API
     let config = get_config(None).await;
     let network_env = &config.network_str();
+    tracing::info!("Processing data for pair: {}", pair);
 
     let result = query_pragma_api(&pair, network_env, "median", "1min").await?;
 
-    log::info!("Processing data for pair: {}", pair);
+    // sleep for rate limiting
+    tokio::time::sleep(Duration::from_secs(5)).await;
 
     // Parse the hex string price
     let parsed_price = BigInt::from_str_radix(&result.price[2..], 16)
@@ -33,7 +42,7 @@ pub async fn process_data_by_pair(pair: String) -> Result<(), MonitoringError> {
     let normalized_price =
         parsed_price.to_string().parse::<f64>().unwrap() / 10_f64.powi(result.decimals as i32);
 
-    let price_deviation = raw_price_deviation(&pair, normalized_price).await?;
+    let price_deviation = raw_price_deviation(&pair, normalized_price, cache).await?;
     let time_since_last_update = raw_time_since_last_update(result.timestamp)?;
 
     API_PRICE_DEVIATION
@@ -59,14 +68,13 @@ pub async fn process_long_tail_assets(
 
 pub async fn process_sequencer_data() -> Result<(), MonitoringError> {
     let pair = "ETH/STRK".to_string();
+    tracing::info!("Processing sequencer data");
 
     // Query the Pragma API
     let config = get_config(None).await;
     let network_env = config.network_str();
 
     let result = query_pragma_api(&pair, network_env, "twap", "2h").await?;
-
-    log::info!("Processing sequencer data");
 
     // Parse the hex string price
     let parsed_price = BigInt::from_str_radix(&result.price[2..], 16)

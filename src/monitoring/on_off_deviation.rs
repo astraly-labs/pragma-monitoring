@@ -1,4 +1,5 @@
 use bigdecimal::ToPrimitive;
+use moka::future::Cache;
 use starknet::{
     core::{
         types::{BlockId, BlockTag, Felt, FunctionCall},
@@ -8,13 +9,15 @@ use starknet::{
     providers::Provider,
 };
 
-use crate::monitoring::price_deviation::CoinPricesDTO;
+use crate::processing::common::query_defillama_api;
 use crate::{
     config::{get_config, DataType},
     constants::COINGECKO_IDS,
     error::MonitoringError,
     utils::try_felt_to_u32,
 };
+
+use super::price_deviation::CoinPricesDTO;
 
 /// On-chain price deviation from the reference price.
 /// Returns the deviation and the number of sources aggregated.
@@ -33,6 +36,7 @@ pub async fn on_off_price_deviation(
     pair_id: String,
     timestamp: u64,
     data_type: DataType,
+    cache: Cache<(String, u64), CoinPricesDTO>,
 ) -> Result<(f64, u32), MonitoringError> {
     let ids = &COINGECKO_IDS;
     let config = get_config(None).await;
@@ -79,33 +83,8 @@ pub async fn on_off_price_deviation(
         DataType::Spot => {
             let coingecko_id = *ids.get(&pair_id).expect("Failed to get coingecko id");
 
-            let api_key = std::env::var("DEFILLAMA_API_KEY");
-
-            let request_url = if let Ok(api_key) = api_key {
-                format!(
-                    "https://pro-api.llama.fi/{apikey}/coins/prices/historical/{timestamp}/coingecko:{id}",
-                    timestamp = timestamp,
-                    id = coingecko_id,
-                    apikey = api_key
-                )
-            } else {
-                format!(
-                    "https://coins.llama.fi/prices/historical/{timestamp}/coingecko:{id}",
-                    timestamp = timestamp,
-                    id = coingecko_id,
-                )
-            };
-
-            let response = reqwest::get(&request_url)
-                .await
-                .map_err(|e| MonitoringError::Api(e.to_string()))?;
-
-            let coins_prices: CoinPricesDTO = response.json().await.map_err(|e| {
-                MonitoringError::Api(format!(
-                    "Failed to convert to DTO object, got error {:?}",
-                    e.to_string()
-                ))
-            })?;
+            let coins_prices =
+                query_defillama_api(timestamp, coingecko_id.to_owned(), cache).await?;
 
             let api_id = format!("coingecko:{}", coingecko_id);
 

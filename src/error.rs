@@ -1,39 +1,31 @@
-use std::{error::Error as StdError, fmt};
-
+use diesel::result::Error as DieselError;
+use diesel_async::pooled_connection::deadpool::PoolError;
 use starknet::providers::ProviderError;
+use thiserror::Error;
 
-#[derive(Debug)]
+#[derive(Error, Debug)]
 pub enum MonitoringError {
+    #[error("Price error: {0}")]
     Price(String),
-    Database(diesel::result::Error),
-    Connection(diesel_async::pooled_connection::deadpool::PoolError),
+
+    #[error("Database error: {0}")]
+    Database(#[from] DieselError),
+
+    #[error("Connection error: {0}")]
+    Connection(#[from] PoolError),
+
+    #[error("API error: {0}")]
     Api(String),
+
+    #[error("Conversion error: {0}")]
     Conversion(String),
+
+    #[error("OnChain error: {0}")]
     OnChain(String),
-    Provider(ProviderError),
+
+    #[error("Provider error: {0}")]
+    Provider(#[from] ProviderError),
+
+    #[error("Invalid timestamp: {0}")]
     InvalidTimestamp(u64),
-}
-
-impl StdError for MonitoringError {}
-
-impl fmt::Display for MonitoringError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            MonitoringError::Price(e) => write!(f, "Price Error: {}", e),
-            MonitoringError::Database(e) => write!(f, "Database Error: {}", e),
-            MonitoringError::Connection(e) => write!(f, "Connection Error: {}", e),
-            MonitoringError::Api(e) => write!(f, "API Error: {}", e),
-            MonitoringError::Conversion(e) => write!(f, "Conversion Error: {}", e),
-            MonitoringError::OnChain(e) => write!(f, "OnChain Error: {}", e),
-            MonitoringError::Provider(e) => write!(f, "Provider Error: {}", e),
-            MonitoringError::InvalidTimestamp(e) => write!(f, "Invalid Timestamp: {}", e),
-        }
-    }
-}
-
-// Convert diesel error to our custom error
-impl From<diesel::result::Error> for MonitoringError {
-    fn from(err: diesel::result::Error) -> MonitoringError {
-        MonitoringError::Database(err)
-    }
 }

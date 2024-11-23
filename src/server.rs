@@ -1,8 +1,8 @@
 use axum::{routing::get, Router};
 use hyper::Server;
-use log::info;
 use prometheus::{Encoder, TextEncoder};
 use std::net::SocketAddr;
+use tracing::info;
 
 pub async fn run_metrics_server() {
     let app = Router::new()
