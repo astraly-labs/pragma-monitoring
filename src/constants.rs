@@ -1,26 +1,95 @@
-use std::collections::HashMap;
-
+use arc_swap::ArcSwap;
 use lazy_static::lazy_static;
-use phf::phf_map;
 use prometheus::{opts, register_gauge_vec, register_int_gauge_vec, GaugeVec, IntGaugeVec};
+use std::sync::Arc;
+
+use serde::{Deserialize, Serialize};
+use std::{collections::HashMap, error::Error};
 
 pub(crate) static LOW_SOURCES_THRESHOLD: usize = 6;
 
-#[allow(unused)]
-pub(crate) static COINGECKO_IDS: phf::Map<&'static str, &'static str> = phf_map! {
-    "BTC/USD" => "bitcoin",
-    "ETH/USD" => "ethereum",
-    "LUSD/USD" => "liquity-usd",
-    "WBTC/USD" => "wrapped-bitcoin",
-    "DAI/USD" => "dai",
-    "USDC/USD" => "usd-coin",
-    "USDT/USD" => "tether",
-    "WSTETH/USD" => "wrapped-steth",
-    "LORDS/USD" => "lords",
-    "STRK/USD" => "starknet",
-    "ZEND/USD" => "zklend-2",
-    "NSTR/USD" => "nostra",
-};
+// Define the Coin struct to store the id and symbol of the coin.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Coin {
+    id: String,
+    symbol: String,
+}
+
+// We already have the Link for the CoinGecko API, so we can use it to fetch the data.
+// We will use the CoinGecko API to fetch the data.
+// Example: https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=100&page=1
+// We will fetch the data for the first 100 coins.
+// here is the data how its look like:
+// [
+//     {
+//       "id": "bitcoin",
+//       "symbol": "btc",
+//       "name": "Bitcoin",
+//       "image": "https://coin-images.coingecko.com/coins/images/1/large/bitcoin.png?1696501400",
+//       "current_price": 100390,
+//       ...
+//     },
+//     ...
+// ]
+#[allow(dead_code)]
+async fn get_coingecko_mappings() -> Result<HashMap<String, String>, Box<dyn Error>> {
+    let client = reqwest::Client::new();
+    let mut mappings = HashMap::new();
+    let mut page = 1;
+
+    loop {
+        let url = format!(
+            "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=100&page={}",
+            page
+        );
+
+        let response = client
+            .get(&url)
+            .header("User-Agent", "Crypto Data Fetcher")
+            .send()
+            .await?;
+
+        if !response.status().is_success() {
+            return Err(format!("API request failed with status: {}", response.status()).into());
+        }
+
+        let coins: Vec<Coin> = response.json().await?;
+        if coins.is_empty() {
+            break;
+        }
+
+        for coin in coins {
+            // Convert symbol to uppercase and create pair format
+            let pair = format!("{}/USD", coin.symbol.to_uppercase());
+            mappings.insert(pair, coin.id);
+        }
+
+        page += 1;
+    }
+
+    Ok(mappings)
+}
+
+// Replace the static phf_map with a lazy_static ArcSwap
+lazy_static! {
+    pub static ref COINGECKO_IDS: ArcSwap<HashMap<String, String>> =
+        ArcSwap::new(Arc::new(HashMap::new()));
+}
+
+#[allow(dead_code)]
+pub async fn initialize_coingecko_mappings() {
+    match get_coingecko_mappings().await {
+        Ok(mappings) => {
+            COINGECKO_IDS.store(Arc::new(mappings));
+            tracing::info!("Successfully initialized CoinGecko mappings");
+        }
+        Err(e) => {
+            tracing::error!("Failed to initialize CoinGecko mappings: {}", e);
+            // You might want to panic here depending on how critical this is
+            // panic!("Failed to initialize CoinGecko mappings: {}", e);
+        }
+    }
+}
 
 lazy_static! {
     /// TODO: Current storage of long tail assets here is not really good.

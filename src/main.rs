@@ -39,6 +39,7 @@ use tokio::task::JoinHandle;
 use tokio::time::interval;
 
 use config::{get_config, init_long_tail_asset_configuration, periodic_config_update, DataType};
+use constants::initialize_coingecko_mappings;
 use processing::common::{check_publisher_balance, data_indexers_are_synced};
 use tracing::instrument;
 use utils::{is_long_tail_asset, log_monitoring_results, log_tasks_results};
@@ -51,6 +52,9 @@ struct MonitoringTask {
 
 #[tokio::main]
 async fn main() {
+    // Initialize CoinGecko mappings
+    initialize_coingecko_mappings().await;
+
     // Start configuring a `fmt` subscriber
     let subscriber = tracing_subscriber::fmt()
         .compact()
@@ -122,9 +126,21 @@ async fn spawn_monitoring_tasks(
             name: "VRF Monitoring".to_string(),
             handle: tokio::spawn(vrf_monitor(pool.clone())),
         },
+        MonitoringTask {
+            name: "CoinGecko Mappings Update".to_string(),
+            handle: tokio::spawn(periodic_coingecko_update()),
+        },
     ];
 
     tasks
+}
+
+async fn periodic_coingecko_update() {
+    let mut interval = interval(Duration::from_secs(86400)); // 1 day
+    loop {
+        interval.tick().await;
+        initialize_coingecko_mappings().await;
+    }
 }
 
 #[instrument]

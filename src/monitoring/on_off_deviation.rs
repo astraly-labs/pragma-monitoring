@@ -38,7 +38,7 @@ pub async fn on_off_price_deviation(
     data_type: DataType,
     cache: Cache<(String, u64), CoinPricesDTO>,
 ) -> Result<(f64, u32), MonitoringError> {
-    let ids = &COINGECKO_IDS;
+    let ids = COINGECKO_IDS.load();
     let config = get_config(None).await;
     let client = &config.network().provider;
     let field_pair = cairo_short_string_to_felt(&pair_id).expect("failed to convert pair id");
@@ -81,7 +81,10 @@ pub async fn on_off_price_deviation(
 
     let (deviation, num_sources_aggregated) = match data_type {
         DataType::Spot => {
-            let coingecko_id = *ids.get(&pair_id).expect("Failed to get coingecko id");
+            let coingecko_id = ids
+                .get(&pair_id)
+                .expect("Failed to get coingecko id")
+                .clone();
 
             let coins_prices =
                 query_defillama_api(timestamp, coingecko_id.to_owned(), cache).await?;
