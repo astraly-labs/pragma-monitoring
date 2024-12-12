@@ -21,6 +21,8 @@ mod constants;
 mod types;
 // Utils
 mod utils;
+// coingecko
+mod coingecko;
 
 #[cfg(test)]
 mod tests;
