@@ -6,7 +6,7 @@ on:
   workflow_call:
 
 jobs:
-  cargo-lint:
+  cargo-bench:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
