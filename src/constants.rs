@@ -50,7 +50,7 @@ async fn get_coingecko_mappings() -> Result<HashMap<String, String>, Box<dyn Err
             .await?;
 
         if !response.status().is_success() {
-            return Err(format!("API request failed with status: {}", response.status()).into());
+            return Err(format!("Coingecko Coins API request failed with status: {}", response.status()).into());
         }
 
         let coins: Vec<Coin> = response.json().await?;
