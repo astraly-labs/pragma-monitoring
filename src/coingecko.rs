@@ -34,7 +34,7 @@ pub async fn get_coingecko_mappings() -> Result<HashMap<String, String>, CoinGec
 
         let response = client
             .get(&url)
-            .header("User-Agent", "Crypto Data Fetcher")
+            .header("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36")
             .send()
             .await
             .map_err(CoinGeckoError::ParseError)?;
