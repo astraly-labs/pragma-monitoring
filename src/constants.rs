@@ -1,26 +1,69 @@
-use std::collections::HashMap;
-
+use arc_swap::ArcSwap;
 use lazy_static::lazy_static;
-use phf::phf_map;
 use prometheus::{opts, register_gauge_vec, register_int_gauge_vec, GaugeVec, IntGaugeVec};
+use std::collections::HashMap;
+use std::future::Future;
+use std::sync::Arc;
+use std::time::Duration;
+use tokio::time::sleep;
 
+use crate::coingecko::get_coingecko_mappings;
 pub(crate) static LOW_SOURCES_THRESHOLD: usize = 6;
 
-#[allow(unused)]
-pub(crate) static COINGECKO_IDS: phf::Map<&'static str, &'static str> = phf_map! {
-    "BTC/USD" => "bitcoin",
-    "ETH/USD" => "ethereum",
-    "LUSD/USD" => "liquity-usd",
-    "WBTC/USD" => "wrapped-bitcoin",
-    "DAI/USD" => "dai",
-    "USDC/USD" => "usd-coin",
-    "USDT/USD" => "tether",
-    "WSTETH/USD" => "wrapped-steth",
-    "LORDS/USD" => "lords",
-    "STRK/USD" => "starknet",
-    "ZEND/USD" => "zklend-2",
-    "NSTR/USD" => "nostra",
-};
+lazy_static! {
+    pub static ref COINGECKO_IDS: ArcSwap<HashMap<String, String>> =
+        ArcSwap::new(Arc::new(HashMap::new()));
+}
+
+const MAX_RETRIES: u32 = 3;
+const RETRY_DELAY: Duration = Duration::from_secs(2);
+
+#[allow(dead_code)]
+pub async fn initialize_coingecko_mappings() {
+    let mappings = retry_with_backoff(get_coingecko_mappings)
+        .await
+        .unwrap_or_else(|e| {
+            tracing::error!(
+                "Failed to initialize CoinGecko mappings after {} retries: {}",
+                MAX_RETRIES,
+                e
+            );
+            panic!("Cannot start monitoring without CoinGecko mappings: {}", e);
+        });
+
+    COINGECKO_IDS.store(Arc::new(mappings));
+    tracing::info!("Successfully initialized CoinGecko mappings");
+}
+
+async fn retry_with_backoff<F, Fut, T, E>(f: F) -> Result<T, E>
+where
+    F: Fn() -> Fut,
+    Fut: Future<Output = Result<T, E>>,
+    E: std::fmt::Display,
+{
+    let mut attempts = 0;
+    let mut last_error = None;
+
+    while attempts < MAX_RETRIES {
+        match f().await {
+            Ok(result) => return Ok(result),
+            Err(e) => {
+                attempts += 1;
+                last_error = Some(e);
+                if attempts < MAX_RETRIES {
+                    tracing::warn!(
+                        "Attempt {} failed, retrying after {} seconds",
+                        attempts,
+                        RETRY_DELAY.as_secs()
+                    );
+                    sleep(RETRY_DELAY).await;
+                }
+            }
+        }
+    }
+
+    Err(last_error.unwrap())
+}
 
 lazy_static! {
     /// TODO: Current storage of long tail assets here is not really good.

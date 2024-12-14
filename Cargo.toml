@@ -50,3 +50,8 @@ uuid = { version = "1.4", features = ["fast-rng", "v4", "serde"] }
 
 [dev-dependencies]
 rstest = "0.18.2"
+criterion = { version = "0.5", features = ["async_tokio"] }
+
+[[bench]]
+name = "coingecko_benchmarks"
+harness = false

@@ -1,0 +1,21 @@
+---
+name: Task - Benchmarks
+
+on:
+  workflow_dispatch:
+  workflow_call:
+
+jobs:
+  cargo-bench:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      # selecting a toolchain either by action or manual `rustup` calls should happen
+      # before the plugin, as the cache uses the current rustc version as its cache key
+      - run: rustup show
+
+      - uses: Swatinem/rust-cache@v2
+      - name: Benchmarks
+        run: |
+          cargo bench

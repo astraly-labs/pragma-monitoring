@@ -50,10 +50,13 @@ pub async fn price_deviation<T: Entry>(
     normalized_price: f64,
     cache: Cache<(String, u64), CoinPricesDTO>,
 ) -> Result<f64, MonitoringError> {
-    let ids = &COINGECKO_IDS;
+    let ids = COINGECKO_IDS.load();
 
     let pair_id = query.pair_id().to_string();
-    let coingecko_id = *ids.get(&pair_id).expect("Failed to get coingecko id");
+    let coingecko_id = ids
+        .get(&pair_id)
+        .expect("Failed to get coingecko id")
+        .clone();
 
     let coins_prices = query_defillama_api(
         query.timestamp().timestamp().try_into().unwrap(),
@@ -82,9 +85,12 @@ pub async fn raw_price_deviation(
     price: f64,
     cache: Cache<(String, u64), CoinPricesDTO>,
 ) -> Result<f64, MonitoringError> {
-    let ids = &COINGECKO_IDS;
+    let ids = COINGECKO_IDS.load();
 
-    let coingecko_id = *ids.get(pair_id).expect("Failed to get coingecko id");
+    let coingecko_id = ids
+        .get(pair_id)
+        .expect("Failed to get coingecko id")
+        .clone();
 
     let coins_prices = query_defillama_api(
         chrono::Utc::now().timestamp().try_into().unwrap(),
