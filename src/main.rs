@@ -41,7 +41,7 @@ use tokio::task::JoinHandle;
 use tokio::time::interval;
 
 use config::{get_config, init_long_tail_asset_configuration, periodic_config_update, DataType};
-use constants::initialize_coingecko_mappings;
+use constants::{initialize_coingecko_mappings, LST_PAIRS};
 use processing::common::{check_publisher_balance, data_indexers_are_synced};
 use tracing::instrument;
 use utils::{is_long_tail_asset, log_monitoring_results, log_tasks_results};
@@ -213,25 +213,45 @@ pub(crate) async fn onchain_monitor(
         let tasks: Vec<_> = monitoring_config
             .sources(data_type.clone())
             .iter()
-            .flat_map(|(pair, sources)| match data_type {
-                DataType::Spot => {
-                    if is_long_tail_asset(pair) {
-                        vec![tokio::spawn(Box::pin(
-                            processing::spot::process_long_tail_asset(
-                                pool.clone(),
-                                pair.clone(),
-                                sources.to_vec(),
-                            ),
-                        ))]
-                    } else {
+            .flat_map(|(pair, sources)| {
+                let mut pair_tasks = match data_type {
+                    DataType::Spot => {
+                        if is_long_tail_asset(pair) {
+                            vec![tokio::spawn(Box::pin(
+                                processing::spot::process_long_tail_asset(
+                                    pool.clone(),
+                                    pair.clone(),
+                                    sources.to_vec(),
+                                ),
+                            ))]
+                        } else {
+                            vec![
+                                tokio::spawn(Box::pin(processing::spot::process_data_by_pair(
+                                    pool.clone(),
+                                    pair.clone(),
+                                    cache.clone(),
+                                ))),
+                                tokio::spawn(Box::pin(
+                                    processing::spot::process_data_by_pair_and_sources(
+                                        pool.clone(),
+                                        pair.clone(),
+                                        sources.to_vec(),
+                                        cache.clone(),
+                                    ),
+                                )),
+                            ]
+                        }
+                    }
+                    // TODO: Long tail assets aren't treated as such for Future data
+                    DataType::Future => {
                         vec![
-                            tokio::spawn(Box::pin(processing::spot::process_data_by_pair(
+                            tokio::spawn(Box::pin(processing::future::process_data_by_pair(
                                 pool.clone(),
                                 pair.clone(),
                                 cache.clone(),
                             ))),
                             tokio::spawn(Box::pin(
-                                processing::spot::process_data_by_pair_and_sources(
+                                processing::future::process_data_by_pair_and_sources(
                                     pool.clone(),
                                     pair.clone(),
                                     sources.to_vec(),
@@ -240,25 +260,16 @@ pub(crate) async fn onchain_monitor(
                             )),
                         ]
                     }
+                };
+
+                // Add LST monitoring task if applicable
+                if LST_PAIRS.contains(pair.as_str()) {
+                    pair_tasks.push(tokio::spawn(Box::pin(
+                        monitoring::process_lst_data_by_pair(pair.clone()),
+                    )));
                 }
-                // TODO: Long tail assets aren't treated as such for Future data
-                DataType::Future => {
-                    vec![
-                        tokio::spawn(Box::pin(processing::future::process_data_by_pair(
-                            pool.clone(),
-                            pair.clone(),
-                            cache.clone(),
-                        ))),
-                        tokio::spawn(Box::pin(
-                            processing::future::process_data_by_pair_and_sources(
-                                pool.clone(),
-                                pair.clone(),
-                                sources.to_vec(),
-                                cache.clone(),
-                            ),
-                        )),
-                    ]
-                }
+
+                pair_tasks
             })
             .collect();
 
