@@ -65,10 +65,10 @@ pub struct DataInfo {
 #[derive(Debug, Clone)]
 #[allow(unused)]
 pub struct Config {
-    data_info: HashMap<DataType, DataInfo>,
-    publishers: HashMap<String, Felt>,
-    network: Network,
-    indexer_url: String,
+    pub(crate) data_info: HashMap<DataType, DataInfo>,
+    pub(crate) publishers: HashMap<String, Felt>,
+    pub(crate) network: Network,
+    pub(crate) indexer_url: String,
 }
 
 /// We are using `ArcSwap` as it allow us to replace the new `Config` with
