@@ -1,6 +1,6 @@
 use crate::{
     config::{get_config, DataType},
-    constants::{LST_CONVERSION_RATE, LST_PAIRS},
+    constants::LST_CONVERSION_RATE,
     error::MonitoringError,
 };
 use num_traits::ToPrimitive;
@@ -13,25 +13,29 @@ use starknet::{
     providers::Provider,
 };
 
-pub async fn process_lst_data_by_pair(pair: String) -> Result<u64, MonitoringError> {
-    if !LST_PAIRS.contains(pair.as_str()) {
-        return Ok(0);
-    }
+async fn get_pair_decimals(pair: &str) -> Result<u32, MonitoringError> {
+    let config = get_config(None).await;
+    config
+        .decimals(DataType::Spot)
+        .get(pair)
+        .copied()
+        .ok_or_else(|| MonitoringError::Api("Pair not found".to_string()))
+}
 
+pub async fn process_lst_data_by_pair(pair: String) -> Result<(), MonitoringError> {
     let config = get_config(None).await;
     let client = &config.network().provider;
     let network = config.network_str();
-
     let field_pair = cairo_short_string_to_felt(&pair).expect("failed to convert pair id");
-    let decimals = *config.decimals(DataType::Spot).get(&pair).unwrap();
+    let decimals = get_pair_decimals(&pair).await?;
 
-    // Call get_data_median with AggregationMode::ConversionRate
+    // Call get_data with AggregationMode::ConversionRate
     let data = client
         .call(
             FunctionCall {
                 contract_address: config.network().oracle_address,
-                entry_point_selector: selector!("get_data_median"),
-                calldata: vec![Felt::from(2u8), field_pair], // 2 represents ConversionRate
+                entry_point_selector: selector!("get_data"),
+                calldata: vec![Felt::ZERO, field_pair, Felt::from(2)], // 2 represents ConversionRate
             },
             BlockId::Tag(BlockTag::Latest),
         )
@@ -53,13 +57,5 @@ pub async fn process_lst_data_by_pair(pair: String) -> Result<u64, MonitoringErr
         .with_label_values(&[network, &pair])
         .set(conversion_rate);
 
-    // Check invariant
-    if conversion_rate <= 1.0 {
-        return Err(MonitoringError::Price(format!(
-            "LST conversion rate for {} is {} which is <= 1",
-            pair, conversion_rate
-        )));
-    }
-
-    Ok(0)
+    Ok(())
 }

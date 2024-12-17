@@ -191,15 +191,12 @@ pub(crate) async fn api_monitor(cache: Cache<(String, u64), CoinPricesDTO>) {
     }
 }
 
-#[instrument(skip(pool, cache))]
 pub(crate) async fn onchain_monitor(
     pool: Pool<AsyncDieselConnectionManager<AsyncPgConnection>>,
     wait_for_syncing: bool,
     data_type: &DataType,
     cache: Cache<(String, u64), CoinPricesDTO>,
 ) {
-    let monitoring_config = get_config(None).await;
-
     let mut interval = interval(Duration::from_secs(30));
 
     loop {
@@ -210,13 +207,20 @@ pub(crate) async fn onchain_monitor(
             continue;
         }
 
-        let tasks: Vec<_> = monitoring_config
-            .sources(data_type.clone())
+        // Get fresh config for each iteration
+        let monitoring_config = get_config(None).await;
+
+        // Clone the sources map before moving into tasks
+        let sources_map = monitoring_config.sources(data_type.clone());
+
+        let tasks: Vec<_> = sources_map
             .iter()
             .flat_map(|(pair, sources)| {
+                let pair = pair.clone();
+                let sources = sources.clone();
                 let mut pair_tasks = match data_type {
                     DataType::Spot => {
-                        if is_long_tail_asset(pair) {
+                        if is_long_tail_asset(&pair) {
                             vec![tokio::spawn(Box::pin(
                                 processing::spot::process_long_tail_asset(
                                     pool.clone(),
@@ -264,9 +268,12 @@ pub(crate) async fn onchain_monitor(
 
                 // Add LST monitoring task if applicable
                 if LST_PAIRS.contains(pair.as_str()) {
-                    pair_tasks.push(tokio::spawn(Box::pin(
-                        monitoring::process_lst_data_by_pair(pair.clone()),
-                    )));
+                    pair_tasks.push(tokio::spawn(Box::pin(async move {
+                        // Map the Result<(), MonitoringError> to Result<u64, MonitoringError>
+                        monitoring::process_lst_data_by_pair(pair)
+                            .await
+                            .map(|_| 0u64)
+                    })));
                 }
 
                 pair_tasks
