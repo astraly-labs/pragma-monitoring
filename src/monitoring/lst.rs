@@ -13,15 +13,17 @@ use starknet::{
     providers::Provider,
 };
 
+/// Get the decimals for a specific pair from the configuration
 async fn get_pair_decimals(pair: &str) -> Result<u32, MonitoringError> {
     let config = get_config(None).await;
     config
         .decimals(DataType::Spot)
         .get(pair)
         .copied()
-        .ok_or_else(|| MonitoringError::Api("Pair not found".to_string()))
+        .ok_or_else(|| MonitoringError::Api(format!("Pair {} not found", pair)))
 }
 
+/// Process LST data for a specific pair and update the conversion rate metric
 pub async fn process_lst_data_by_pair(pair: String) -> Result<(), MonitoringError> {
     let config = get_config(None).await;
     let client = &config.network().provider;
@@ -29,13 +31,13 @@ pub async fn process_lst_data_by_pair(pair: String) -> Result<(), MonitoringErro
     let field_pair = cairo_short_string_to_felt(&pair).expect("failed to convert pair id");
     let decimals = get_pair_decimals(&pair).await?;
 
-    // Call get_data with AggregationMode::ConversionRate
+    // Call get_data with AggregationMode::ConversionRate (2)
     let data = client
         .call(
             FunctionCall {
                 contract_address: config.network().oracle_address,
                 entry_point_selector: selector!("get_data"),
-                calldata: vec![Felt::ZERO, field_pair, Felt::from(2)], // 2 represents ConversionRate
+                calldata: vec![Felt::ZERO, field_pair, Felt::from(2)],
             },
             BlockId::Tag(BlockTag::Latest),
         )
@@ -44,13 +46,23 @@ pub async fn process_lst_data_by_pair(pair: String) -> Result<(), MonitoringErro
 
     let conversion_rate = data
         .first()
-        .ok_or(MonitoringError::OnChain("No data".to_string()))?
+        .ok_or(MonitoringError::OnChain(
+            "No data returned from contract".to_string(),
+        ))?
         .to_bigint()
         .to_f64()
         .ok_or(MonitoringError::Conversion(
-            "Failed to convert to f64".to_string(),
+            "Failed to convert conversion rate to f64".to_string(),
         ))?
         / 10u64.pow(decimals) as f64;
+
+    // Validate conversion rate is above 1.0
+    if conversion_rate <= 1.0 {
+        return Err(MonitoringError::Price(format!(
+            "LST conversion rate {} <= 1 for pair {}",
+            conversion_rate, pair
+        )));
+    }
 
     // Update metric
     LST_CONVERSION_RATE
