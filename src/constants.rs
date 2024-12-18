@@ -1,7 +1,7 @@
 use arc_swap::ArcSwap;
 use lazy_static::lazy_static;
 use prometheus::{opts, register_gauge_vec, register_int_gauge_vec, GaugeVec, IntGaugeVec};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::future::Future;
 use std::sync::Arc;
 use std::time::Duration;
@@ -81,6 +81,21 @@ lazy_static! {
         map.insert("LUSD/USD".to_string(), (0.05, 0.03));
         map.insert("LORDS/USD".to_string(), (0.05, 0.03));
         map
+    };
+
+    /// Stores the pairs that are long tail assets and have a conversion rate
+    /// to USD.
+    /// The conversion rate is used to convert the price of the pair to USD
+    /// and then compare it to the reference price.
+    /// The conversion rate is stored in the `LST_CONVERSION_RATE` metric.
+    /// The conversion rate is used to convert the price of the pair to USD
+    /// and then compare it to the reference price.
+    pub static ref LST_PAIRS: HashSet<&'static str> = {
+        let mut set = HashSet::new();
+        set.insert("XSTRK/STRK");
+        set.insert("SSTRK/STRK");
+        set.insert("KSTRK/STRK");
+        set
     };
 
     /// We have a list of assets that are defined as long tail assets.
@@ -270,6 +285,14 @@ lazy_static! {
             "The number of feeds updated per Dispatch event at a given block"
         ),
         &["network", "block"]
+    ).unwrap();
+    // LST conversion rate metrics
+    pub static ref LST_CONVERSION_RATE: GaugeVec = register_gauge_vec!(
+        opts!(
+            "lst_conversion_rate",
+            "Conversion rate for LST pairs"
+        ),
+        &["network", "pair"]
     ).unwrap();
 }
 

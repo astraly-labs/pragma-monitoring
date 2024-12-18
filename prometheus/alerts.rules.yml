@@ -108,6 +108,15 @@ groups:
           description: |
             {{ $value }} sources for {{ $labels.pair }} ({{ $labels.type }}) have deviated from our price.
 
+      - alert: LSTConversionRateTooLow
+        expr: lst_conversion_rate <= 1.0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "LST conversion rate is too low"
+          description: "The LST conversion rate for {{ $labels.pair }} is {{ $value }} which is <= 1"
+
   - name: API
     rules:
       - alert: TimeSinceLastUpdateTooHigh
