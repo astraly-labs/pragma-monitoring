@@ -61,13 +61,5 @@ pub async fn process_lst_data_by_pair(pair: String) -> Result<(), MonitoringErro
         .with_label_values(&[network, &pair])
         .set(conversion_rate);
 
-    // Validate conversion rate is above 1.0
-    if conversion_rate <= 1.0 {
-        return Err(MonitoringError::Price(format!(
-            "LST conversion rate {} <= 1 for pair {}",
-            conversion_rate, pair
-        )));
-    }
-
     Ok(())
 }
