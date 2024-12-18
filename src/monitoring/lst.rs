@@ -56,6 +56,11 @@ pub async fn process_lst_data_by_pair(pair: String) -> Result<(), MonitoringErro
         ))?
         / 10u64.pow(decimals) as f64;
 
+    // Update metric before validation
+    LST_CONVERSION_RATE
+        .with_label_values(&[network, &pair])
+        .set(conversion_rate);
+
     // Validate conversion rate is above 1.0
     if conversion_rate <= 1.0 {
         return Err(MonitoringError::Price(format!(
@@ -63,11 +68,6 @@ pub async fn process_lst_data_by_pair(pair: String) -> Result<(), MonitoringErro
             conversion_rate, pair
         )));
     }
-
-    // Update metric
-    LST_CONVERSION_RATE
-        .with_label_values(&[network, &pair])
-        .set(conversion_rate);
 
     Ok(())
 }
