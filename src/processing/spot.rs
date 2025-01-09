@@ -69,7 +69,7 @@ pub async fn process_data_by_pair(
 
     let (on_off_deviation, num_sources_aggregated) = on_off_price_deviation(
         pair.clone(),
-        data.timestamp.timestamp() as u64,
+        data.timestamp.and_utc().timestamp() as u64,
         DataType::Spot,
         cache,
     )

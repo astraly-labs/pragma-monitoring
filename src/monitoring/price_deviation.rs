@@ -59,7 +59,7 @@ pub async fn price_deviation<T: Entry>(
         .clone();
 
     let coins_prices = query_defillama_api(
-        query.timestamp().timestamp().try_into().unwrap(),
+        query.timestamp().and_utc().timestamp().try_into().unwrap(),
         coingecko_id.to_owned(),
         cache,
     )
