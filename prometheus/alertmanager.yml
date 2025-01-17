@@ -1,5 +1,6 @@
 global:
   resolve_timeout: 5m
+  slack_api_url: "${{SLACK_API_URL}}"
 
 route:
   # When a new group of alerts is created by an incoming alert, wait at
@@ -41,6 +42,12 @@ route:
         severity: critical
       continue: true
 
+    - receiver: "Slack-internal"
+      group_wait: 10s
+      match_re:
+        severity: warning
+      continue: true
+
 receivers:
   - name: "internal-warning"
     telegram_configs:
@@ -48,6 +55,10 @@ receivers:
         chat_id: -1001904637278
         parse_mode: "HTML"
         message: '{{ template "telegram.default.message" . }}'
+  - name: "Slack-internal"
+    slack_configs:
+      - channel: "#internal-warning"
+        send_resolved: false
   - name: "internal-critical"
     opsgenie_configs:
       - api_key: "${{OPS_GENIE_API_KEY}}"
