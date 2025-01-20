@@ -59,10 +59,10 @@ steps:
       - '-c'
       - |
         # Login to Infisical
-        infisical login --token="$INFISICAL_TOKEN"
+        infisical login --token="$$INFISICAL_TOKEN"
 
         # Export secrets to .env file
-        infisical export --env=${_ENVIRONMENT} --format=dotenv > .env
+        infisical export --env=${_ENVIRONMENT} --format=dotenv > .env.${_ENVIRONMENT}
 
         # Deploy with Helm
         helm upgrade --install pragma-monitoring ./helm \
@@ -77,7 +77,7 @@ steps:
 
 availableSecrets:
   secretManager:
-    - versionName: projects/${PROJECT_ID}/secrets/infisical-token/versions/latest
+    - versionName: projects/$PROJECT_ID/secrets/infisical-token/versions/latest
       env: 'INFISICAL_TOKEN'
 
 options:
