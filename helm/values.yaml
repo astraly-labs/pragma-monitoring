@@ -1,0 +1,78 @@
+replicaCount: 1
+
+image:
+  repository: ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO_NAME}/pragma-monitoring
+  pullPolicy: IfNotPresent
+  tag: ""
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 10001
+
+securityContext:
+  capabilities:
+    drop:
+    - ALL
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  runAsUser: 10001
+
+service:
+  type: ClusterIP
+  port: 8080
+
+resources:
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+  requests:
+    cpu: 500m
+    memory: 512Mi
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+ingress:
+  enabled: true
+  className: nginx
+  host: monitoring.devnet.pragma.build
+
+env:
+  RUST_LOG: "info"
+  NETWORK: "testnet"
+  PORT: "8080"
+  SPOT_PAIRS: "BTC/USD,ETH/USD,USDC/USD,USDT/USD,DAI/USD"
+  FUTURE_PAIRS: "BTC/USD,ETH/USD,BTC/USDT,ETH/USDT"
+  IGNORE_SOURCES: "BITSTAMP,DEFILLAMA"
+  IGNORE_PUBLISHERS: "BINANCE"
+
+# Secrets will be managed by Infisical
+secrets:
+  - name: pragma-monitoring-secrets
+    envs:
+    - .env
+    backend: infisical
+    data:
+      DATABASE_URL: ""
+      DEFILLAMA_API_KEY: ""
+      PRAGMA_API_KEY: ""
+      RPC_URL: ""
+      INDEXER_SERVICE_URL: ""
+      ORACLE_ADDRESS: ""
+      VRF_ADDRESS: ""
+      TELEGRAM_TOKEN: ""
+      OPSGENIE_API_KEY: ""
