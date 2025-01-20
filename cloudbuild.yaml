@@ -59,7 +59,7 @@ steps:
       - '-c'
       - |
         # Login to Infisical
-        infisical login --token=$$INFISICAL_TOKEN
+        infisical login --token="$INFISICAL_TOKEN"
 
         # Export secrets to .env file
         infisical export --env=${_ENVIRONMENT} --format=dotenv > .env
@@ -72,8 +72,6 @@ steps:
           --set image.repository=${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO_NAME}/${_IMAGE_NAME} \
           --set ingress.host=${_DOMAIN} \
           --wait --timeout 10m
-    env:
-      - 'INFISICAL_TOKEN=${_INFISICAL_TOKEN}'
     secretEnv: ['INFISICAL_TOKEN']
     waitFor: ['docker-push', 'install-helm', 'get-credentials', 'install-infisical']
 
