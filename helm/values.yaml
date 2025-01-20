@@ -23,7 +23,7 @@ podSecurityContext:
 securityContext:
   capabilities:
     drop:
-    - ALL
+      - ALL
   readOnlyRootFilesystem: true
   runAsNonRoot: true
   runAsUser: 10001
@@ -40,9 +40,14 @@ resources:
     cpu: 500m
     memory: 512Mi
 
-nodeSelector: {}
+nodeSelector:
+  Nodelabel: "node-devnet"
 
-tolerations: []
+tolerations:
+  - key: "devnet"
+    operator: "Equal"
+    value: "reserved"
+    effect: "NoSchedule"
 
 affinity: {}
 
@@ -64,7 +69,7 @@ env:
 secrets:
   - name: pragma-monitoring-secrets
     envs:
-    - .env
+      - .env
     backend: infisical
     data:
       DATABASE_URL: ""
