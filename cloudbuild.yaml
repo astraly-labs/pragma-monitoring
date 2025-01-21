@@ -4,7 +4,7 @@ substitutions:
   _CLUSTER: devnet-pragma
   _NAMESPACE: monitoring
   _DOMAIN: monitoring.devnet.pragma.build
-  _ENVIRONMENT: Production
+  _ENVIRONMENT: prod
 
 steps:
   - name: 'gcr.io/cloud-builders/docker'
@@ -45,13 +45,16 @@ steps:
         ./get_helm.sh
 
         # Read credentials from mounted secret file
-        source $$INFISCAL_SECRETS_PATH
+        source $$MONITORING_SECRETS
 
         # Login to Infisical using universal auth
-        infisical login --method=universal-auth --client-id=$$CLIENT_ID --client-secret=$$CLIENT_SECRET
+        export INFISICAL_TOKEN=$(infisical login --method=universal-auth --client-id=$$CLIENT_ID --client-secret=$$CLIENT_SECRET --silent --plain)
 
         # Export secrets to .env file
-        infisical export --env=${_ENVIRONMENT} --format=dotenv > .env
+        infisical export --projectId=$$PROJECT_ID --env=${_ENVIRONMENT} --path=$$SECRETS_PATH --format=dotenv > .env
+
+        # Read Credentials from .env file
+        source .env
 
         # Deploy with Helm
         helm upgrade --install pragma-monitoring ./helm \
@@ -61,13 +64,13 @@ steps:
           --set image.repository=${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO_NAME}/${_IMAGE_NAME} \
           --set ingress.host=${_DOMAIN} \
           --wait --timeout 10m
-    secretEnv: ['INFISCAL_SECRETS_PATH']
+    secretEnv: ['MONITORING_SECRETS']
     waitFor: ['docker-push', 'get-credentials']
 
 availableSecrets:
   secretManager:
-    - versionName: projects/$PROJECT_ID/secrets/infiscal-secrets/versions/latest
-      env: 'INFISCAL_SECRETS_PATH'
+    - versionName: projects/$PROJECT_ID/secrets/monitoring-secrets/versions/latest
+      env: 'MONITORING_SECRETS'
 
 options:
   logging: CLOUD_LOGGING_ONLY
