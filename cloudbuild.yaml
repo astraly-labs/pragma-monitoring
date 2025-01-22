@@ -35,20 +35,20 @@ steps:
     args:
       - '-c'
       - |
-        # Install Helm
+        set -e  # Exit on error
+
+        echo "Installing Helm..."
         curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3
         chmod 700 get_helm.sh
         ./get_helm.sh
 
-        # Read credentials from mounted secret file
-        source $$MONITORING_SECRETS
+        echo "Checking cluster connectivity..."
+        kubectl cluster-info
 
-        # Create .env file and kubernetes secret from monitoring secrets
-        while IFS='=' read -r key value; do
-          echo "$key=$value"
-        done < $$MONITORING_SECRETS > .env
+        echo "Creating .env file..."
+        echo "$${MONITORING_SECRETS}" > .env
 
-        # Deploy with Helm
+        echo "Starting Helm deployment..."
         helm upgrade --install pragma-monitoring ./helm \
           --namespace ${_NAMESPACE} \
           --create-namespace \
