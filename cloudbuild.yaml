@@ -35,7 +35,6 @@ steps:
     args:
       - '-c'
       - |
-
         # Install Helm
         curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3
         chmod 700 get_helm.sh
@@ -44,13 +43,10 @@ steps:
         # Read credentials from mounted secret file
         source $$MONITORING_SECRETS
 
-        # Create .env file from monitoring secrets
+        # Create .env file and kubernetes secret from monitoring secrets
         while IFS='=' read -r key value; do
           echo "$key=$value"
         done < $$MONITORING_SECRETS > .env
-
-        # Read Credentials from .env file
-        source .env
 
         # Deploy with Helm
         helm upgrade --install pragma-monitoring ./helm \
@@ -59,6 +55,7 @@ steps:
           --set image.tag=${SHORT_SHA} \
           --set image.repository=${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO_NAME}/${_IMAGE_NAME} \
           --set ingress.host=${_DOMAIN} \
+          --set-file envFromSecret.data=.env \
           --wait --timeout 10m
     secretEnv: ['MONITORING_SECRETS']
     waitFor: ['docker-push', 'get-credentials']
