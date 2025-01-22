@@ -4,7 +4,6 @@ substitutions:
   _CLUSTER: devnet-pragma
   _NAMESPACE: monitoring
   _DOMAIN: monitoring.devnet.pragma.build
-  _ENVIRONMENT: prod
 
 steps:
   - name: 'gcr.io/cloud-builders/docker'
@@ -27,6 +26,7 @@ steps:
       - '${_CLUSTER}'
       - '--region=${_REGION}'
       - '--project=${PROJECT_ID}'
+      - '--internal-ip'
     waitFor: ['-']
 
   - name: 'gcr.io/cloud-builders/gcloud'
@@ -35,6 +35,9 @@ steps:
     args:
       - '-c'
       - |
+        # Add VPC connector configuration if using private cluster
+        export USE_GKE_GCLOUD_AUTH_PLUGIN=True
+
         set -e  # Exit on error
 
         echo "Installing Helm..."
@@ -67,3 +70,5 @@ availableSecrets:
 
 options:
   logging: CLOUD_LOGGING_ONLY
+  pool:
+    name: 'projects/${PROJECT_ID}/locations/${_REGION}/workerPools/default-pool'
