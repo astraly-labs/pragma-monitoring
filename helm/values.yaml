@@ -53,31 +53,15 @@ affinity: {}
 
 ingress:
   enabled: true
-  className: nginx
-  host: monitoring.devnet.pragma.build
+  annotations:
+    {}
+    # kubernetes.io/ingress.class: nginx
+    # kubernetes.io/tls-acme: "true"
+  ingressClassName: nginx-internal
+  hosts:
+    - host: monitoring.devnet.pragma.build
+      paths: ["/"]
+  tls: []
 
-env:
-  RUST_LOG: "info"
-  NETWORK: "testnet"
-  PORT: "8080"
-  SPOT_PAIRS: "BTC/USD,ETH/USD,USDC/USD,USDT/USD,DAI/USD"
-  FUTURE_PAIRS: "BTC/USD,ETH/USD,BTC/USDT,ETH/USDT"
-  IGNORE_SOURCES: "BITSTAMP,DEFILLAMA"
-  IGNORE_PUBLISHERS: "BINANCE"
-
-# Secrets will be managed by Infisical
-secrets:
-  - name: pragma-monitoring-secrets
-    envs:
-      - .env
-    backend: infisical
-    data:
-      DATABASE_URL: ""
-      DEFILLAMA_API_KEY: ""
-      PRAGMA_API_KEY: ""
-      RPC_URL: ""
-      INDEXER_SERVICE_URL: ""
-      ORACLE_ADDRESS: ""
-      VRF_ADDRESS: ""
-      TELEGRAM_TOKEN: ""
-      OPSGENIE_API_KEY: ""
+envFromSecret:
+  secretName: pragma-monitoring-secrets

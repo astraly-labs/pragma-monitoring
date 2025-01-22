@@ -12,13 +12,15 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/secrets: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
-        {{- with .Values.podAnnotations }}
-        {{- toYaml . | nindent 8 }}
-        {{- end }}
+        checksum/config: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
       labels:
         {{- include "pragma-monitoring.selectorLabels" . | nindent 8 }}
     spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       serviceAccountName: {{ include "pragma-monitoring.serviceAccountName" . }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
@@ -36,26 +38,18 @@ spec:
             httpGet:
               path: /health
               port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
           readinessProbe:
             httpGet:
               path: /health
               port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
           envFrom:
-            - configMapRef:
-                name: {{ include "pragma-monitoring.fullname" . }}
             - secretRef:
-                name: {{ include "pragma-monitoring.fullname" . }}-secrets
-      {{- with .Values.nodeSelector }}
-      nodeSelector:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
-      {{- with .Values.affinity }}
-      affinity:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
-      {{- with .Values.tolerations }}
-      tolerations:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
+                name: pragma-monitoring-secrets

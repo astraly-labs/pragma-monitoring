@@ -11,5 +11,3 @@ spec:
       targetPort: http
       protocol: TCP
       name: http
-  selector:
-    {{- include "pragma-monitoring.selectorLabels" . | nindent 4 }}

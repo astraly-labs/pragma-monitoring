@@ -11,4 +11,3 @@ rustc-ice-*.txt
 # to keep the bin folder
 !/bin/.gitkeep
 !/tmp/.gitkeep
-

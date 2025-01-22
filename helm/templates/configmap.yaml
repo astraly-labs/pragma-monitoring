@@ -5,6 +5,4 @@ metadata:
   labels:
     {{- include "pragma-monitoring.labels" . | nindent 4 }}
 data:
-  {{- range $key, $value := .Values.env }}
-  {{ $key }}: {{ $value | quote }}
-  {{- end }}
+  PORT: "{{ .Values.service.port }}"
