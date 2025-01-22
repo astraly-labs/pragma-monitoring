@@ -118,17 +118,3 @@ pub struct OORequest {
     pub updated_at: NaiveDateTime,
     pub updated_at_tx: String,
 }
-
-#[derive(Queryable, Debug, QueryableByName, Selectable)]
-#[diesel(table_name = crate::schema::pragma_devnet_dispatch_event)]
-#[diesel(check_for_backend(diesel::pg::Pg))]
-pub struct FeedDispatch {
-    pub network: String,
-    pub block_hash: String,
-    pub block_number: i64,
-    pub block_timestamp: NaiveDateTime,
-    pub transaction_hash: String,
-    pub hyperlane_message_nonce: BigDecimal,
-    pub feeds_updated: Option<Vec<String>>,
-    pub _cursor: i64,
-}

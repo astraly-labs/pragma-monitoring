@@ -21,7 +21,6 @@ use crate::monitoring::{
 
 use crate::schema::future_entry::dsl as testnet_dsl;
 use crate::schema::mainnet_future_entry::dsl as mainnet_dsl;
-use crate::schema::pragma_devnet_future_entry::dsl as pragma_devnet_dsl;
 
 use bigdecimal::ToPrimitive;
 use diesel::ExpressionMethods;
@@ -51,13 +50,6 @@ pub async fn process_data_by_pair(
             mainnet_dsl::mainnet_future_entry
                 .filter(mainnet_dsl::pair_id.eq(pair.clone()))
                 .order(mainnet_dsl::block_timestamp.desc())
-                .first(&mut conn)
-                .await?
-        }
-        NetworkName::PragmaDevnet => {
-            pragma_devnet_dsl::pragma_devnet_future_entry
-                .filter(pragma_devnet_dsl::pair_id.eq(pair.clone()))
-                .order(pragma_devnet_dsl::block_timestamp.desc())
                 .first(&mut conn)
                 .await?
         }
@@ -145,14 +137,6 @@ pub async fn process_data_by_pair_and_source(
                 .first(&mut conn)
                 .await?
         }
-        NetworkName::PragmaDevnet => {
-            pragma_devnet_dsl::pragma_devnet_future_entry
-                .filter(pragma_devnet_dsl::pair_id.eq(pair))
-                .filter(pragma_devnet_dsl::source.eq(src))
-                .order(pragma_devnet_dsl::block_timestamp.desc())
-                .first(&mut conn)
-                .await?
-        }
     };
 
     let network_env = &config.network_str();
@@ -202,13 +186,6 @@ pub async fn process_data_by_publisher(
             mainnet_dsl::mainnet_future_entry
                 .filter(mainnet_dsl::publisher.eq(publisher.clone()))
                 .order(mainnet_dsl::block_timestamp.desc())
-                .first(&mut conn)
-                .await?
-        }
-        NetworkName::PragmaDevnet => {
-            pragma_devnet_dsl::pragma_devnet_future_entry
-                .filter(pragma_devnet_dsl::publisher.eq(publisher.clone()))
-                .order(pragma_devnet_dsl::block_timestamp.desc())
                 .first(&mut conn)
                 .await?
         }

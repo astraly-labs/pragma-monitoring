@@ -265,27 +265,6 @@ lazy_static! {
         &["network"]
     )
     .unwrap();
-    pub static ref DISPATCH_EVENT_LATEST_BLOCK: GaugeVec = register_gauge_vec!(
-        opts!(
-            "dispatch_event_latest_block",
-            "The latest block that triggered a Dispatch event from Hyperlane"
-        ),
-        &["network"]
-    ).unwrap();
-    pub static ref DISPATCH_EVENT_FEED_LATEST_BLOCK_UPDATE: GaugeVec = register_gauge_vec!(
-        opts!(
-            "dispatch_event_feed_latest_block_update",
-            "The latest block that triggered a Dispatch event from Hyperlane for a specific Feed ID"
-        ),
-        &["network", "feed_id"]
-    ).unwrap();
-    pub static ref DISPATCH_EVENT_NB_FEEDS_UPDATED: GaugeVec = register_gauge_vec!(
-        opts!(
-            "dispatch_event_nb_feeds_updated",
-            "The number of feeds updated per Dispatch event at a given block"
-        ),
-        &["network", "block"]
-    ).unwrap();
     // LST conversion rate metrics
     pub static ref LST_CONVERSION_RATE: GaugeVec = register_gauge_vec!(
         opts!(

@@ -26,32 +26,6 @@ diesel::table! {
 }
 
 diesel::table! {
-    pragma_devnet_future_entry (data_id) {
-        #[max_length = 255]
-        network -> Varchar,
-        #[max_length = 255]
-        pair_id -> Varchar,
-        #[max_length = 255]
-        data_id -> Varchar,
-        #[max_length = 255]
-        block_hash -> Varchar,
-        block_number -> Int8,
-        block_timestamp -> Timestamp,
-        #[max_length = 255]
-        transaction_hash -> Varchar,
-        price -> Numeric,
-        timestamp -> Timestamp,
-        #[max_length = 255]
-        publisher -> Varchar,
-        #[max_length = 255]
-        source -> Varchar,
-        volume -> Numeric,
-        expiration_timestamp -> Nullable<Timestamp>,
-        _cursor -> Int8,
-    }
-}
-
-diesel::table! {
     mainnet_future_entry (data_id) {
         #[max_length = 255]
         network -> Varchar,
@@ -128,31 +102,6 @@ diesel::table! {
 }
 
 diesel::table! {
-    pragma_devnet_spot_entry (data_id) {
-        #[max_length = 255]
-        network -> Varchar,
-        #[max_length = 255]
-        pair_id -> Varchar,
-        #[max_length = 255]
-        data_id -> Varchar,
-        #[max_length = 255]
-        block_hash -> Varchar,
-        block_number -> Int8,
-        block_timestamp -> Timestamp,
-        #[max_length = 255]
-        transaction_hash -> Varchar,
-        price -> Numeric,
-        timestamp -> Timestamp,
-        #[max_length = 255]
-        publisher -> Varchar,
-        #[max_length = 255]
-        source -> Varchar,
-        volume -> Numeric,
-        _cursor -> Int8,
-    }
-}
-
-diesel::table! {
     mainnet_spot_checkpoints (pair_id) {
         #[max_length = 255]
         network -> Varchar,
@@ -178,30 +127,6 @@ diesel::table! {
 
 diesel::table! {
     spot_checkpoints (data_id) {
-        #[max_length = 255]
-        network -> Varchar,
-        #[max_length = 255]
-        pair_id -> Varchar,
-        #[max_length = 255]
-        data_id -> Varchar,
-        #[max_length = 255]
-        block_hash -> Varchar,
-        block_number -> Int8,
-        block_timestamp -> Timestamp,
-        #[max_length = 255]
-        transaction_hash -> Varchar,
-        price -> Numeric,
-        #[max_length = 255]
-        sender_address -> Varchar,
-        aggregation_mode -> Numeric,
-        _cursor -> Int8,
-        timestamp -> Timestamp,
-        nb_sources_aggregated -> Numeric,
-    }
-}
-
-diesel::table! {
-    pragma_devnet_spot_checkpoints (data_id) {
         #[max_length = 255]
         network -> Varchar,
         #[max_length = 255]
@@ -283,22 +208,6 @@ diesel::table! {
     }
 }
 
-diesel::table! {
-    pragma_devnet_dispatch_event (block_number) {
-        #[max_length = 255]
-        network -> Varchar,
-        #[max_length = 255]
-        block_hash -> Varchar,
-        block_number -> Int8,
-        block_timestamp -> Timestamp,
-        #[max_length = 255]
-        transaction_hash -> Varchar,
-        hyperlane_message_nonce -> Numeric,
-        feeds_updated -> Nullable<Array<Text>>,
-        _cursor -> Int8,
-    }
-}
-
 diesel::allow_tables_to_appear_in_same_query!(
     mainnet_future_entry,
     mainnet_spot_checkpoints,
@@ -306,8 +215,5 @@ diesel::allow_tables_to_appear_in_same_query!(
     future_entry,
     spot_checkpoints,
     spot_entry,
-    pragma_devnet_future_entry,
-    pragma_devnet_spot_entry,
-    pragma_devnet_spot_checkpoints,
     vrf_requests,
 );
