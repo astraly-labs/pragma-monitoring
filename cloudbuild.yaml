@@ -35,9 +35,6 @@ steps:
     args:
       - '-c'
       - |
-        # Install Infisical
-        curl -1sLf 'https://dl.cloudsmith.io/public/infisical/infisical-cli/setup.deb.sh' | bash
-        apt-get update && apt-get install -y infisical
 
         # Install Helm
         curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3
@@ -47,11 +44,10 @@ steps:
         # Read credentials from mounted secret file
         source $$MONITORING_SECRETS
 
-        # Login to Infisical using universal auth
-        export INFISICAL_TOKEN=$(infisical login --method=universal-auth --client-id=$$CLIENT_ID --client-secret=$$CLIENT_SECRET --silent --plain)
-
-        # Export secrets to .env file
-        infisical export --projectId=$$PROJECT_ID --env=${_ENVIRONMENT} --path=$$SECRETS_PATH --format=dotenv > .env
+        # Create .env file from monitoring secrets
+        while IFS='=' read -r key value; do
+          echo "$key=$value"
+        done < $$MONITORING_SECRETS > .env
 
         # Read Credentials from .env file
         source .env
