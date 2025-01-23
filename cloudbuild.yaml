@@ -6,31 +6,17 @@ substitutions:
   _DOMAIN: monitoring.devnet.pragma.build
 
 steps:
-  - name: 'gcr.io/cloud-builders/gcloud'
-    id: check-image
-    entrypoint: 'bash'
-    args:
-      - '-c'
-      - |
-        if gcloud container images list-tags ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO_NAME}/${_IMAGE_NAME} \
-          --filter="tags=${SHORT_SHA}" --format="get(tags)" | grep -q "${SHORT_SHA}"; then
-          echo "Image already exists, skipping build"
-          exit 0
-        fi
-        exit 1
+  # - name: 'gcr.io/cloud-builders/docker'
+  #   id: docker-build
+  #   args: [ 'build',
+  #           '--tag=${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO_NAME}/${_IMAGE_NAME}:${SHORT_SHA}',
+  #           '--file=Dockerfile',
+  #           '.' ]
 
-  - name: 'gcr.io/cloud-builders/docker'
-    id: docker-build
-    args: [ 'build',
-            '--tag=${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO_NAME}/${_IMAGE_NAME}:${SHORT_SHA}',
-            '--file=Dockerfile',
-            '.' ]
-    waitFor: ['check-image']
-
-  - name: 'gcr.io/cloud-builders/docker'
-    id: docker-push
-    args: ['push', '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO_NAME}/${_IMAGE_NAME}:${SHORT_SHA}']
-    waitFor: ['docker-build']
+  # - name: 'gcr.io/cloud-builders/docker'
+  #   id: docker-push
+  #   args: ['push', '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO_NAME}/${_IMAGE_NAME}:${SHORT_SHA}']
+  #   waitFor: ['docker-build']
 
   - name: 'gcr.io/cloud-builders/gcloud'
     id: get-credentials
@@ -62,17 +48,17 @@ steps:
         echo "Checking cluster connectivity..."
         kubectl cluster-info
 
-        echo "Starting Helm deployment..."
-        helm upgrade --install pragma-monitoring ./helm \
-          --namespace ${_NAMESPACE} \
-          --create-namespace \
-          --set image.tag=${SHORT_SHA} \
-          --set image.repository=${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO_NAME}/${_IMAGE_NAME} \
-          --set ingress.host=${_DOMAIN} \
-          --set-file envFromSecret.data=.env \
-          --wait --timeout 10m
+        # echo "Starting Helm deployment..."
+        # helm upgrade --install pragma-monitoring ./helm \
+        #   --namespace ${_NAMESPACE} \
+        #   --create-namespace \
+        #   --set image.tag=${SHORT_SHA} \
+        #   --set image.repository=${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO_NAME}/${_IMAGE_NAME} \
+        #   --set ingress.host=${_DOMAIN} \
+        #   --set-file envFromSecret.data=.env \
+        #   --wait --timeout 10m
     secretEnv: ['MONITORING_SECRETS']
-    waitFor: ['docker-push', 'get-credentials']
+    waitFor: ['get-credentials']
 
 availableSecrets:
   secretManager:
