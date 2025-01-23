@@ -67,4 +67,6 @@ availableSecrets:
 
 options:
   logging: CLOUD_LOGGING_ONLY
+  pool:
+    name: 'projects/${PROJECT_ID}/locations/${_REGION}/workerpools/private-pool'
 
