@@ -45,8 +45,11 @@ steps:
         echo "Creating .env file..."
         echo "$${MONITORING_SECRETS}" > .env
 
+        echo "Use Context..."
+        kubectl config use-context ${_CONTEXT}
+
         echo "Checking cluster connectivity..."
-        kubectl cluster-info
+        helm list --kube-context ${_CONTEXT} --all-namespaces
 
         # echo "Starting Helm deployment..."
         # helm upgrade --install pragma-monitoring ./helm \
