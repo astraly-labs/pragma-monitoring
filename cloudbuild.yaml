@@ -6,16 +6,31 @@ substitutions:
   _DOMAIN: monitoring.devnet.pragma.build
 
 steps:
+  - name: 'gcr.io/cloud-builders/gcloud'
+    id: check-image
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        if gcloud container images list-tags ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO_NAME}/${_IMAGE_NAME} \
+          --filter="tags=${SHORT_SHA}" --format="get(tags)" | grep -q "${SHORT_SHA}"; then
+          echo "Image already exists, skipping build"
+          exit 0
+        fi
+        exit 1
+
   - name: 'gcr.io/cloud-builders/docker'
     id: docker-build
     args: [ 'build',
             '--tag=${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO_NAME}/${_IMAGE_NAME}:${SHORT_SHA}',
             '--file=Dockerfile',
             '.' ]
+    waitFor: ['check-image']
 
   - name: 'gcr.io/cloud-builders/docker'
     id: docker-push
     args: ['push', '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO_NAME}/${_IMAGE_NAME}:${SHORT_SHA}']
+    waitFor: ['docker-build']
 
   - name: 'gcr.io/cloud-builders/gcloud'
     id: get-credentials
@@ -26,7 +41,6 @@ steps:
       - '${_CLUSTER}'
       - '--region=${_REGION}'
       - '--project=${PROJECT_ID}'
-      - '--internal-ip'
     waitFor: ['-']
 
   - name: 'gcr.io/cloud-builders/gcloud'
@@ -35,9 +49,6 @@ steps:
     args:
       - '-c'
       - |
-        # Add VPC connector configuration if using private cluster
-        export USE_GKE_GCLOUD_AUTH_PLUGIN=True
-
         set -e  # Exit on error
 
         echo "Installing Helm..."
@@ -45,11 +56,11 @@ steps:
         chmod 700 get_helm.sh
         ./get_helm.sh
 
-        echo "Checking cluster connectivity..."
-        kubectl cluster-info
-
         echo "Creating .env file..."
         echo "$${MONITORING_SECRETS}" > .env
+
+        echo "Checking cluster connectivity..."
+        kubectl cluster-info
 
         echo "Starting Helm deployment..."
         helm upgrade --install pragma-monitoring ./helm \
