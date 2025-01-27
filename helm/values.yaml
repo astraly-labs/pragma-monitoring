@@ -10,9 +10,11 @@ nameOverride: ""
 fullnameOverride: ""
 
 serviceAccount:
-  create: true
-  annotations: {}
+  create: false
   name: ""
+
+autoscaling:
+  enabled: false
 
 podAnnotations: {}
 
