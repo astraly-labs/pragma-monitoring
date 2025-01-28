@@ -16,7 +16,10 @@ serviceAccount:
 autoscaling:
   enabled: false
 
-podAnnotations: {}
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: ""
+  prometheus.io/path: "/metrics"
 
 podSecurityContext:
   runAsNonRoot: true
@@ -32,7 +35,7 @@ securityContext:
 
 service:
   type: ClusterIP
-  port: 8080
+  port: 8081
 
 resources:
   limits:
@@ -65,5 +68,17 @@ ingress:
       paths: ["/"]
   tls: []
 
+# GCP Secrets Configuration
+gcpSecrets:
+  enabled: true
+  projectId: ${PROJECT_ID}
+  secretStore:
+    name: "monitoring-secrets-store"
+  externalSecret:
+    name: "monitoring-secrets"
+    secretPath: "projects/{PROJECT_ID_APP}/secrets/monitoring-secrets"
+    refreshInterval: "1h"
+
+# Environment variables from secret
 envFromSecret:
-  secretName: pragma-monitoring-secrets
+  secretName: "monitoring-env-secrets"

@@ -14,8 +14,6 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: {{ include (print $.Template.BasePath "/secrets.yaml") . | sha256sum }}
-        checksum/secret: {{ include (print $.Template.BasePath "/secrets.yaml") . | sha256sum }}
       labels:
         {{- include "pragma-monitoring.selectorLabels" . | nindent 8 }}
     spec:
@@ -53,4 +51,4 @@ spec:
             {{- toYaml .Values.resources | nindent 12 }}
           envFrom:
             - secretRef:
-                name: pragma-monitoring-secrets
+                name: {{ .Values.envFromSecret.secretName }}
