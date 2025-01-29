@@ -2,7 +2,7 @@ replicaCount: 1
 
 image:
   repository: ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO_NAME}/pragma-monitoring
-  pullPolicy: IfNotPresent
+  pullPolicy: Always
   tag: "latest"
 
 imagePullSecrets: []
