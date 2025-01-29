@@ -80,7 +80,7 @@ gcpSecrets:
         clusterName: ${_CLUSTER_NAME}
   externalSecret:
     name: "monitoring-secrets"
-    secretPath: "${_CLUSTER_NAME}/secrets/monitoring-secrets"
+    secretPath: "monitoring-secrets"
     refreshInterval: "1h"
 
 # Environment variables from secret
