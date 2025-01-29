@@ -3,7 +3,7 @@ replicaCount: 1
 image:
   repository: ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO_NAME}/pragma-monitoring
   pullPolicy: IfNotPresent
-  tag: ""
+  tag: "latest"
 
 imagePullSecrets: []
 nameOverride: ""
@@ -74,9 +74,13 @@ gcpSecrets:
   projectId: ${PROJECT_ID}
   secretStore:
     name: "monitoring-secrets-store"
+    auth:
+      workloadIdentity:
+        clusterLocation: ${_REGION}
+        clusterName: ${_CLUSTER_NAME}
   externalSecret:
     name: "monitoring-secrets"
-    secretPath: "projects/{PROJECT_ID_APP}/secrets/monitoring-secrets"
+    secretPath: "projects/{PROJECT_NUMBER}/secrets/monitoring-secrets"
     refreshInterval: "1h"
 
 # Environment variables from secret
