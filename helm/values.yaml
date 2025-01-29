@@ -39,11 +39,11 @@ service:
 
 resources:
   limits:
-    cpu: 1000m
-    memory: 1Gi
+    cpu: 2000m    # Increased from 1000m
+    memory: 2Gi   # Increased from 1Gi
   requests:
-    cpu: 500m
-    memory: 512Mi
+    cpu: 1000m    # Increased from 500m
+    memory: 1Gi   # Increased from 512Mi
 
 nodeSelector:
   Nodelabel: "node-devnet"
