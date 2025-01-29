@@ -30,10 +30,10 @@ route:
         severity: critical
       continue: true
 
-    - receiver: "internal-warning"
+    - receiver: "Slack-internal"
       group_wait: 10s
       match_re:
-        severity: warning
+        severity: warning|critical
       continue: true
 
     - receiver: "public"
@@ -42,26 +42,27 @@ route:
         severity: critical
       continue: true
 
-    - receiver: "Slack-internal"
-      group_wait: 10s
-      match_re:
-        severity: warning
-      continue: true
-
 receivers:
   - name: "internal-warning"
     telegram_configs:
-      - bot_token: "${{TELEGRAM_TOKEN}}}}"
+      - bot_token: "${{TELEGRAM_TOKEN}}"
         chat_id: -1001904637278
         parse_mode: "HTML"
         message: '{{ template "telegram.default.message" . }}'
+
   - name: "Slack-internal"
     slack_configs:
       - channel: "#internal-warning"
-        send_resolved: false
+        send_resolved: true
+        title: '{{ template "slack.title" . }}'
+        icon_emoji: '{{ template "slack.icon_emoji" . }}'
+        color: '{{ template "slack.color" . }}'
+        text: '{{ template "slack.text" . }}'
+
   - name: "internal-critical"
     opsgenie_configs:
       - api_key: "${{OPS_GENIE_API_KEY}}"
+
   - name: "public"
     telegram_configs:
       - bot_token: "${{TELEGRAM_TOKEN}}"
@@ -72,3 +73,4 @@ receivers:
 # The directory from which notification templates are read.
 templates:
   - "/config/templates/alert.tmpl"
+  - "/config/templates/slack.tmpl"
