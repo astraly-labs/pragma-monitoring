@@ -86,3 +86,11 @@ gcpSecrets:
 # Environment variables from secret
 envFromSecret:
   secretName: "monitoring-env-secrets"
+
+env:
+  - name: RUST_BACKTRACE
+    value: "1"
+  - name: COINGECKO_RETRY_DELAY
+    value: "5000"
+  - name: COINGECKO_MAX_RETRIES
+    value: "3"
