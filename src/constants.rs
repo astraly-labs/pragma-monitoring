@@ -14,8 +14,8 @@ lazy_static! {
 
 #[allow(dead_code)]
 pub async fn initialize_coingecko_mappings() {
-    const MAX_INIT_RETRIES: u32 = 5;
-    const INITIAL_RETRY_DELAY: u64 = 5; // seconds
+    const MAX_INIT_RETRIES: u32 = 10; // Increased retries
+    const INITIAL_RETRY_DELAY: u64 = 30; // Increased initial delay to 30 seconds
 
     for attempt in 1..=MAX_INIT_RETRIES {
         match get_coingecko_mappings().await {
@@ -31,10 +31,33 @@ pub async fn initialize_coingecko_mappings() {
                         MAX_INIT_RETRIES,
                         e
                     );
-                    panic!(
-                        "Cannot start monitoring without CoinGecko mappings after {} attempts: {}",
-                        MAX_INIT_RETRIES, e
+                    // Instead of panicking, initialize with an empty mapping
+                    tracing::warn!(
+                        "Initializing with empty CoinGecko mappings - will retry in background"
                     );
+                    COINGECKO_IDS.store(Arc::new(HashMap::new()));
+                    // Spawn a background task to keep trying
+                    tokio::spawn(async move {
+                        loop {
+                            tokio::time::sleep(std::time::Duration::from_secs(300)).await; // Wait 5 minutes
+                            match get_coingecko_mappings().await {
+                                Ok(mappings) => {
+                                    COINGECKO_IDS.store(Arc::new(mappings));
+                                    tracing::info!(
+                                        "Successfully initialized CoinGecko mappings in background"
+                                    );
+                                    break;
+                                }
+                                Err(e) => {
+                                    tracing::warn!(
+                                        "Background CoinGecko initialization attempt failed: {}",
+                                        e
+                                    );
+                                }
+                            }
+                        }
+                    });
+                    return;
                 }
 
                 let delay = INITIAL_RETRY_DELAY * 2u64.pow(attempt - 1);

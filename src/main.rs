@@ -54,7 +54,7 @@ struct MonitoringTask {
 
 #[tokio::main]
 async fn main() {
-    // Initialize CoinGecko mappings
+    // Initialize CoinGecko mappings (will not panic now)
     initialize_coingecko_mappings().await;
 
     // Start configuring a `fmt` subscriber
