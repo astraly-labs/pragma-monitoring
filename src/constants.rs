@@ -14,14 +14,39 @@ lazy_static! {
 
 #[allow(dead_code)]
 pub async fn initialize_coingecko_mappings() {
-    match get_coingecko_mappings().await {
-        Ok(mappings) => {
-            COINGECKO_IDS.store(Arc::new(mappings));
-            tracing::info!("Successfully initialized CoinGecko mappings");
-        }
-        Err(e) => {
-            tracing::error!("Failed to initialize CoinGecko mappings: {}", e);
-            panic!("Cannot start monitoring without CoinGecko mappings: {}", e);
+    const MAX_INIT_RETRIES: u32 = 5;
+    const INITIAL_RETRY_DELAY: u64 = 5; // seconds
+
+    for attempt in 1..=MAX_INIT_RETRIES {
+        match get_coingecko_mappings().await {
+            Ok(mappings) => {
+                COINGECKO_IDS.store(Arc::new(mappings));
+                tracing::info!("Successfully initialized CoinGecko mappings");
+                return;
+            }
+            Err(e) => {
+                if attempt == MAX_INIT_RETRIES {
+                    tracing::error!(
+                        "Failed to initialize CoinGecko mappings after {} attempts: {}",
+                        MAX_INIT_RETRIES,
+                        e
+                    );
+                    panic!(
+                        "Cannot start monitoring without CoinGecko mappings after {} attempts: {}",
+                        MAX_INIT_RETRIES, e
+                    );
+                }
+
+                let delay = INITIAL_RETRY_DELAY * 2u64.pow(attempt - 1);
+                tracing::warn!(
+                    "Failed to initialize CoinGecko mappings (attempt {}/{}): {}. Retrying in {} seconds...",
+                    attempt,
+                    MAX_INIT_RETRIES,
+                    e,
+                    delay
+                );
+                tokio::time::sleep(std::time::Duration::from_secs(delay)).await;
+            }
         }
     }
 }
