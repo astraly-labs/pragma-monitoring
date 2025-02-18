@@ -1,6 +1,6 @@
 {{/* Slack alert title */}}
 {{ define "slack.title" -}}
-[{{ .Status | toUpper }}{{if eq .Status "firing"}}:{{ .Alerts.Firing | len }}{{end}}] 
+[{{ .Status | toUpper }}{{if eq .Status "firing"}}:{{ .Alerts.Firing | len }}{{end}}]
 {{ if eq .Status "firing" -}}
   {{- if eq .CommonLabels.severity "critical" }}🔥
   {{- else if eq .CommonLabels.severity "warning" }}⚠️
