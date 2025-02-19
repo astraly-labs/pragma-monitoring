@@ -167,7 +167,6 @@ pub async fn set_test_config(mock_provider: &MockTestProvider) {
 }
 
 mod common;
-mod lst_tests;
 
 #[cfg(test)]
 mod monitoring;

@@ -1,8 +1,8 @@
 use crate::monitoring::balance::get_on_chain_balance;
+use crate::monitoring::metrics::MONITORING_METRICS;
 use crate::monitoring::price_deviation::CoinPricesDTO;
 use crate::{
     config::{get_config, DataType},
-    constants::{INDEXER_BLOCKS_LEFT, PUBLISHER_BALANCE},
     error::MonitoringError,
 };
 use moka::future::Cache;
@@ -33,13 +33,14 @@ pub async fn data_is_syncing(data_type: &DataType) -> Result<bool, MonitoringErr
 
     let blocks_left = blocks_left(&status, provider).await?;
 
-    // Update the prometheus metric
-    INDEXER_BLOCKS_LEFT
-        .with_label_values(&[
+    // Update the metric
+    MONITORING_METRICS
+        .monitoring_metrics
+        .set_indexer_blocks_left(
+            blocks_left.unwrap_or(0) as i64,
             (&config.network().name).into(),
-            &data_type.to_string().to_ascii_lowercase(),
-        ])
-        .set(blocks_left.unwrap_or(0) as i64);
+            &table_name.to_string().to_ascii_lowercase(),
+        );
 
     // Check if any indexer is still syncing
     Ok(blocks_left.is_some())
@@ -78,13 +79,14 @@ pub async fn is_syncing(table_name: &str) -> Result<bool, MonitoringError> {
 
     let blocks_left = blocks_left(&status, provider).await?;
 
-    // Update the prometheus metric
-    INDEXER_BLOCKS_LEFT
-        .with_label_values(&[
+    // Update the metric
+    MONITORING_METRICS
+        .monitoring_metrics
+        .set_indexer_blocks_left(
+            blocks_left.unwrap_or(0) as i64,
             (&config.network().name).into(),
             &table_name.to_string().to_ascii_lowercase(),
-        ])
-        .set(blocks_left.unwrap_or(0) as i64);
+        );
 
     // Check if any indexer is still syncing
     Ok(blocks_left.is_some())
@@ -299,8 +301,8 @@ pub async fn check_publisher_balance(
 
     let network_env = &config.network_str();
 
-    PUBLISHER_BALANCE
-        .with_label_values(&[network_env, &publisher])
-        .set(balance);
+    MONITORING_METRICS
+        .monitoring_metrics
+        .set_publisher_balance(balance, network_env, &publisher);
     Ok(())
 }
