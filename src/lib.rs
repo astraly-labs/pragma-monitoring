@@ -1,4 +1,3 @@
-pub mod coingecko;
 pub(crate) mod config;
 pub mod constants;
 pub mod models;

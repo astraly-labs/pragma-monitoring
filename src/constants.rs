@@ -1,78 +1,27 @@
-use arc_swap::ArcSwap;
 use lazy_static::lazy_static;
+use phf::phf_map;
 use prometheus::{opts, register_gauge_vec, register_int_gauge_vec, GaugeVec, IntGaugeVec};
 use std::collections::{HashMap, HashSet};
-use std::sync::Arc;
 
-use crate::coingecko::get_coingecko_mappings;
 pub(crate) static LOW_SOURCES_THRESHOLD: usize = 6;
 
-lazy_static! {
-    pub static ref COINGECKO_IDS: ArcSwap<HashMap<String, String>> =
-        ArcSwap::new(Arc::new(HashMap::new()));
-}
-
-#[allow(dead_code)]
-pub async fn initialize_coingecko_mappings() {
-    const MAX_INIT_RETRIES: u32 = 10; // Increased retries
-    const INITIAL_RETRY_DELAY: u64 = 30; // Increased initial delay to 30 seconds
-
-    for attempt in 1..=MAX_INIT_RETRIES {
-        match get_coingecko_mappings().await {
-            Ok(mappings) => {
-                COINGECKO_IDS.store(Arc::new(mappings));
-                tracing::info!("Successfully initialized CoinGecko mappings");
-                return;
-            }
-            Err(e) => {
-                if attempt == MAX_INIT_RETRIES {
-                    tracing::error!(
-                        "Failed to initialize CoinGecko mappings after {} attempts: {}",
-                        MAX_INIT_RETRIES,
-                        e
-                    );
-                    // Instead of panicking, initialize with an empty mapping
-                    tracing::warn!(
-                        "Initializing with empty CoinGecko mappings - will retry in background"
-                    );
-                    COINGECKO_IDS.store(Arc::new(HashMap::new()));
-                    // Spawn a background task to keep trying
-                    tokio::spawn(async move {
-                        loop {
-                            tokio::time::sleep(std::time::Duration::from_secs(300)).await; // Wait 5 minutes
-                            match get_coingecko_mappings().await {
-                                Ok(mappings) => {
-                                    COINGECKO_IDS.store(Arc::new(mappings));
-                                    tracing::info!(
-                                        "Successfully initialized CoinGecko mappings in background"
-                                    );
-                                    break;
-                                }
-                                Err(e) => {
-                                    tracing::warn!(
-                                        "Background CoinGecko initialization attempt failed: {}",
-                                        e
-                                    );
-                                }
-                            }
-                        }
-                    });
-                    return;
-                }
-
-                let delay = INITIAL_RETRY_DELAY * 2u64.pow(attempt - 1);
-                tracing::warn!(
-                    "Failed to initialize CoinGecko mappings (attempt {}/{}): {}. Retrying in {} seconds...",
-                    attempt,
-                    MAX_INIT_RETRIES,
-                    e,
-                    delay
-                );
-                tokio::time::sleep(std::time::Duration::from_secs(delay)).await;
-            }
-        }
-    }
-}
+#[allow(unused)]
+pub(crate) static COINGECKO_IDS: phf::Map<&'static str, &'static str> = phf_map! {
+    "BTC/USD" => "bitcoin",
+    "ETH/USD" => "ethereum",
+    "LUSD/USD" => "liquity-usd",
+    "WBTC/USD" => "wrapped-bitcoin",
+    "DAI/USD" => "dai",
+    "USDC/USD" => "usd-coin",
+    "USDT/USD" => "tether",
+    "WSTETH/USD" => "wrapped-steth",
+    "LORDS/USD" => "lords",
+    "STRK/USD" => "starknet",
+    "ZEND/USD" => "zklend-2",
+    "NSTR/USD" => "nostra",
+    "EKUBO/USD" => "ekubo-protocol",
+    "XSTRK/USD" => "endur-fi-staked-strk",
+};
 
 lazy_static! {
     /// TODO: Current storage of long tail assets here is not really good.

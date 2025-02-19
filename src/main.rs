@@ -21,8 +21,6 @@ mod constants;
 mod types;
 // Utils
 mod utils;
-// coingecko
-mod coingecko;
 
 #[cfg(test)]
 mod tests;
@@ -41,7 +39,7 @@ use tokio::task::JoinHandle;
 use tokio::time::interval;
 
 use config::{get_config, init_long_tail_asset_configuration, periodic_config_update, DataType};
-use constants::{initialize_coingecko_mappings, LST_PAIRS};
+use constants::LST_PAIRS;
 use processing::common::{check_publisher_balance, data_indexers_are_synced};
 use tracing::instrument;
 use utils::{is_long_tail_asset, log_monitoring_results, log_tasks_results};
@@ -54,9 +52,6 @@ struct MonitoringTask {
 
 #[tokio::main]
 async fn main() {
-    // Initialize CoinGecko mappings (will not panic now)
-    initialize_coingecko_mappings().await;
-
     // Start configuring a `fmt` subscriber
     let subscriber = tracing_subscriber::fmt()
         .compact()
@@ -124,25 +119,9 @@ async fn spawn_monitoring_tasks(
             name: "API Monitoring".to_string(),
             handle: tokio::spawn(api_monitor(cache.clone())),
         },
-        MonitoringTask {
-            name: "VRF Monitoring".to_string(),
-            handle: tokio::spawn(vrf_monitor(pool.clone())),
-        },
-        MonitoringTask {
-            name: "CoinGecko Mappings Update".to_string(),
-            handle: tokio::spawn(periodic_coingecko_update()),
-        },
     ];
 
     tasks
-}
-
-async fn periodic_coingecko_update() {
-    let mut interval = interval(Duration::from_secs(86400)); // 1 day
-    loop {
-        interval.tick().await;
-        initialize_coingecko_mappings().await;
-    }
 }
 
 #[instrument]
@@ -326,34 +305,5 @@ pub(crate) async fn publisher_monitor(
 
         let results: Vec<_> = futures::future::join_all(tasks).await;
         log_tasks_results("PUBLISHERS", results);
-    }
-}
-
-#[instrument(skip(pool))]
-pub(crate) async fn vrf_monitor(pool: Pool<AsyncDieselConnectionManager<AsyncPgConnection>>) {
-    tracing::info!("[VRF] Monitoring VRF requests..");
-
-    let monitoring_config = get_config(None).await;
-    let mut interval = interval(Duration::from_secs(30));
-    loop {
-        interval.tick().await; // Wait for the next tick
-
-        let tasks: Vec<_> = vec![
-            tokio::spawn(Box::pin(processing::vrf::check_vrf_balance(
-                monitoring_config.network().vrf_address,
-            ))),
-            tokio::spawn(Box::pin(processing::vrf::check_vrf_request_count(
-                pool.clone(),
-            ))),
-            tokio::spawn(Box::pin(processing::vrf::check_vrf_time_since_last_handle(
-                pool.clone(),
-            ))),
-            tokio::spawn(Box::pin(
-                processing::vrf::check_vrf_oldest_request_pending_status_duration(pool.clone()),
-            )),
-        ];
-
-        let results: Vec<_> = futures::future::join_all(tasks).await;
-        log_tasks_results("VRF", results);
     }
 }
