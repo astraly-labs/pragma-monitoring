@@ -54,7 +54,3 @@ rstest = "0.18.2"
 criterion = { version = "0.5", features = ["async_tokio"] }
 mockall = "0.13.1"
 async-trait = "0.1.68"
-
-[[bench]]
-name = "coingecko_benchmarks"
-harness = false
