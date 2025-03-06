@@ -125,6 +125,8 @@ pub async fn get_coingecko_mappings() -> Result<HashMap<String, String>, CoinGec
 }
 
 async fn fetch_mappings() -> Result<HashMap<String, String>, CoinGeckoError> {
+    let api_key = std::env::var("COINGECKO_API_KEY")
+        .expect("COINGECKO_API_KEY must be set in environment");
     let client = reqwest::Client::new();
     let mut mappings = HashMap::new();
     let mut page = 1;
@@ -140,6 +142,7 @@ async fn fetch_mappings() -> Result<HashMap<String, String>, CoinGeckoError> {
 
         let response = client
             .get(&url)
+            .header("x-cg-pro-api-key", &api_key)
             .header(
                 "User-Agent",
                 "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
