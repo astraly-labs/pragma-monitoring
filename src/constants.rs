@@ -21,7 +21,8 @@ pub async fn initialize_coingecko_mappings() {
         }
         Err(e) => {
             tracing::error!("Failed to initialize CoinGecko mappings: {}", e);
-            panic!("Cannot start monitoring without CoinGecko mappings: {}", e);
+            // Don't panic, just log the error
+            tracing::warn!("Continuing without CoinGecko mappings");
         }
     }
 }
