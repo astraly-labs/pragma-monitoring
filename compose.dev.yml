@@ -1,9 +1,17 @@
 version: "3"
 
 services:
-  monitoring:
-    build: .
-    env_file:
-      - .env
+  lgtm:
+    image: grafana/otel-lgtm
     ports:
-      - 8080:8080
+      # Grafana
+      - "3001:3000"
+      # OpenTelemetry ports (OTLP/gRPC and OTLP/HTTP)
+      - "4317:4317"
+      - "4318:4318"
+    volumes:
+      # Optional: persist data across container restarts
+      - ./data:/data
+    environment:
+      # Optional: enable logging for troubleshooting
+      - ENABLE_LOGS_ALL=true

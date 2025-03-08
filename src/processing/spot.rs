@@ -22,7 +22,9 @@ use diesel_async::pooled_connection::AsyncDieselConnectionManager;
 use diesel_async::AsyncPgConnection;
 use diesel_async::RunQueryDsl;
 use moka::future::Cache;
+use tracing::instrument;
 
+#[instrument(skip(pool, cache))]
 pub async fn process_data_by_pair(
     pool: deadpool::managed::Pool<AsyncDieselConnectionManager<AsyncPgConnection>>,
     pair: String,
@@ -86,6 +88,7 @@ pub async fn process_data_by_pair(
     Ok(seconds_since_last_publish)
 }
 
+#[instrument(skip_all)]
 pub async fn process_data_by_pair_and_sources(
     pool: deadpool::managed::Pool<AsyncDieselConnectionManager<AsyncPgConnection>>,
     pair: String,
@@ -108,6 +111,7 @@ pub async fn process_data_by_pair_and_sources(
     Ok(*timestamps.last().unwrap())
 }
 
+#[instrument(skip(pool, cache))]
 pub async fn process_data_by_pair_and_source(
     pool: deadpool::managed::Pool<AsyncDieselConnectionManager<AsyncPgConnection>>,
     pair: &str,
@@ -116,7 +120,6 @@ pub async fn process_data_by_pair_and_source(
     cache: Cache<(String, u64), CoinPricesDTO>,
 ) -> Result<u64, MonitoringError> {
     let mut conn = pool.get().await.map_err(MonitoringError::Connection)?;
-
     let config = get_config(None).await;
 
     let data: SpotEntry = match config.network().name {
@@ -138,11 +141,23 @@ pub async fn process_data_by_pair_and_source(
         }
     };
 
+    // Check if data is older than 1 week
+    let time_since_last_update = time_since_last_update(&data);
+    const ONE_WEEK_IN_SECONDS: u64 = 7 * 24 * 60 * 60; // 7 days in seconds
+    
+    if time_since_last_update > ONE_WEEK_IN_SECONDS {
+        tracing::warn!(
+            "Skipping processing for pair {} and source {} as data is older than 1 week",
+            pair,
+            src
+        );
+        return Ok(time_since_last_update);
+    }
+
     let network_env = &config.network_str();
     let data_type = "spot";
 
     // Compute metrics
-    let time = time_since_last_update(&data);
     let price_as_f64 = data.price.to_f64().ok_or(MonitoringError::Price(
         "Failed to convert price to f64".to_string(),
     ))?;
@@ -170,9 +185,10 @@ pub async fn process_data_by_pair_and_source(
         .monitoring_metrics
         .set_price_deviation_source(source_deviation, network_env, pair, src, data_type);
 
-    Ok(time)
+    Ok(time_since_last_update)
 }
 
+#[instrument(skip(pool))]
 pub async fn process_data_by_publisher(
     pool: deadpool::managed::Pool<AsyncDieselConnectionManager<AsyncPgConnection>>,
     publisher: String,

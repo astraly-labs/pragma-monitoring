@@ -50,21 +50,11 @@ struct MonitoringTask {
 #[tokio::main]
 #[tracing::instrument]
 async fn main() {
-    // Start configuring a `fmt` subscriber
-    let subscriber = tracing_subscriber::fmt()
-        .compact()
-        .with_file(true)
-        .with_line_number(true)
-        .with_thread_ids(true)
-        .with_target(false)
-        .finish();
-    tracing::subscriber::set_global_default(subscriber).unwrap();
-
     // Load environment variables from .env file
     dotenv().ok();
 
     let otel_endpoint = std::env::var("OTEL_EXPORTER_OTLP_ENDPOINT")
-        .unwrap_or_else(|_| "http://signoz.dev.pragma.build:4317".to_string());
+        .unwrap_or_else(|_| "http://localhost:4317".to_string());
     pragma_common::telemetry::init_telemetry("pragma-monitoring".into(), otel_endpoint, None)
         .expect("Failed to initialize telemetry");
 
@@ -163,6 +153,7 @@ pub(crate) async fn api_monitor(cache: Cache<(String, u64), CoinPricesDTO>) {
     }
 }
 
+#[instrument(skip_all)]
 pub(crate) async fn onchain_monitor(
     pool: Pool<AsyncDieselConnectionManager<AsyncPgConnection>>,
     wait_for_syncing: bool,
