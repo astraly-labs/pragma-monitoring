@@ -10,10 +10,8 @@ use starknet::{
 
 use crate::{
     config::get_config,
-    constants::{
-        API_NUM_SOURCES, API_PRICE_DEVIATION, API_SEQUENCER_DEVIATION, API_TIME_SINCE_LAST_UPDATE,
-    },
     error::MonitoringError,
+    monitoring::metrics::MONITORING_METRICS,
     monitoring::{
         price_deviation::{raw_price_deviation, CoinPricesDTO},
         time_since_last_update::raw_time_since_last_update,
@@ -45,24 +43,18 @@ pub async fn process_data_by_pair(
     let price_deviation = raw_price_deviation(&pair, normalized_price, cache).await?;
     let time_since_last_update = raw_time_since_last_update(result.timestamp)?;
 
-    API_PRICE_DEVIATION
-        .with_label_values(&[network_env, &pair])
-        .set(price_deviation);
-    API_TIME_SINCE_LAST_UPDATE
-        .with_label_values(&[network_env, &pair])
-        .set(time_since_last_update as f64);
-    API_NUM_SOURCES
-        .with_label_values(&[network_env, &pair])
-        .set(result.num_sources_aggregated as i64);
+    MONITORING_METRICS
+        .monitoring_metrics
+        .set_api_price_deviation(price_deviation, network_env, &pair);
+    MONITORING_METRICS
+        .monitoring_metrics
+        .set_api_time_since_last_update(time_since_last_update as f64, network_env, &pair);
+    MONITORING_METRICS.monitoring_metrics.set_api_num_sources(
+        result.num_sources_aggregated as i64,
+        network_env,
+        &pair,
+    );
 
-    Ok(())
-}
-
-// TODO: Currently not possible to retrieve the last price for a given source
-pub async fn process_long_tail_assets(
-    _pair: String,
-    _sources: Vec<String>,
-) -> Result<(), MonitoringError> {
     Ok(())
 }
 
@@ -103,9 +95,9 @@ pub async fn process_sequencer_data() -> Result<(), MonitoringError> {
     ))?;
 
     let price_deviation = (normalized_price - expected_price) / expected_price;
-    API_SEQUENCER_DEVIATION
-        .with_label_values(&[network_env])
-        .set(price_deviation);
+    MONITORING_METRICS
+        .monitoring_metrics
+        .set_api_sequencer_deviation(price_deviation, network_env);
 
     Ok(())
 }

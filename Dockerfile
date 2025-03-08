@@ -1,7 +1,6 @@
 # syntax=docker/dockerfile-upstream:master
 
-ARG RUST_VERSION=1.72.0
-FROM lukemathwalker/cargo-chef:latest-rust-${RUST_VERSION}-slim-bullseye AS cargo-chef
+FROM lukemathwalker/cargo-chef:latest-rust-slim-bullseye AS cargo-chef
 WORKDIR /app
 
 FROM cargo-chef AS planner
@@ -14,17 +13,17 @@ COPY --from=planner /app/recipe.json recipe.json
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
     libpq-dev \
     pkg-config \
-    libssl-dev \ 
+    libssl-dev \
     ca-certificates \
     wget \
     && rm -rf /var/lib/apt/lists/*
 
-RUN cargo chef cook --profile release --recipe-path recipe.json 
+RUN cargo chef cook --profile release --recipe-path recipe.json
 COPY . .
 RUN cargo build --locked --release
 
 FROM debian:bullseye-slim AS final
-RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \ 
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
     libpq-dev \
     libssl1.1 \
     procps \
