@@ -4,8 +4,6 @@ use num_bigint::BigUint;
 use starknet::core::types::Felt;
 use tokio::task::JoinError;
 
-use crate::constants::LONG_TAIL_ASSETS;
-
 #[derive(Debug)]
 pub enum FeltConversionError {
     Overflow,
@@ -50,10 +48,4 @@ pub(crate) fn log_monitoring_results(results: HashMap<String, Result<(), tokio::
             Err(e) => tracing::error!("[{}] Monitoring failed: {:?}", task_name, e),
         }
     }
-}
-
-/// Check if the provided pair in a long tail asset.
-#[allow(dead_code)]
-pub(crate) fn is_long_tail_asset(pair: &str) -> bool {
-    LONG_TAIL_ASSETS.contains_key(pair)
 }

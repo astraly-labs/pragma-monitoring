@@ -4,16 +4,10 @@ extern crate dotenv;
 use crate::config::get_config;
 use crate::config::DataType;
 use crate::config::NetworkName;
-use crate::constants::NUM_SOURCES;
-use crate::constants::ON_OFF_PRICE_DEVIATION;
-use crate::constants::PAIR_PRICE;
-use crate::constants::PRICE_DEVIATION;
-use crate::constants::PRICE_DEVIATION_SOURCE;
-use crate::constants::TIME_SINCE_LAST_UPDATE_PAIR_ID;
-use crate::constants::TIME_SINCE_LAST_UPDATE_PUBLISHER;
 use crate::diesel::QueryDsl;
 use crate::error::MonitoringError;
 use crate::models::FutureEntry;
+use crate::monitoring::metrics::MONITORING_METRICS;
 use crate::monitoring::price_deviation::CoinPricesDTO;
 use crate::monitoring::{
     on_off_price_deviation, price_deviation, source_deviation, time_since_last_update,
@@ -61,24 +55,35 @@ pub async fn process_data_by_pair(
     let data_type = "future";
 
     let seconds_since_last_publish = time_since_last_update(&data);
-    let time_labels =
-        TIME_SINCE_LAST_UPDATE_PAIR_ID.with_label_values(&[network_env, &pair, data_type]);
-    let num_sources_labels = NUM_SOURCES.with_label_values(&[network_env, &pair, data_type]);
 
-    time_labels.set(seconds_since_last_publish as f64);
+    // Set time since last update metric
+    MONITORING_METRICS
+        .monitoring_metrics
+        .set_time_since_last_update_pair_id(
+            seconds_since_last_publish as f64,
+            network_env,
+            &pair,
+            data_type,
+        );
 
     let (on_off_deviation, num_sources_aggregated) = on_off_price_deviation(
         pair.clone(),
-        data.timestamp.timestamp() as u64,
+        data.timestamp.and_utc().timestamp() as u64,
         DataType::Future,
         cache,
     )
     .await?;
 
-    ON_OFF_PRICE_DEVIATION
-        .with_label_values(&[network_env, &pair.clone(), data_type])
-        .set(on_off_deviation);
-    num_sources_labels.set(num_sources_aggregated as i64);
+    // Set on/off deviation and num sources metrics
+    MONITORING_METRICS
+        .monitoring_metrics
+        .set_on_off_price_deviation(on_off_deviation, network_env, &pair, data_type);
+    MONITORING_METRICS.monitoring_metrics.set_num_sources(
+        num_sources_aggregated as i64,
+        network_env,
+        &pair,
+        data_type,
+    );
 
     Ok(seconds_since_last_publish)
 }
@@ -142,12 +147,6 @@ pub async fn process_data_by_pair_and_source(
     let network_env = &config.network_str();
     let data_type = "future";
 
-    // Get the labels
-    let price_labels = PAIR_PRICE.with_label_values(&[network_env, pair, src, data_type]);
-    let deviation_labels = PRICE_DEVIATION.with_label_values(&[network_env, pair, src, data_type]);
-    let source_deviation_labels =
-        PRICE_DEVIATION_SOURCE.with_label_values(&[network_env, pair, src, data_type]);
-
     // Compute metrics
     let time = time_since_last_update(&data);
     let price_as_f64 = data.price.to_f64().ok_or(MonitoringError::Price(
@@ -158,10 +157,24 @@ pub async fn process_data_by_pair_and_source(
     let deviation = price_deviation(&data, normalized_price, cache.clone()).await?;
     let (source_deviation, _) = source_deviation(&data, normalized_price).await?;
 
-    // Set the metrics
-    price_labels.set(normalized_price);
-    deviation_labels.set(deviation);
-    source_deviation_labels.set(source_deviation);
+    // Set all metrics using OTEL
+    MONITORING_METRICS.monitoring_metrics.set_pair_price(
+        normalized_price,
+        network_env,
+        pair,
+        src,
+        data_type,
+    );
+    MONITORING_METRICS.monitoring_metrics.set_price_deviation(
+        deviation,
+        network_env,
+        pair,
+        src,
+        data_type,
+    );
+    MONITORING_METRICS
+        .monitoring_metrics
+        .set_price_deviation_source(source_deviation, network_env, pair, src, data_type);
 
     Ok(time)
 }
@@ -194,12 +207,16 @@ pub async fn process_data_by_publisher(
     tracing::info!("Processing data for publisher: {}", publisher);
 
     let network_env = &config.network_str();
-
     let seconds_since_last_publish = time_since_last_update(&data);
-    let time_labels =
-        TIME_SINCE_LAST_UPDATE_PUBLISHER.with_label_values(&[network_env, &publisher, "future"]);
 
-    time_labels.set(seconds_since_last_publish as f64);
+    MONITORING_METRICS
+        .monitoring_metrics
+        .set_time_since_last_update_publisher(
+            seconds_since_last_publish as f64,
+            network_env,
+            &publisher,
+            "future",
+        );
 
     Ok(())
 }
