@@ -143,16 +143,6 @@ pub async fn process_data_by_pair_and_source(
 
     // Check if data is older than 1 week
     let time_since_last_update = time_since_last_update(&data);
-    const ONE_WEEK_IN_SECONDS: u64 = 7 * 24 * 60 * 60; // 7 days in seconds
-    
-    if time_since_last_update > ONE_WEEK_IN_SECONDS {
-        tracing::warn!(
-            "Skipping processing for pair {} and source {} as data is older than 1 week",
-            pair,
-            src
-        );
-        return Ok(time_since_last_update);
-    }
 
     let network_env = &config.network_str();
     let data_type = "spot";
