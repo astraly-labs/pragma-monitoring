@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use mockall::automock;
 use starknet::{
     core::types::{BlockId, Felt, FunctionCall},
-    providers::{jsonrpc::HttpTransport, JsonRpcClient, Provider, ProviderError},
+    providers::{JsonRpcClient, Provider, ProviderError, jsonrpc::HttpTransport},
 };
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -15,7 +15,7 @@ static INIT: Once = Once::new();
 
 /// Initialize test environment with mock values
 pub fn init_test_env() {
-    INIT.call_once(|| {
+    INIT.call_once(|| unsafe {
         env::set_var("NETWORK", "testnet");
         env::set_var("ORACLE_ADDRESS", "0x1234567890");
         env::set_var("VRF_ADDRESS", "0x9876543210");

@@ -11,7 +11,7 @@ use starknet::{
 
 use crate::processing::common::query_defillama_api;
 use crate::{
-    config::{get_config, DataType},
+    config::{DataType, get_config},
     constants::COINGECKO_IDS,
     error::MonitoringError,
     utils::try_felt_to_u32,

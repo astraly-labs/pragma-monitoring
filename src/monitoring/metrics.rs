@@ -1,5 +1,5 @@
 use lazy_static::lazy_static;
-use opentelemetry::{metrics::UpDownCounter, KeyValue};
+use opentelemetry::{KeyValue, metrics::UpDownCounter};
 use std::sync::Arc;
 
 lazy_static! {
