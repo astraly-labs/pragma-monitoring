@@ -28,15 +28,15 @@ use std::time::Duration;
 use std::{env, vec};
 
 use deadpool::managed::Pool;
-use diesel_async::pooled_connection::AsyncDieselConnectionManager;
 use diesel_async::AsyncPgConnection;
+use diesel_async::pooled_connection::AsyncDieselConnectionManager;
 use dotenv::dotenv;
 use moka::future::Cache;
 use monitoring::price_deviation::CoinPricesDTO;
 use tokio::task::JoinHandle;
 use tokio::time::interval;
 
-use config::{get_config, periodic_config_update, DataType};
+use config::{DataType, get_config, periodic_config_update};
 use processing::common::{check_publisher_balance, data_indexers_are_synced};
 use tracing::instrument;
 use utils::{log_monitoring_results, log_tasks_results};
@@ -55,7 +55,8 @@ async fn main() {
 
     let otel_endpoint = std::env::var("OTEL_EXPORTER_OTLP_ENDPOINT")
         .unwrap_or_else(|_| "http://signoz.dev.pragma.build:4317".to_string());
-    pragma_common::telemetry::init_telemetry("pragma-monitoring".into(), otel_endpoint, None)
+
+    pragma_common::telemetry::init_telemetry("pragma-monitoring", Some(otel_endpoint))
         .expect("Failed to initialize telemetry");
 
     // Define the pairs to monitor

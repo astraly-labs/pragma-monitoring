@@ -1,11 +1,13 @@
 [package]
 name = "pragma-monitoring"
-version = "0.1.0"
-edition = "2021"
+version = "0.1.18"
+edition = "2024"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+pragma-common = { version = "0.4.0", features = ["telemetry"] }
+
 arc-swap = "1.6.0"
 axum = { version = "0.6", features = ["macros", "multipart"] }
 axum-macros = "0.3"
@@ -39,7 +41,7 @@ phf = { version = "0.11", features = ["macros"] }
 reqwest = { version = "0.11.22", features = ["json"] }
 serde = { version = "1.0.130", features = ["derive"] }
 serde_json = { version = "1.0.130" }
-starknet = "0.11.0"
+starknet = "0.17.0"
 strum = { version = "0.25.0", features = ["derive"] }
 thiserror = "2.0"
 tokio = { version = "1", features = ["full"] }
@@ -67,7 +69,6 @@ tracing-subscriber = { version = "0.3.18", features = [
 ] }
 tracing-opentelemetry = "0.27.0"
 
-pragma-common = { git = "https://github.com/astraly-labs/pragma-node.git", branch = "main", package = "pragma-common" }
 
 [dev-dependencies]
 rstest = "0.18.2"

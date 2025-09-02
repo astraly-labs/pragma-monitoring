@@ -1,9 +1,9 @@
 extern crate diesel;
 extern crate dotenv;
 
-use crate::config::get_config;
 use crate::config::DataType;
 use crate::config::NetworkName;
+use crate::config::get_config;
 use crate::diesel::QueryDsl;
 use crate::error::MonitoringError;
 use crate::models::SpotEntry;
@@ -18,9 +18,9 @@ use crate::schema::spot_entry::dsl as testnet_dsl;
 
 use bigdecimal::ToPrimitive;
 use diesel::ExpressionMethods;
-use diesel_async::pooled_connection::AsyncDieselConnectionManager;
 use diesel_async::AsyncPgConnection;
 use diesel_async::RunQueryDsl;
+use diesel_async::pooled_connection::AsyncDieselConnectionManager;
 use moka::future::Cache;
 
 pub async fn process_data_by_pair(
