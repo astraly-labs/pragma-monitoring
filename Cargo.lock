@@ -2357,9 +2357,9 @@ dependencies = [
 
 [[package]]
 name = "pragma-common"
-version = "0.4.0"
+version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5a60fbe38bf70e53d3ad7ac0d97c10ba5dc5288fe461885947a50d3cda8b136e"
+checksum = "9d07709fd90ba81ba1d441648e076ee1d63edbbd6666772ba24bf0ef19045fd2"
 dependencies = [
  "anyhow",
  "chrono",
@@ -2379,7 +2379,7 @@ dependencies = [
 
 [[package]]
 name = "pragma-monitoring"
-version = "0.1.18"
+version = "0.1.19"
 dependencies = [
  "arc-swap",
  "async-trait",
