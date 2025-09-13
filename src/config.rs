@@ -12,7 +12,7 @@ use starknet::{
         utils::{cairo_short_string_to_felt, parse_cairo_short_string},
     },
     macros::selector,
-    providers::{jsonrpc::HttpTransport, JsonRpcClient, Provider},
+    providers::{JsonRpcClient, Provider, jsonrpc::HttpTransport},
 };
 use strum::{Display, EnumString, IntoStaticStr};
 use tokio::sync::OnceCell;

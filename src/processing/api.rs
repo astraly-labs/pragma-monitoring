@@ -3,17 +3,15 @@ use std::time::Duration;
 use bigdecimal::{Num, ToPrimitive};
 use moka::future::Cache;
 use num_bigint::BigInt;
-use starknet::{
-    core::types::{BlockId, BlockTag},
-    providers::SequencerGatewayProvider,
-};
+use starknet::providers::SequencerGatewayProvider;
+use starknet::providers::sequencer::models::BlockId;
 
 use crate::{
     config::get_config,
     error::MonitoringError,
     monitoring::metrics::MONITORING_METRICS,
     monitoring::{
-        price_deviation::{raw_price_deviation, CoinPricesDTO},
+        price_deviation::{CoinPricesDTO, raw_price_deviation},
         time_since_last_update::raw_time_since_last_update,
     },
     processing::common::query_pragma_api,
@@ -83,7 +81,7 @@ pub async fn process_sequencer_data() -> Result<(), MonitoringError> {
 
     #[allow(deprecated)]
     let block = provider
-        .get_block(BlockId::Tag(BlockTag::Pending).into())
+        .get_block(BlockId::Pending)
         .await
         .map_err(MonitoringError::Provider)?;
 

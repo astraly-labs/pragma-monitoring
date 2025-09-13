@@ -1,15 +1,14 @@
 use std::time::Duration;
 
 use starknet::{
-    accounts::{single_owner::SignError, Account, AccountError, Call, SingleOwnerAccount},
+    accounts::{Account, AccountError, SingleOwnerAccount, single_owner::SignError},
     core::{
         chain_id,
-        types::{Felt, InvokeTransactionResult},
+        types::{Call, Felt, InvokeTransactionResult},
         utils::{cairo_short_string_to_felt, get_selector_from_name},
     },
-    providers::{jsonrpc::HttpTransport, JsonRpcClient},
-    signers::local_wallet::SignError as SigningError,
-    signers::{LocalWallet, SigningKey},
+    providers::{JsonRpcClient, jsonrpc::HttpTransport},
+    signers::{LocalWallet, SigningKey, local_wallet::SignError as SigningError},
 };
 
 use super::constants::PUBLISHER_ADDRESS;
@@ -94,6 +93,6 @@ pub async fn publish_data(
             Felt::ZERO,
         ],
     }];
-    let tx = publisher_account.execute_v1(calls);
+    let tx = publisher_account.execute_v3(calls);
     tx.send().await
 }

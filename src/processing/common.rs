@@ -2,14 +2,14 @@ use crate::monitoring::balance::get_on_chain_balance;
 use crate::monitoring::metrics::MONITORING_METRICS;
 use crate::monitoring::price_deviation::CoinPricesDTO;
 use crate::{
-    config::{get_config, DataType},
+    config::{DataType, get_config},
     error::MonitoringError,
 };
 use moka::future::Cache;
 use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
 use serde::{Deserialize, Serialize};
 use starknet::core::types::Felt;
-use starknet::providers::{jsonrpc::HttpTransport, JsonRpcClient, Provider};
+use starknet::providers::{JsonRpcClient, Provider, jsonrpc::HttpTransport};
 #[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize)]
 pub struct IndexerServerStatus {
     pub status: i32,

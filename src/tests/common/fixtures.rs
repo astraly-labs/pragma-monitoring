@@ -6,7 +6,7 @@ use diesel_async::pooled_connection::AsyncDieselConnectionManager;
 use rstest::fixture;
 use starknet::core::types::Felt;
 
-use crate::config::{config_force_init, get_config, Config, ConfigInput, NetworkName};
+use crate::config::{Config, ConfigInput, NetworkName, config_force_init, get_config};
 
 #[fixture]
 pub fn database() -> Pool<AsyncDieselConnectionManager<diesel_async::AsyncPgConnection>> {
