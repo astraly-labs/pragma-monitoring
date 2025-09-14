@@ -11,14 +11,15 @@ use std::sync::Arc;
 use std::{env, sync::Once};
 use tokio::sync::OnceCell;
 
+#[allow(dead_code)]
 static INIT: Once = Once::new();
 
 /// Initialize test environment with mock values
+#[allow(dead_code)]
 pub fn init_test_env() {
     INIT.call_once(|| unsafe {
         env::set_var("NETWORK", "testnet");
         env::set_var("ORACLE_ADDRESS", "0x1234567890");
-        env::set_var("VRF_ADDRESS", "0x9876543210");
         env::set_var("SPOT_PAIRS", "XSTRK/STRK,BTC/USD");
         env::set_var("FUTURE_PAIRS", "BTC-PERP/USD");
         env::set_var("INDEXER_SERVICE_URL", "http://localhost:8000");
@@ -66,7 +67,6 @@ pub struct TestNetwork {
     pub name: NetworkName,
     pub provider: ProviderWrapper,
     pub oracle_address: Felt,
-    pub vrf_address: Felt,
     pub publisher_registry_address: Felt,
 }
 
@@ -76,8 +76,10 @@ impl Clone for MockTestProvider {
     }
 }
 
+#[allow(dead_code)]
 static TEST_CONFIG: OnceCell<ArcSwap<Config>> = OnceCell::const_new();
 
+#[allow(dead_code)]
 pub async fn init_test_config() -> MockTestProvider {
     init_test_env();
     let mock_provider = MockTestProvider::new();
@@ -146,7 +148,6 @@ pub fn create_mock_config(provider: MockTestProvider) -> Config {
                 url::Url::parse("http://localhost:5050").unwrap(),
             ))),
             oracle_address: Felt::from_hex_unchecked("0x1234567890"),
-            vrf_address: Felt::from_hex_unchecked("0x9876543210"),
             publisher_registry_address: Felt::from_hex_unchecked("0x5555"),
         },
         indexer_url: "http://localhost:8000".to_string(),
@@ -154,12 +155,12 @@ pub fn create_mock_config(provider: MockTestProvider) -> Config {
 }
 
 /// Helper function to force initialize config for tests
+#[allow(dead_code)]
 pub async fn set_test_config(mock_provider: &MockTestProvider) {
     let config = create_mock_config(mock_provider.clone());
     crate::config::config_force_init(ConfigInput {
         network: config.network.name.clone(),
         oracle_address: config.network.oracle_address,
-        vrf_address: config.network.vrf_address,
         spot_pairs: config.data_info[&DataType::Spot].pairs.clone(),
         future_pairs: config.data_info[&DataType::Future].pairs.clone(),
     })

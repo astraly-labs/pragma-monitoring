@@ -54,21 +54,18 @@ service:
       protocol: TCP
       portName: http
 
-podDisruptionBudget:
-  {}
+podDisruptionBudget: {}
   # minAvailable: 1
   # maxUnavailable: ""
 
-resources:
-  {}
+resources: {}
   # limits:
   #   cpu: 100m
   #   memory: 128Mi
   # requests:
   #   cpu: 100m
   #   memory: 128Mi
-nodeSelector:
-  {}
+nodeSelector: {}
   # Nodelabel: "node-devnet"
 
 tolerations: []
@@ -87,14 +84,12 @@ gcpSecrets:
     refreshInterval: "1h"
 
 # Environment variables from secret
-envFromSecret:
-  {}
+envFromSecret: {}
   # secretName: "monitoring-secrets"
 
 terminationGracePeriodSeconds: 60
 
-env:
-  []
+env: []
   # - name: RUST_BACKTRACE
   #   value: "1"
   # - name: COINGECKO_RETRY_DELAY

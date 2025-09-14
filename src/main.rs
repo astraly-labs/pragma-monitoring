@@ -53,10 +53,9 @@ async fn main() {
     // Load environment variables from .env file
     dotenv().ok();
 
-    let otel_endpoint = std::env::var("OTEL_EXPORTER_OTLP_ENDPOINT")
-        .unwrap_or_else(|_| "http://signoz.dev.pragma.build:4317".to_string());
-
-    pragma_common::telemetry::init_telemetry("pragma-monitoring", Some(otel_endpoint))
+    let _otel_endpoint = std::env::var("OTEL_EXPORTER_OTLP_ENDPOINT")
+        .unwrap_or_else(|_| "http://localhost:4317".to_string());
+    pragma_common::telemetry::init_telemetry("pragma-monitoring", None)
         .expect("Failed to initialize telemetry");
 
     // Define the pairs to monitor
@@ -105,10 +104,10 @@ async fn spawn_monitoring_tasks(
             name: "Publisher Monitoring".to_string(),
             handle: tokio::spawn(publisher_monitor(pool.clone(), false)),
         },
-        // MonitoringTask {
-        //     name: "API Monitoring".to_string(),
-        //     handle: tokio::spawn(api_monitor(cache.clone())),
-        // },
+        MonitoringTask {
+            name: "API Monitoring".to_string(),
+            handle: tokio::spawn(api_monitor(cache.clone())),
+        },
     ];
 
     tasks
@@ -154,6 +153,7 @@ pub(crate) async fn api_monitor(cache: Cache<(String, u64), CoinPricesDTO>) {
     }
 }
 
+#[instrument(skip_all)]
 pub(crate) async fn onchain_monitor(
     pool: Pool<AsyncDieselConnectionManager<AsyncPgConnection>>,
     wait_for_syncing: bool,
@@ -181,7 +181,7 @@ pub(crate) async fn onchain_monitor(
             .flat_map(|(pair, sources)| {
                 let pair = pair.clone();
                 let sources = sources.clone();
-                let pair_tasks = match data_type {
+                match data_type {
                     DataType::Spot => {
                         vec![
                             tokio::spawn(Box::pin(processing::spot::process_data_by_pair(
@@ -216,9 +216,7 @@ pub(crate) async fn onchain_monitor(
                             )),
                         ]
                     }
-                };
-
-                pair_tasks
+                }
             })
             .collect();
 
