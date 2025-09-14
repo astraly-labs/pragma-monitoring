@@ -14,7 +14,6 @@ It then processes the data and computes the following metrics:
 - `price_deviation_source{network, pair, source, type}`: Deviation of the price from the on-chain aggregated median price given source and pair. (in percents)
 - `publisher_balance{network, publisher}`: Balance of a publisher. (in ETH)
 
-
 ## Shared Public Access
 
 Monitoring is not publicicly available yet but databases will soon be in read-only mode.
@@ -27,7 +26,7 @@ We have created a `docker-compose.yml` file to help with self-hosting setup:
 docker compose up -d
 ```
 
-You can then access prometheus dashboard at http://localhost:9000 and grafana at http://localhost:3000.
+You can then access prometheus dashboard at <http://localhost:9000> and grafana at <http://localhost:3000>.
 
 Make sure to first fill the envirronement file with your own config parameters:
 
@@ -58,6 +57,6 @@ IGNORE_SOURCES=BITSTAMP,DEFILLAMA
 IGNORE_PUBLISHERS=BINANCE
 ```
 
-In order for the full flow to work you will need to have tables following the table schemas defined <a href="src/schema.rs">here</a>.
+In order for the full flow to work you will need to have tables following the table schemas defined [here in the schema.rs file](src/schema.rs).
 
 You can use our [indexer service](https://github.com/Astraly-Labs/indexer-service) on this repository to spin off your indexer in a few commands very easily.

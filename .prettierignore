@@ -1,0 +1,9 @@
+# Ignore Helm templates directory
+helm/templates/
+
+# Ignore build artifacts
+target/
+node_modules/
+
+# Ignore generated files
+*.generated.*

@@ -41,7 +41,6 @@ phf = { version = "0.11", features = ["macros"] }
 reqwest = { version = "0.11.22", features = ["json"] }
 serde = { version = "1.0.130", features = ["derive"] }
 serde_json = { version = "1.0.130" }
-starknet-crypto = "0.7.4"
 starknet = "0.17.0"
 strum = { version = "0.25.0", features = ["derive"] }
 thiserror = "2.0"
@@ -70,7 +69,6 @@ tracing-subscriber = { version = "0.3.18", features = [
   "std",
 ] }
 
-pragma-common = { git = "https://github.com/astraly-labs/pragma-node.git", branch = "dev", package = "pragma-common" }
 
 [dev-dependencies]
 rstest = "0.18.2"
