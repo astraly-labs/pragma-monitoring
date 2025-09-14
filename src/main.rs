@@ -53,7 +53,8 @@ async fn main() {
     // Load environment variables from .env file
     dotenv().ok();
 
-    let _otel_endpoint = std::env::var("OTEL_EXPORTER_OTLP_ENDPOINT")
+    #[allow(unused_variables)]
+    let otel_endpoint = std::env::var("OTEL_EXPORTER_OTLP_ENDPOINT")
         .unwrap_or_else(|_| "http://localhost:4317".to_string());
     pragma_common::telemetry::init_telemetry("pragma-monitoring", None)
         .expect("Failed to initialize telemetry");

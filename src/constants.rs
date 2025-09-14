@@ -16,6 +16,7 @@ pub(crate) static COINGECKO_IDS: phf::Map<&'static str, &'static str> = phf_map!
     "NSTR/USD" => "nostra",
     "EKUBO/USD" => "ekubo-protocol",
     "XSTRK/USD" => "endur-fi-staked-strk",
+    "ETH/STRK" => "ethereum",
 };
 
 #[allow(unused)]
