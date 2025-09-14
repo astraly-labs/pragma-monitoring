@@ -11,9 +11,11 @@ use std::sync::Arc;
 use std::{env, sync::Once};
 use tokio::sync::OnceCell;
 
+#[allow(dead_code)]
 static INIT: Once = Once::new();
 
 /// Initialize test environment with mock values
+#[allow(dead_code)]
 pub fn init_test_env() {
     INIT.call_once(|| unsafe {
         env::set_var("NETWORK", "testnet");
@@ -74,8 +76,10 @@ impl Clone for MockTestProvider {
     }
 }
 
+#[allow(dead_code)]
 static TEST_CONFIG: OnceCell<ArcSwap<Config>> = OnceCell::const_new();
 
+#[allow(dead_code)]
 pub async fn init_test_config() -> MockTestProvider {
     init_test_env();
     let mock_provider = MockTestProvider::new();
@@ -151,6 +155,7 @@ pub fn create_mock_config(provider: MockTestProvider) -> Config {
 }
 
 /// Helper function to force initialize config for tests
+#[allow(dead_code)]
 pub async fn set_test_config(mock_provider: &MockTestProvider) {
     let config = create_mock_config(mock_provider.clone());
     crate::config::config_force_init(ConfigInput {

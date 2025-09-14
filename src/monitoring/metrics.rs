@@ -1,8 +1,5 @@
 use lazy_static::lazy_static;
-use opentelemetry::{
-    metrics::ObservableGauge,
-    KeyValue,
-};
+use opentelemetry::{KeyValue, metrics::ObservableGauge};
 use std::sync::Arc;
 
 lazy_static! {

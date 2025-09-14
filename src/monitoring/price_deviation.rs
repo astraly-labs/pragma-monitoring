@@ -81,7 +81,7 @@ pub async fn price_deviation<T: Entry>(
 
 /// Calculates the raw deviation of the price from a trusted API (DefiLLama)
 pub async fn raw_price_deviation(
-    pair_id: &String,
+    pair_id: &str,
     price: f64,
     cache: Cache<(String, u64), CoinPricesDTO>,
 ) -> Result<f64, MonitoringError> {
