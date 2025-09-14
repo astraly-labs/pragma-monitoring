@@ -300,7 +300,9 @@ async fn blocks_left(
         .await
         .map_err(MonitoringError::Provider)?;
 
-    if block_n < current_block {
+    const SYNC_BUFFER: u64 = 2; // 2 blocks buffer to avoid false positives
+
+    if block_n < current_block - SYNC_BUFFER {
         Ok(Some(current_block - block_n))
     } else {
         Ok(None)
