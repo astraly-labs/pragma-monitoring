@@ -28,7 +28,17 @@ pub async fn process_data_by_pair(
     pair: String,
     cache: Cache<(String, u64), CoinPricesDTO>,
 ) -> Result<u64, MonitoringError> {
-    let mut conn = pool.get().await.map_err(MonitoringError::Connection)?;
+    let mut conn = match pool.get().await {
+        Ok(conn) => conn,
+        Err(e) => {
+            tracing::error!(
+                "Failed to get database connection for pair {}: {:?}",
+                pair,
+                e
+            );
+            return Err(MonitoringError::Connection(e));
+        }
+    };
 
     let config = get_config(None).await;
 
@@ -121,7 +131,18 @@ pub async fn process_data_by_pair_and_source(
     decimals: u32,
     cache: Cache<(String, u64), CoinPricesDTO>,
 ) -> Result<u64, MonitoringError> {
-    let mut conn = pool.get().await.map_err(MonitoringError::Connection)?;
+    let mut conn = match pool.get().await {
+        Ok(conn) => conn,
+        Err(e) => {
+            tracing::error!(
+                "Failed to get database connection for pair {} source {}: {:?}",
+                pair,
+                src,
+                e
+            );
+            return Err(MonitoringError::Connection(e));
+        }
+    };
 
     let config = get_config(None).await;
 
@@ -183,7 +204,17 @@ pub async fn process_data_by_publisher(
     pool: deadpool::managed::Pool<AsyncDieselConnectionManager<AsyncPgConnection>>,
     publisher: String,
 ) -> Result<(), MonitoringError> {
-    let mut conn = pool.get().await.map_err(MonitoringError::Connection)?;
+    let mut conn = match pool.get().await {
+        Ok(conn) => conn,
+        Err(e) => {
+            tracing::error!(
+                "Failed to get database connection for publisher {}: {:?}",
+                publisher,
+                e
+            );
+            return Err(MonitoringError::Connection(e));
+        }
+    };
 
     let config = get_config(None).await;
 
