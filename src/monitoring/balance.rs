@@ -14,7 +14,7 @@ pub async fn get_on_chain_balance(address: Felt) -> Result<f64, MonitoringError>
     let config = get_config(None).await;
 
     let client = &config.network().provider;
-    let token_balance = client
+    let token_balance = match client
         .call(
             FunctionCall {
                 contract_address: Felt::from_hex_unchecked(FEE_TOKEN_ADDRESS),
@@ -24,7 +24,13 @@ pub async fn get_on_chain_balance(address: Felt) -> Result<f64, MonitoringError>
             BlockId::Tag(BlockTag::Latest),
         )
         .await
-        .map_err(|e| MonitoringError::OnChain(e.to_string()))?;
+    {
+        Ok(balance) => balance,
+        Err(e) => {
+            tracing::warn!("Failed to get balance for address {}: {:?}", address, e);
+            return Err(MonitoringError::OnChain(e.to_string()));
+        }
+    };
 
     let on_chain_balance = token_balance
         .first()

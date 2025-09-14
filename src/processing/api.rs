@@ -3,8 +3,8 @@ use std::time::Duration;
 use bigdecimal::{Num, ToPrimitive};
 use moka::future::Cache;
 use num_bigint::BigInt;
-use starknet::providers::SequencerGatewayProvider;
-use starknet::providers::sequencer::models::BlockId;
+use starknet::core::types::{BlockId, BlockTag};
+use starknet::providers::{JsonRpcClient, Provider, jsonrpc::HttpTransport};
 
 use crate::{
     config::get_config,
@@ -26,20 +26,58 @@ pub async fn process_data_by_pair(
     let network_env = &config.network_str();
     tracing::info!("Processing data for pair: {}", pair);
 
-    let result = query_pragma_api(&pair, network_env, "median", "1min").await?;
+    let result = match query_pragma_api(&pair, network_env, "median", "1min").await {
+        Ok(result) => result,
+        Err(e) => {
+            tracing::warn!("Failed to query Pragma API for pair {}: {:?}", pair, e);
+            return Ok(()); // Skip this pair instead of failing
+        }
+    };
 
     // sleep for rate limiting
     tokio::time::sleep(Duration::from_secs(5)).await;
 
-    // Parse the hex string price
-    let parsed_price = BigInt::from_str_radix(&result.price[2..], 16)
-        .unwrap()
-        .to_string();
-    let normalized_price =
-        parsed_price.to_string().parse::<f64>().unwrap() / 10_f64.powi(result.decimals as i32);
+    // Parse the hex string price with better error handling
+    let parsed_price = match BigInt::from_str_radix(&result.price[2..], 16) {
+        Ok(price) => price,
+        Err(e) => {
+            tracing::error!("Failed to parse price hex string for pair {}: {}", pair, e);
+            return Ok(()); // Skip this pair
+        }
+    };
 
-    let price_deviation = raw_price_deviation(&pair, normalized_price, cache).await?;
-    let time_since_last_update = raw_time_since_last_update(result.timestamp)?;
+    let normalized_price = match parsed_price.to_string().parse::<f64>() {
+        Ok(price) => price / 10_f64.powi(result.decimals as i32),
+        Err(e) => {
+            tracing::error!("Failed to convert price to f64 for pair {}: {}", pair, e);
+            return Ok(()); // Skip this pair
+        }
+    };
+
+    // Handle price deviation calculation gracefully
+    let price_deviation = match raw_price_deviation(&pair, normalized_price, cache).await {
+        Ok(deviation) => deviation,
+        Err(e) => {
+            tracing::warn!(
+                "Failed to calculate price deviation for pair {}: {:?}",
+                pair,
+                e
+            );
+            0.0 // Use 0 as default deviation
+        }
+    };
+
+    let time_since_last_update = match raw_time_since_last_update(result.timestamp) {
+        Ok(time) => time,
+        Err(e) => {
+            tracing::warn!(
+                "Failed to calculate time since last update for pair {}: {:?}",
+                pair,
+                e
+            );
+            0 // Use 0 as default
+        }
+    };
 
     MONITORING_METRICS
         .monitoring_metrics
@@ -64,33 +102,78 @@ pub async fn process_sequencer_data() -> Result<(), MonitoringError> {
     let config = get_config(None).await;
     let network_env = config.network_str();
 
-    let result = query_pragma_api(&pair, network_env, "twap", "2h").await?;
-
-    // Parse the hex string price
-    let parsed_price = BigInt::from_str_radix(&result.price[2..], 16)
-        .unwrap()
-        .to_string();
-    let normalized_price =
-        parsed_price.to_string().parse::<f64>().unwrap() / 10_f64.powi(result.decimals as i32);
-
-    let provider = match network_env {
-        "Testnet" => SequencerGatewayProvider::starknet_alpha_sepolia(),
-        "Mainnet" => SequencerGatewayProvider::starknet_alpha_mainnet(),
-        _ => panic!("Invalid network env"),
+    let result = match query_pragma_api(&pair, network_env, "twap", "2h").await {
+        Ok(result) => result,
+        Err(e) => {
+            tracing::warn!("Failed to query Pragma API for sequencer data: {:?}", e);
+            return Ok(()); // Skip sequencer processing
+        }
     };
 
-    #[allow(deprecated)]
-    let block = provider
-        .get_block(BlockId::Pending)
+    // Parse the hex string price with better error handling
+    let parsed_price = match BigInt::from_str_radix(&result.price[2..], 16) {
+        Ok(price) => price,
+        Err(e) => {
+            tracing::error!("Failed to parse sequencer price hex string: {}", e);
+            return Ok(());
+        }
+    };
+
+    let normalized_price = match parsed_price.to_string().parse::<f64>() {
+        Ok(price) => price / 10_f64.powi(result.decimals as i32),
+        Err(e) => {
+            tracing::error!("Failed to convert sequencer price to f64: {}", e);
+            return Ok(());
+        }
+    };
+
+    // Use Cartridge RPC endpoint for sequencer data
+    let rpc_url = match network_env {
+        "Testnet" => "https://api.cartridge.gg/x/starknet/sepolia",
+        "Mainnet" => "https://api.cartridge.gg/x/starknet/mainnet",
+        _ => {
+            tracing::error!("Invalid network env: {}", network_env);
+            return Ok(());
+        }
+    };
+
+    let provider = JsonRpcClient::new(HttpTransport::new(url::Url::parse(rpc_url).map_err(
+        |e| {
+            tracing::error!("Failed to parse RPC URL: {}", e);
+            MonitoringError::Api(format!("Invalid RPC URL: {}", e))
+        },
+    )?));
+
+    let block = match provider
+        .get_block_with_tx_hashes(BlockId::Tag(BlockTag::Latest))
         .await
-        .map_err(MonitoringError::Provider)?;
+    {
+        Ok(block) => block,
+        Err(e) => {
+            tracing::warn!("Failed to get block from RPC provider: {:?}", e);
+            // Set a default deviation of 0 to avoid missing metrics
+            MONITORING_METRICS
+                .monitoring_metrics
+                .set_api_sequencer_deviation(0.0, network_env);
+            return Ok(());
+        }
+    };
 
-    let eth = block.l1_gas_price.price_in_wei.to_bigint();
-    let strk = block.l1_gas_price.price_in_fri.to_bigint();
+    let gas_price = block.l2_gas_price();
+    let eth = gas_price.price_in_wei.to_bigint();
+    let strk = gas_price.price_in_fri.to_bigint();
 
-    let expected_price = (strk / eth).to_f64().ok_or(MonitoringError::Conversion(
-        "Failed to convert expected price to f64".to_string(),
-    ))?;
+    let expected_price = match (strk / eth).to_f64() {
+        Some(price) => price,
+        None => {
+            tracing::warn!("Failed to convert expected price to f64");
+            // Set a default deviation of 0
+            MONITORING_METRICS
+                .monitoring_metrics
+                .set_api_sequencer_deviation(0.0, network_env);
+            return Ok(());
+        }
+    };
 
     let price_deviation = (normalized_price - expected_price) / expected_price;
     MONITORING_METRICS

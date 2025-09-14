@@ -48,7 +48,7 @@ pub async fn on_off_price_deviation(
         DataType::Future => vec![Felt::ONE, field_pair, Felt::ZERO],
     };
 
-    let data = client
+    let data = match client
         .call(
             FunctionCall {
                 contract_address: config.network().oracle_address,
@@ -58,7 +58,13 @@ pub async fn on_off_price_deviation(
             BlockId::Tag(BlockTag::Latest),
         )
         .await
-        .map_err(|e| MonitoringError::OnChain(e.to_string()))?;
+    {
+        Ok(data) => data,
+        Err(e) => {
+            tracing::warn!("Failed to get data median for pair {}: {:?}", pair_id, e);
+            return Err(MonitoringError::OnChain(e.to_string()));
+        }
+    };
 
     let decimals =
         config

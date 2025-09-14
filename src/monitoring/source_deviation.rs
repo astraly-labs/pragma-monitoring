@@ -22,7 +22,7 @@ pub async fn source_deviation<T: Entry>(
     let field_pair =
         cairo_short_string_to_felt(query.pair_id()).expect("failed to convert pair id");
 
-    let data = client
+    let data = match client
         .call(
             FunctionCall {
                 contract_address: config.network().oracle_address,
@@ -32,7 +32,17 @@ pub async fn source_deviation<T: Entry>(
             BlockId::Tag(BlockTag::Latest),
         )
         .await
-        .map_err(|e| MonitoringError::OnChain(e.to_string()))?;
+    {
+        Ok(data) => data,
+        Err(e) => {
+            tracing::warn!(
+                "Failed to get data median for pair {}: {:?}",
+                query.pair_id(),
+                e
+            );
+            return Err(MonitoringError::OnChain(e.to_string()));
+        }
+    };
 
     let decimals = config
         .decimals(query.data_type())
