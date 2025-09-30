@@ -46,8 +46,8 @@ PRAGMA_API_KEY=
 # RPC URL
 RPC_URL=
 
-# Indexer Service URL
-INDEXER_SERVICE_URL=
+# APIBARA API Key
+APIBARA_API_KEY=
 
 # Config
 NETWORK=testnet
@@ -59,4 +59,4 @@ IGNORE_PUBLISHERS=BINANCE
 
 In order for the full flow to work you will need to have tables following the table schemas defined [here in the schema.rs file](src/schema.rs).
 
-You can use our [indexer service](https://github.com/Astraly-Labs/indexer-service) on this repository to spin off your indexer in a few commands very easily.
+The monitoring service now includes integrated indexing functionality, so no separate indexer service is needed.
