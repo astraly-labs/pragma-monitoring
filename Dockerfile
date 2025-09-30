@@ -16,6 +16,7 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
     libssl-dev \
     ca-certificates \
     wget \
+    protobuf-compiler \
     && rm -rf /var/lib/apt/lists/*
 
 RUN cargo chef cook --profile release --recipe-path recipe.json
