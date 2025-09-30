@@ -4,7 +4,6 @@ extern crate dotenv;
 use crate::config::DataType;
 use crate::config::NetworkName;
 use crate::config::get_config;
-use crate::diesel::QueryDsl;
 use crate::error::MonitoringError;
 use crate::models::SpotEntry;
 use crate::monitoring::metrics::MONITORING_METRICS;
@@ -12,6 +11,7 @@ use crate::monitoring::price_deviation::CoinPricesDTO;
 use crate::monitoring::{
     on_off_price_deviation, price_deviation, source_deviation, time_since_last_update,
 };
+use diesel::QueryDsl;
 
 use crate::schema::mainnet_spot_entry::dsl as mainnet_dsl;
 use crate::schema::spot_entry::dsl as testnet_dsl;

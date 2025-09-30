@@ -61,7 +61,7 @@ pub async fn price_deviation<T: Entry>(
     let coins_prices = query_defillama_api(
         query.timestamp().and_utc().timestamp().try_into().unwrap(),
         coingecko_id.to_owned(),
-        cache,
+        cache.clone(),
     )
     .await?;
 
@@ -95,7 +95,7 @@ pub async fn raw_price_deviation(
     let coins_prices = query_defillama_api(
         chrono::Utc::now().timestamp().try_into().unwrap(),
         coingecko_id.to_owned(),
-        cache,
+        cache.clone(),
     )
     .await?;
 

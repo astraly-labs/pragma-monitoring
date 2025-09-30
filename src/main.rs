@@ -11,6 +11,8 @@ mod models;
 mod monitoring;
 // Processing functions
 mod processing;
+// Indexing functions
+mod indexing;
 // Database schema
 mod schema;
 // Constants
@@ -37,7 +39,12 @@ use tokio::task::JoinHandle;
 use tokio::time::interval;
 
 use config::{DataType, get_config, periodic_config_update};
+use evian::utils::indexer::handler::OutputEvent;
+use indexing::{
+    database_handler::DatabaseHandler, start_pragma_indexer, status::INTERNAL_INDEXER_TRACKER,
+};
 use processing::common::{check_publisher_balance, data_indexers_are_synced};
+use tokio::time::sleep;
 use tracing::instrument;
 use utils::{log_monitoring_results, log_tasks_results};
 
@@ -107,6 +114,10 @@ async fn spawn_monitoring_tasks(
         MonitoringTask {
             name: "API Monitoring".to_string(),
             handle: tokio::spawn(api_monitor(cache.clone())),
+        },
+        MonitoringTask {
+            name: "Pragma Indexing".to_string(),
+            handle: tokio::spawn(pragma_indexing_monitor(pool.clone())),
         },
     ];
 
@@ -266,5 +277,136 @@ pub(crate) async fn publisher_monitor(
 
         let results: Vec<_> = futures::future::join_all(tasks).await;
         log_tasks_results("PUBLISHERS", results);
+    }
+}
+
+#[instrument(skip(pool))]
+pub(crate) async fn pragma_indexing_monitor(
+    pool: Pool<AsyncDieselConnectionManager<AsyncPgConnection>>,
+) {
+    tracing::info!("[INDEXING] Starting Pragma data indexer..");
+
+    // Set indexer as running
+    INTERNAL_INDEXER_TRACKER.set_running(true).await;
+
+    let mut restart_count = 0;
+    const MAX_RESTARTS: u32 = 5;
+    const RESTART_DELAY: Duration = Duration::from_secs(30);
+
+    loop {
+        // Start the indexer with retry logic
+        let (mut event_rx, mut indexer_handle) = match start_pragma_indexer().await {
+            Ok((rx, handle)) => {
+                tracing::info!("[INDEXING] Successfully started Pragma indexer");
+                restart_count = 0; // Reset restart count on successful start
+                (rx, handle)
+            }
+            Err(e) => {
+                restart_count += 1;
+                let error_msg = format!(
+                    "Failed to start Pragma indexer (attempt {}): {:?}",
+                    restart_count, e
+                );
+                tracing::error!("{}", error_msg);
+
+                // Record error in status tracker
+                INTERNAL_INDEXER_TRACKER.record_error(error_msg).await;
+
+                if restart_count >= MAX_RESTARTS {
+                    tracing::error!("Max restart attempts reached. Stopping indexer.");
+                    INTERNAL_INDEXER_TRACKER.set_running(false).await;
+                    break;
+                }
+
+                tracing::info!("Restarting indexer in {:?}...", RESTART_DELAY);
+                sleep(RESTART_DELAY).await;
+                continue;
+            }
+        };
+
+        // Create database handler
+        let db_handler = DatabaseHandler::new(pool.clone());
+
+        // Process events in batches
+        let mut event_batch = Vec::new();
+        let batch_size = 100;
+        let mut batch_timeout = interval(Duration::from_secs(5));
+        let mut last_processed_block = 0u64;
+        let mut events_processed = 0u64;
+
+        tokio::select! {
+            // Receive events from indexer
+            event = event_rx.recv() => {
+                match event {
+                    Some(event) => {
+                        event_batch.push(event);
+                        events_processed += 1;
+
+                        // Process batch when it reaches the desired size
+                        if event_batch.len() >= batch_size
+                            && let Err(e) = db_handler.process_indexed_events(std::mem::take(&mut event_batch)).await
+                        {
+                            tracing::error!("Failed to process indexed events: {:?}", e);
+                            // Continue processing other events even if one batch fails
+                        }
+
+                        // Update last processed block for monitoring
+                        if let OutputEvent::Event { event_metadata, .. } = &event_batch.last().unwrap() {
+                            last_processed_block = event_metadata.block_number;
+                        }
+                    }
+                    None => {
+                        tracing::warn!("Indexer event channel closed");
+                        break;
+                    }
+                }
+            }
+
+            // Process batch on timeout
+            _ = batch_timeout.tick() => {
+                if !event_batch.is_empty()
+                    && let Err(e) = db_handler.process_indexed_events(std::mem::take(&mut event_batch)).await
+                {
+                    tracing::error!("Failed to process indexed events: {:?}", e);
+                }
+            }
+
+            // Check if indexer task has finished
+            result = &mut indexer_handle => {
+                match result {
+                    Ok(Ok(())) => {
+                        tracing::info!("Indexer task completed successfully");
+                        break;
+                    }
+                    Ok(Err(e)) => {
+                        tracing::error!("Indexer task failed: {:?}", e);
+                        break;
+                    }
+                    Err(e) => {
+                        tracing::error!("Indexer task panicked: {:?}", e);
+                        break;
+                    }
+                }
+            }
+        };
+
+        // Log final statistics
+        tracing::info!(
+            "[INDEXING] Indexer session ended. Events processed: {}, Last block: {}",
+            events_processed,
+            last_processed_block
+        );
+
+        // Handle indexer failure - restart logic
+        restart_count += 1;
+        tracing::error!("Indexer failed (attempt {}): restarting...", restart_count);
+
+        if restart_count >= MAX_RESTARTS {
+            tracing::error!("Max restart attempts reached. Stopping indexer.");
+            break;
+        }
+
+        tracing::info!("Restarting indexer in {:?}...", RESTART_DELAY);
+        sleep(RESTART_DELAY).await;
     }
 }

@@ -60,7 +60,6 @@ pub struct Config {
     pub(crate) data_info: HashMap<DataType, DataInfo>,
     pub(crate) publishers: HashMap<String, Felt>,
     pub(crate) network: Network,
-    pub(crate) indexer_url: String,
 }
 
 /// We are using `ArcSwap` as it allow us to replace the new `Config` with
@@ -72,9 +71,6 @@ pub static CONFIG: OnceCell<ArcSwap<Config>> = OnceCell::const_new();
 #[allow(unused)]
 impl Config {
     pub async fn new(config_input: ConfigInput) -> Self {
-        let indexer_url =
-            std::env::var("INDEXER_SERVICE_URL").expect("INDEXER_SERVICE_URL must be set");
-
         // Create RPC Client
         let rpc_url = std::env::var("RPC_URL").expect("RPC_URL must be set");
         let rpc_client = JsonRpcClient::new(HttpTransport::new(Url::parse(&rpc_url).unwrap()));
@@ -101,7 +97,6 @@ impl Config {
             .collect::<HashMap<DataType, DataInfo>>();
 
         Self {
-            indexer_url,
             publishers,
             data_info,
             network: Network {
@@ -142,10 +137,6 @@ impl Config {
 
     pub fn network_str(&self) -> &str {
         self.network.name.clone().into()
-    }
-
-    pub fn indexer_url(&self) -> &str {
-        &self.indexer_url
     }
 
     pub fn table_name(&self, data_type: DataType) -> String {

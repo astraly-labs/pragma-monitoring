@@ -1,6 +1,10 @@
 pub(crate) mod config;
 pub mod constants;
+pub mod error;
+pub mod indexing;
 pub mod models;
+pub mod monitoring;
+pub mod processing;
 pub mod schema;
 pub mod types;
 pub(crate) mod utils;
