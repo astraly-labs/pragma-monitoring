@@ -51,8 +51,8 @@ uuid = { version = "1.4", features = ["fast-rng", "v4", "serde"] }
 evian = { version = "0.3.3", registry = "pragma", features = ["full"] }
 
 # Additional dependencies for evian
-apibara-dna-sdk = "2.0.1"
 anyhow = "1.0"
+apibara-dna-sdk = "2.0.1"
 
 # David Bernard (sacre jojo)
 axum-tracing-opentelemetry = "0.23.0"
