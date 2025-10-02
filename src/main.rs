@@ -334,61 +334,70 @@ pub(crate) async fn pragma_indexing_monitor(
         let mut last_processed_block = 0u64;
         let mut events_processed = 0u64;
 
-        tokio::select! {
-            // Receive events from indexer
-            event = event_rx.recv() => {
-                match event {
-                    Some(event) => {
-                        event_batch.push(event);
-                        events_processed += 1;
-
-                        // Process batch when it reaches the desired size
-                        if event_batch.len() >= batch_size
-                            && let Err(e) = db_handler.process_indexed_events(std::mem::take(&mut event_batch)).await
-                        {
-                            tracing::error!("Failed to process indexed events: {:?}", e);
-                            // Continue processing other events even if one batch fails
+        loop {
+            tokio::select! {
+                // Receive events from indexer
+                event = event_rx.recv() => {
+                    match event {
+                        Some(event) => {
+                            event_batch.push(event);
+                            events_processed += 1;
                         }
-
-                        // Update last processed block for monitoring
-                        if let Some(OutputEvent::Event { event_metadata, .. }) = event_batch.last() {
-                            last_processed_block = event_metadata.block_number;
+                        None => {
+                            tracing::warn!("Indexer event channel closed");
+                            break;
                         }
                     }
-                    None => {
-                        tracing::warn!("Indexer event channel closed");
-                        break;
+                }
+
+                // Process batch on timeout
+                _ = batch_timeout.tick() => {
+                    // Set a flag to process batch after select
+                }
+
+                // Check if indexer task has finished
+                result = &mut indexer_handle => {
+                    match result {
+                        Ok(Ok(())) => {
+                            tracing::info!("Indexer task completed successfully");
+                            break;
+                        }
+                        Ok(Err(e)) => {
+                            tracing::error!("Indexer task failed: {:?}", e);
+                            break;
+                        }
+                        Err(e) => {
+                            tracing::error!("Indexer task panicked: {:?}", e);
+                            break;
+                        }
                     }
                 }
             }
 
-            // Process batch on timeout
-            _ = batch_timeout.tick() => {
-                if !event_batch.is_empty()
-                    && let Err(e) = db_handler.process_indexed_events(std::mem::take(&mut event_batch)).await
-                {
+            // After select, process batch if needed
+            // Process batch if it reached the desired size
+            if event_batch.len() >= batch_size {
+                if let Err(e) = db_handler.process_indexed_events(std::mem::take(&mut event_batch)).await {
+                    tracing::error!("Failed to process indexed events: {:?}", e);
+                    // Continue processing other events even if one batch fails
+                }
+                // Update last processed block for monitoring
+                if let Some(OutputEvent::Event { event_metadata, .. }) = event_batch.last() {
+                    last_processed_block = event_metadata.block_number;
+                }
+            }
+
+            // Process batch on timeout (if not already processed)
+            if !event_batch.is_empty() && batch_timeout.is_elapsed() {
+                if let Err(e) = db_handler.process_indexed_events(std::mem::take(&mut event_batch)).await {
                     tracing::error!("Failed to process indexed events: {:?}", e);
                 }
-            }
-
-            // Check if indexer task has finished
-            result = &mut indexer_handle => {
-                match result {
-                    Ok(Ok(())) => {
-                        tracing::info!("Indexer task completed successfully");
-                        break;
-                    }
-                    Ok(Err(e)) => {
-                        tracing::error!("Indexer task failed: {:?}", e);
-                        break;
-                    }
-                    Err(e) => {
-                        tracing::error!("Indexer task panicked: {:?}", e);
-                        break;
-                    }
+                // Update last processed block for monitoring
+                if let Some(OutputEvent::Event { event_metadata, .. }) = event_batch.last() {
+                    last_processed_block = event_metadata.block_number;
                 }
             }
-        };
+        }
 
         // Log final statistics
         tracing::info!(
