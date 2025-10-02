@@ -351,7 +351,7 @@ pub(crate) async fn pragma_indexing_monitor(
                         }
 
                         // Update last processed block for monitoring
-                        if let OutputEvent::Event { event_metadata, .. } = &event_batch.last().unwrap() {
+                        if let Some(OutputEvent::Event { event_metadata, .. }) = event_batch.last() {
                             last_processed_block = event_metadata.block_number;
                         }
                     }
