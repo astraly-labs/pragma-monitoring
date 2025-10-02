@@ -15,6 +15,8 @@ use crate::config::{NetworkName, get_config};
 use crate::error::MonitoringError;
 use crate::indexing::status::INTERNAL_INDEXER_TRACKER;
 use crate::monitoring::metrics::MONITORING_METRICS;
+use crate::schema::future_entry::dsl as future_dsl;
+use crate::schema::mainnet_future_entry::dsl as mainnet_future_dsl;
 use crate::schema::mainnet_spot_entry::dsl as mainnet_spot_dsl;
 use crate::schema::spot_entry::dsl as spot_dsl;
 
@@ -117,6 +119,9 @@ impl DatabaseHandler {
                     );
 
                     // Handle reorg by deleting all events from the invalidated block onwards
+                    // This is crucial because a reorg can invalidate multiple blocks:
+                    // e.g., if we receive Invalidate(42), we might have indexed blocks 42->50,
+                    // so we need to delete all events from block 42 onwards (42, 43, 44, ..., 50)
                     self.delete_invalidated_events(block_number, network_name)
                         .await?;
 
@@ -301,7 +306,10 @@ impl DatabaseHandler {
         Ok(())
     }
 
-    /// Deletes all events from the invalidated block onwards to handle reorgs
+    /// Deletes events to handle reorgs
+    /// This handles both spot and future entries
+    /// If invalidated_block is 0, deletes ALL events (nuclear option)
+    /// Otherwise, deletes all events from the invalidated block onwards
     async fn delete_invalidated_events(
         &self,
         invalidated_block: u64,
@@ -314,47 +322,177 @@ impl DatabaseHandler {
             NetworkName::Testnet => "Testnet",
         };
 
-        match network_name {
-            NetworkName::Mainnet => {
-                // Delete from mainnet_spot_entry table
-                let deleted_spot_entries = diesel::delete(
-                    mainnet_spot_dsl::mainnet_spot_entry
-                        .filter(mainnet_spot_dsl::block_number.ge(invalidated_block as i64))
-                        .filter(mainnet_spot_dsl::network.eq(network_str)),
-                )
-                .execute(&mut conn)
-                .await
-                .map_err(MonitoringError::Database)?;
+        // Determine cleanup strategy
+        let is_nuclear_option = invalidated_block == 0;
 
-                tracing::info!(
-                    "Reorg cleanup: Deleted {} spot entries from mainnet for blocks >= {}",
-                    deleted_spot_entries,
-                    invalidated_block
-                );
-            }
-            NetworkName::Testnet => {
-                // Delete from spot_entry table
-                let deleted_spot_entries = diesel::delete(
-                    spot_dsl::spot_entry
-                        .filter(spot_dsl::block_number.ge(invalidated_block as i64))
-                        .filter(spot_dsl::network.eq(network_str)),
-                )
-                .execute(&mut conn)
-                .await
-                .map_err(MonitoringError::Database)?;
-
-                tracing::info!(
-                    "Reorg cleanup: Deleted {} spot entries from testnet for blocks >= {}",
-                    deleted_spot_entries,
-                    invalidated_block
-                );
-            }
+        if is_nuclear_option {
+            tracing::warn!(
+                "Starting NUCLEAR reorg cleanup: Deleting ALL events for {}",
+                network_str
+            );
+        } else {
+            tracing::warn!(
+                "Starting reorg cleanup: Deleting all events from block {} onwards for {}",
+                invalidated_block,
+                network_str
+            );
         }
 
+        let total_deleted = match network_name {
+            NetworkName::Mainnet => {
+                let deleted_spot_entries = if is_nuclear_option {
+                    // Delete ALL spot entries for this network
+                    diesel::delete(
+                        mainnet_spot_dsl::mainnet_spot_entry
+                            .filter(mainnet_spot_dsl::network.eq(network_str)),
+                    )
+                    .execute(&mut conn)
+                    .await
+                    .map_err(MonitoringError::Database)?
+                } else {
+                    // Delete from specific block onwards
+                    diesel::delete(
+                        mainnet_spot_dsl::mainnet_spot_entry
+                            .filter(mainnet_spot_dsl::block_number.ge(invalidated_block as i64))
+                            .filter(mainnet_spot_dsl::network.eq(network_str)),
+                    )
+                    .execute(&mut conn)
+                    .await
+                    .map_err(MonitoringError::Database)?
+                };
+
+                let deleted_future_entries = if is_nuclear_option {
+                    // Delete ALL future entries for this network
+                    diesel::delete(
+                        mainnet_future_dsl::mainnet_future_entry
+                            .filter(mainnet_future_dsl::network.eq(network_str)),
+                    )
+                    .execute(&mut conn)
+                    .await
+                    .map_err(MonitoringError::Database)?
+                } else {
+                    // Delete from specific block onwards
+                    diesel::delete(
+                        mainnet_future_dsl::mainnet_future_entry
+                            .filter(mainnet_future_dsl::block_number.ge(invalidated_block as i64))
+                            .filter(mainnet_future_dsl::network.eq(network_str)),
+                    )
+                    .execute(&mut conn)
+                    .await
+                    .map_err(MonitoringError::Database)?
+                };
+
+                let total = deleted_spot_entries + deleted_future_entries;
+
+                if is_nuclear_option {
+                    tracing::info!(
+                        "NUCLEAR cleanup completed for mainnet: Deleted ALL {} spot entries and {} future entries (total: {})",
+                        deleted_spot_entries,
+                        deleted_future_entries,
+                        total
+                    );
+                } else {
+                    tracing::info!(
+                        "Reorg cleanup completed for mainnet: Deleted {} spot entries and {} future entries (total: {}) from blocks >= {}",
+                        deleted_spot_entries,
+                        deleted_future_entries,
+                        total,
+                        invalidated_block
+                    );
+                }
+
+                total
+            }
+            NetworkName::Testnet => {
+                let deleted_spot_entries = if is_nuclear_option {
+                    // Delete ALL spot entries for this network
+                    diesel::delete(spot_dsl::spot_entry.filter(spot_dsl::network.eq(network_str)))
+                        .execute(&mut conn)
+                        .await
+                        .map_err(MonitoringError::Database)?
+                } else {
+                    // Delete from specific block onwards
+                    diesel::delete(
+                        spot_dsl::spot_entry
+                            .filter(spot_dsl::block_number.ge(invalidated_block as i64))
+                            .filter(spot_dsl::network.eq(network_str)),
+                    )
+                    .execute(&mut conn)
+                    .await
+                    .map_err(MonitoringError::Database)?
+                };
+
+                let deleted_future_entries = if is_nuclear_option {
+                    // Delete ALL future entries for this network
+                    diesel::delete(
+                        future_dsl::future_entry.filter(future_dsl::network.eq(network_str)),
+                    )
+                    .execute(&mut conn)
+                    .await
+                    .map_err(MonitoringError::Database)?
+                } else {
+                    // Delete from specific block onwards
+                    diesel::delete(
+                        future_dsl::future_entry
+                            .filter(future_dsl::block_number.ge(invalidated_block as i64))
+                            .filter(future_dsl::network.eq(network_str)),
+                    )
+                    .execute(&mut conn)
+                    .await
+                    .map_err(MonitoringError::Database)?
+                };
+
+                let total = deleted_spot_entries + deleted_future_entries;
+
+                if is_nuclear_option {
+                    tracing::info!(
+                        "NUCLEAR cleanup completed for testnet: Deleted ALL {} spot entries and {} future entries (total: {})",
+                        deleted_spot_entries,
+                        deleted_future_entries,
+                        total
+                    );
+                } else {
+                    tracing::info!(
+                        "Reorg cleanup completed for testnet: Deleted {} spot entries and {} future entries (total: {}) from blocks >= {}",
+                        deleted_spot_entries,
+                        deleted_future_entries,
+                        total,
+                        invalidated_block
+                    );
+                }
+
+                total
+            }
+        };
+
         // Update monitoring metrics to reflect the deletion
+        let new_latest_block = if is_nuclear_option {
+            // Nuclear option: reset to 0
+            0
+        } else if invalidated_block > 0 {
+            // Normal reorg: set to one less than the invalidated block
+            (invalidated_block - 1) as i64
+        } else {
+            0
+        };
+
         MONITORING_METRICS
             .monitoring_metrics
-            .set_latest_indexed_block((invalidated_block - 1) as i64, network_str);
+            .set_latest_indexed_block(new_latest_block, network_str);
+
+        if is_nuclear_option {
+            tracing::info!(
+                "NUCLEAR cleanup completed: Deleted {} total entries, reset latest indexed block to {}",
+                total_deleted,
+                new_latest_block
+            );
+        } else {
+            tracing::info!(
+                "Reorg cleanup completed: Deleted {} total entries, updated latest indexed block to {}",
+                total_deleted,
+                new_latest_block
+            );
+        }
 
         Ok(())
     }
