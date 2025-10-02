@@ -60,6 +60,25 @@ impl InternalIndexerTracker {
         status.last_error = Some(error);
     }
 
+    pub async fn handle_reorg(&self, invalidated_block: u64) {
+        let mut status = self.status.write().await;
+
+        // Update the last processed block to be one less than the invalidated block
+        // This represents the last valid block after the reorg
+        if let Some(current_last_block) = status.last_processed_block
+            && current_last_block >= invalidated_block
+        {
+            status.last_processed_block = Some(invalidated_block.saturating_sub(1));
+            tracing::info!(
+                "Reorg handled: Updated last processed block from {} to {}",
+                current_last_block,
+                status.last_processed_block.unwrap()
+            );
+        }
+
+        status.last_activity = Some(Instant::now());
+    }
+
     pub async fn get_status(&self) -> InternalIndexerStatus {
         self.status.read().await.clone()
     }

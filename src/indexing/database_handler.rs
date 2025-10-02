@@ -111,7 +111,17 @@ impl DatabaseHandler {
                     tracing::debug!("Block {} has been finalized", block_number);
                 }
                 OutputEvent::Invalidated(block_number) => {
-                    tracing::warn!("Block {} has been invalidated", block_number);
+                    tracing::warn!(
+                        "Block {} has been invalidated - handling reorg",
+                        block_number
+                    );
+
+                    // Handle reorg by deleting all events from the invalidated block onwards
+                    self.delete_invalidated_events(block_number, network_name)
+                        .await?;
+
+                    // Update status tracker to reflect the reorg
+                    INTERNAL_INDEXER_TRACKER.handle_reorg(block_number).await;
                 }
             }
         }
@@ -287,6 +297,64 @@ impl DatabaseHandler {
             volume,
             event_metadata.block_number
         );
+
+        Ok(())
+    }
+
+    /// Deletes all events from the invalidated block onwards to handle reorgs
+    async fn delete_invalidated_events(
+        &self,
+        invalidated_block: u64,
+        network_name: &NetworkName,
+    ) -> Result<()> {
+        let mut conn = self.pool.get().await.map_err(MonitoringError::Connection)?;
+
+        let network_str = match network_name {
+            NetworkName::Mainnet => "Mainnet",
+            NetworkName::Testnet => "Testnet",
+        };
+
+        match network_name {
+            NetworkName::Mainnet => {
+                // Delete from mainnet_spot_entry table
+                let deleted_spot_entries = diesel::delete(
+                    mainnet_spot_dsl::mainnet_spot_entry
+                        .filter(mainnet_spot_dsl::block_number.ge(invalidated_block as i64))
+                        .filter(mainnet_spot_dsl::network.eq(network_str)),
+                )
+                .execute(&mut conn)
+                .await
+                .map_err(MonitoringError::Database)?;
+
+                tracing::info!(
+                    "Reorg cleanup: Deleted {} spot entries from mainnet for blocks >= {}",
+                    deleted_spot_entries,
+                    invalidated_block
+                );
+            }
+            NetworkName::Testnet => {
+                // Delete from spot_entry table
+                let deleted_spot_entries = diesel::delete(
+                    spot_dsl::spot_entry
+                        .filter(spot_dsl::block_number.ge(invalidated_block as i64))
+                        .filter(spot_dsl::network.eq(network_str)),
+                )
+                .execute(&mut conn)
+                .await
+                .map_err(MonitoringError::Database)?;
+
+                tracing::info!(
+                    "Reorg cleanup: Deleted {} spot entries from testnet for blocks >= {}",
+                    deleted_spot_entries,
+                    invalidated_block
+                );
+            }
+        }
+
+        // Update monitoring metrics to reflect the deletion
+        MONITORING_METRICS
+            .monitoring_metrics
+            .set_latest_indexed_block((invalidated_block - 1) as i64, network_str);
 
         Ok(())
     }

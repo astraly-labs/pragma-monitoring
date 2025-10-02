@@ -352,7 +352,17 @@ pub(crate) async fn pragma_indexing_monitor(
 
                 // Process batch on timeout
                 _ = batch_timeout.tick() => {
-                    // Set a flag to process batch after select
+                    // Process batch if it has events
+                    if !event_batch.is_empty() {
+                        // Update last processed block before processing
+                        if let Some(OutputEvent::Event { event_metadata, .. }) = event_batch.last() {
+                            last_processed_block = event_metadata.block_number;
+                        }
+
+                        if let Err(e) = db_handler.process_indexed_events(std::mem::take(&mut event_batch)).await {
+                            tracing::error!("Failed to process indexed events on timeout: {:?}", e);
+                        }
+                    }
                 }
 
                 // Check if indexer task has finished
@@ -377,24 +387,17 @@ pub(crate) async fn pragma_indexing_monitor(
             // After select, process batch if needed
             // Process batch if it reached the desired size
             if event_batch.len() >= batch_size {
-                if let Err(e) = db_handler.process_indexed_events(std::mem::take(&mut event_batch)).await {
+                // Update last processed block before processing
+                if let Some(OutputEvent::Event { event_metadata, .. }) = event_batch.last() {
+                    last_processed_block = event_metadata.block_number;
+                }
+
+                if let Err(e) = db_handler
+                    .process_indexed_events(std::mem::take(&mut event_batch))
+                    .await
+                {
                     tracing::error!("Failed to process indexed events: {:?}", e);
                     // Continue processing other events even if one batch fails
-                }
-                // Update last processed block for monitoring
-                if let Some(OutputEvent::Event { event_metadata, .. }) = event_batch.last() {
-                    last_processed_block = event_metadata.block_number;
-                }
-            }
-
-            // Process batch on timeout (if not already processed)
-            if !event_batch.is_empty() && batch_timeout.is_elapsed() {
-                if let Err(e) = db_handler.process_indexed_events(std::mem::take(&mut event_batch)).await {
-                    tracing::error!("Failed to process indexed events: {:?}", e);
-                }
-                // Update last processed block for monitoring
-                if let Some(OutputEvent::Event { event_metadata, .. }) = event_batch.last() {
-                    last_processed_block = event_metadata.block_number;
                 }
             }
         }
