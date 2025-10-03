@@ -60,6 +60,7 @@ pub struct Config {
     pub(crate) data_info: HashMap<DataType, DataInfo>,
     pub(crate) publishers: HashMap<String, Felt>,
     pub(crate) network: Network,
+    pub(crate) apibara_api_key: String,
 }
 
 /// We are using `ArcSwap` as it allow us to replace the new `Config` with
@@ -96,6 +97,10 @@ impl Config {
             .into_iter()
             .collect::<HashMap<DataType, DataInfo>>();
 
+        // Get APIBARA_API_KEY from environment
+        let apibara_api_key =
+            std::env::var("APIBARA_API_KEY").expect("APIBARA_API_KEY must be set");
+
         Self {
             publishers,
             data_info,
@@ -105,6 +110,7 @@ impl Config {
                 oracle_address: config_input.oracle_address,
                 publisher_registry_address,
             },
+            apibara_api_key,
         }
     }
 
@@ -149,6 +155,10 @@ impl Config {
 
     pub fn all_publishers(&self) -> &HashMap<String, Felt> {
         &self.publishers
+    }
+
+    pub fn apibara_api_key(&self) -> &str {
+        &self.apibara_api_key
     }
 }
 

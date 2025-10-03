@@ -1,6 +1,6 @@
 use anyhow::Result;
 use bigdecimal::BigDecimal;
-use chrono::{DateTime, NaiveDateTime, Utc};
+use chrono::{DateTime, NaiveDateTime};
 use deadpool::managed::Pool;
 use diesel::prelude::*;
 use diesel_async::AsyncPgConnection;
@@ -203,19 +203,39 @@ impl DatabaseHandler {
         // Convert Felt to hex string for block hash and transaction hash
         let block_hash = event_metadata
             .block_hash
-            .map(|h| format!("0x{:x}", h))
+            .map(|h| h.to_fixed_hex_string())
             .unwrap_or_else(|| "0x0".to_string());
 
-        let transaction_hash = format!("0x{:x}", event_metadata.transaction_hash);
+        let transaction_hash = event_metadata.transaction_hash.to_fixed_hex_string();
 
-        // Convert timestamp to NaiveDateTime
-        let block_timestamp = DateTime::from_timestamp(event_metadata.timestamp, 0)
-            .unwrap_or_else(Utc::now)
-            .naive_utc();
+        // Convert timestamp to NaiveDateTime with proper error handling
+        let block_timestamp = match DateTime::from_timestamp(event_metadata.timestamp, 0) {
+            Some(dt) => dt.naive_utc(),
+            None => {
+                tracing::error!(
+                    "Invalid block timestamp {} for block {}, skipping event",
+                    event_metadata.timestamp,
+                    event_metadata.block_number
+                );
+                return Err(MonitoringError::InvalidTimestamp(
+                    event_metadata.timestamp as u64,
+                ));
+            }
+        };
 
-        let entry_timestamp = DateTime::from_timestamp(spot_event.base.timestamp as i64, 0)
-            .unwrap_or_else(Utc::now)
-            .naive_utc();
+        let entry_timestamp = match DateTime::from_timestamp(spot_event.base.timestamp as i64, 0) {
+            Some(dt) => dt.naive_utc(),
+            None => {
+                tracing::error!(
+                    "Invalid entry timestamp {} for pair {}, skipping event",
+                    spot_event.base.timestamp,
+                    spot_event.pair_id
+                );
+                return Err(MonitoringError::InvalidTimestamp(
+                    spot_event.base.timestamp as u64,
+                ));
+            }
+        };
 
         // Create the network string
         let network_str = match network_name {
@@ -292,7 +312,7 @@ impl DatabaseHandler {
         // Track latest indexed block
         MONITORING_METRICS
             .monitoring_metrics
-            .set_latest_indexed_block(event_metadata.block_number as i64, network_str);
+            .set_latest_indexed_block(event_metadata.block_number as u64, network_str);
 
         tracing::info!(
             "Successfully inserted spot entry: pair={}, publisher={}, price={}, volume={}, block={}",
@@ -478,7 +498,7 @@ impl DatabaseHandler {
 
         MONITORING_METRICS
             .monitoring_metrics
-            .set_latest_indexed_block(new_latest_block, network_str);
+            .set_latest_indexed_block(new_latest_block as u64, network_str);
 
         if is_nuclear_option {
             tracing::info!(

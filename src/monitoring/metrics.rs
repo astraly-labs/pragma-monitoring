@@ -307,8 +307,10 @@ impl MonitoringMetricsRegistry {
         );
     }
 
-    pub fn set_latest_indexed_block(&self, value: i64, network: &str) {
-        self.latest_indexed_block
-            .observe(value, &[KeyValue::new("network", network.to_string())]);
+    pub fn set_latest_indexed_block(&self, value: u64, network: &str) {
+        self.latest_indexed_block.observe(
+            value as i64,
+            &[KeyValue::new("network", network.to_string())],
+        );
     }
 }

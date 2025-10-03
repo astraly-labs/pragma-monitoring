@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
+use std::sync::{Arc, LazyLock};
 use std::time::{Duration, Instant};
 use tokio::sync::RwLock;
 
@@ -110,6 +110,5 @@ impl InternalIndexerTracker {
 }
 
 // Global instance
-lazy_static::lazy_static! {
-    pub static ref INTERNAL_INDEXER_TRACKER: InternalIndexerTracker = InternalIndexerTracker::new();
-}
+pub static INTERNAL_INDEXER_TRACKER: LazyLock<InternalIndexerTracker> =
+    LazyLock::new(|| InternalIndexerTracker::new());

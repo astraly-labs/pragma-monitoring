@@ -150,6 +150,7 @@ pub fn create_mock_config(provider: MockTestProvider) -> Config {
             oracle_address: Felt::from_hex_unchecked("0x1234567890"),
             publisher_registry_address: Felt::from_hex_unchecked("0x5555"),
         },
+        apibara_api_key: "test_api_key".to_string(),
     }
 }
 
