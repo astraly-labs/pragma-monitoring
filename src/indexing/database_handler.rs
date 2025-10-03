@@ -231,9 +231,7 @@ impl DatabaseHandler {
                     spot_event.base.timestamp,
                     spot_event.pair_id
                 );
-                return Err(MonitoringError::InvalidTimestamp(
-                    spot_event.base.timestamp as u64,
-                ));
+                return Err(MonitoringError::InvalidTimestamp(spot_event.base.timestamp));
             }
         };
 
@@ -312,7 +310,7 @@ impl DatabaseHandler {
         // Track latest indexed block
         MONITORING_METRICS
             .monitoring_metrics
-            .set_latest_indexed_block(event_metadata.block_number as u64, network_str);
+            .set_latest_indexed_block(event_metadata.block_number, network_str);
 
         tracing::info!(
             "Successfully inserted spot entry: pair={}, publisher={}, price={}, volume={}, block={}",

@@ -111,4 +111,4 @@ impl InternalIndexerTracker {
 
 // Global instance
 pub static INTERNAL_INDEXER_TRACKER: LazyLock<InternalIndexerTracker> =
-    LazyLock::new(|| InternalIndexerTracker::new());
+    LazyLock::new(InternalIndexerTracker::new);
