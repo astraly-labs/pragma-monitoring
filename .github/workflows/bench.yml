@@ -16,6 +16,13 @@ jobs:
       - run: rustup show
 
       - uses: Swatinem/rust-cache@v2
+
+      - name: Install protoc
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y protobuf-compiler
+          protoc --version
+
       - name: Benchmarks
         run: |
           cargo bench

@@ -67,7 +67,7 @@ pub async fn process_data_by_pair(
         }
     };
 
-    let time_since_last_update = match raw_time_since_last_update(result.timestamp) {
+    let time_since_last_update = match raw_time_since_last_update(result.timestamp as u64) {
         Ok(time) => time,
         Err(e) => {
             tracing::warn!(

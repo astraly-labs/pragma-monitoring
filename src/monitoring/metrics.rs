@@ -29,13 +29,14 @@ pub struct MonitoringMetricsRegistry {
     pub price_deviation: ObservableGauge<f64>,
     pub price_deviation_source: ObservableGauge<f64>,
     pub num_sources: ObservableGauge<i64>,
-    pub indexer_blocks_left: ObservableGauge<i64>,
     pub publisher_balance: ObservableGauge<f64>,
     pub api_price_deviation: ObservableGauge<f64>,
     pub on_off_price_deviation: ObservableGauge<f64>,
     pub api_time_since_last_update: ObservableGauge<f64>,
     pub api_num_sources: ObservableGauge<i64>,
     pub api_sequencer_deviation: ObservableGauge<f64>,
+    pub indexed_events_count: ObservableGauge<i64>,
+    pub latest_indexed_block: ObservableGauge<i64>,
 }
 
 impl MonitoringMetricsRegistry {
@@ -75,11 +76,6 @@ impl MonitoringMetricsRegistry {
             .with_description("Number of sources that have published data for a pair")
             .init();
 
-        let indexer_blocks_left = meter
-            .i64_observable_gauge("indexer_blocks_left")
-            .with_description("Number of blocks left to index for a given indexer")
-            .init();
-
         let publisher_balance = meter
             .f64_observable_gauge("publisher_balance")
             .with_description("Balance of the publisher in ETH")
@@ -114,6 +110,16 @@ impl MonitoringMetricsRegistry {
             .with_description("Price deviation from starknet gateway price")
             .init();
 
+        let indexed_events_count = meter
+            .i64_observable_gauge("indexed_events_count")
+            .with_description("Number of events indexed from blockchain")
+            .init();
+
+        let latest_indexed_block = meter
+            .i64_observable_gauge("latest_indexed_block")
+            .with_description("Latest block number that has been indexed")
+            .init();
+
         Arc::new(Self {
             // Metrics (former gauges)
             time_since_last_update_publisher,
@@ -122,13 +128,14 @@ impl MonitoringMetricsRegistry {
             price_deviation,
             price_deviation_source,
             num_sources,
-            indexer_blocks_left,
             publisher_balance,
             api_price_deviation,
             on_off_price_deviation,
             api_time_since_last_update,
             api_num_sources,
             api_sequencer_deviation,
+            indexed_events_count,
+            latest_indexed_block,
         })
     }
 
@@ -227,16 +234,6 @@ impl MonitoringMetricsRegistry {
         );
     }
 
-    pub fn set_indexer_blocks_left(&self, value: i64, network: &str, type_: &str) {
-        self.indexer_blocks_left.observe(
-            value,
-            &[
-                KeyValue::new("network", network.to_string()),
-                KeyValue::new("type", type_.to_string()),
-            ],
-        );
-    }
-
     pub fn set_publisher_balance(&self, value: f64, network: &str, publisher: &str) {
         self.publisher_balance.observe(
             value,
@@ -291,5 +288,29 @@ impl MonitoringMetricsRegistry {
     pub fn set_api_sequencer_deviation(&self, value: f64, network: &str) {
         self.api_sequencer_deviation
             .observe(value, &[KeyValue::new("network", network.to_string())]);
+    }
+
+    pub fn set_indexed_events_count(
+        &self,
+        value: i64,
+        network: &str,
+        pair: &str,
+        event_type: &str,
+    ) {
+        self.indexed_events_count.observe(
+            value,
+            &[
+                KeyValue::new("network", network.to_string()),
+                KeyValue::new("pair", pair.to_string()),
+                KeyValue::new("event_type", event_type.to_string()),
+            ],
+        );
+    }
+
+    pub fn set_latest_indexed_block(&self, value: u64, network: &str) {
+        self.latest_indexed_block.observe(
+            value as i64,
+            &[KeyValue::new("network", network.to_string())],
+        );
     }
 }

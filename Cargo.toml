@@ -47,6 +47,12 @@ thiserror = "2.0"
 tokio = { version = "1", features = ["full"] }
 url = "2.5.0"
 uuid = { version = "1.4", features = ["fast-rng", "v4", "serde"] }
+# Pragma crates
+evian = { version = "0.3.3", registry = "pragma", features = ["full"] }
+
+# Additional dependencies for evian
+anyhow = "1.0"
+apibara-dna-sdk = "2.0.1"
 
 # David Bernard (sacre jojo)
 axum-tracing-opentelemetry = "0.23.0"

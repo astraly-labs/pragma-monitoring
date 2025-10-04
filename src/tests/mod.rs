@@ -22,7 +22,7 @@ pub fn init_test_env() {
         env::set_var("ORACLE_ADDRESS", "0x1234567890");
         env::set_var("SPOT_PAIRS", "XSTRK/STRK,BTC/USD");
         env::set_var("FUTURE_PAIRS", "BTC-PERP/USD");
-        env::set_var("INDEXER_SERVICE_URL", "http://localhost:8000");
+        // INDEXER_SERVICE_URL no longer needed - indexing is handled internally
         env::set_var("RPC_URL", "http://localhost:5050");
     });
 }
@@ -150,7 +150,7 @@ pub fn create_mock_config(provider: MockTestProvider) -> Config {
             oracle_address: Felt::from_hex_unchecked("0x1234567890"),
             publisher_registry_address: Felt::from_hex_unchecked("0x5555"),
         },
-        indexer_url: "http://localhost:8000".to_string(),
+        apibara_api_key: "test_api_key".to_string(),
     }
 }
 

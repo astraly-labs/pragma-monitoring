@@ -60,7 +60,7 @@ pub struct Config {
     pub(crate) data_info: HashMap<DataType, DataInfo>,
     pub(crate) publishers: HashMap<String, Felt>,
     pub(crate) network: Network,
-    pub(crate) indexer_url: String,
+    pub(crate) apibara_api_key: String,
 }
 
 /// We are using `ArcSwap` as it allow us to replace the new `Config` with
@@ -72,9 +72,6 @@ pub static CONFIG: OnceCell<ArcSwap<Config>> = OnceCell::const_new();
 #[allow(unused)]
 impl Config {
     pub async fn new(config_input: ConfigInput) -> Self {
-        let indexer_url =
-            std::env::var("INDEXER_SERVICE_URL").expect("INDEXER_SERVICE_URL must be set");
-
         // Create RPC Client
         let rpc_url = std::env::var("RPC_URL").expect("RPC_URL must be set");
         let rpc_client = JsonRpcClient::new(HttpTransport::new(Url::parse(&rpc_url).unwrap()));
@@ -100,8 +97,11 @@ impl Config {
             .into_iter()
             .collect::<HashMap<DataType, DataInfo>>();
 
+        // Get APIBARA_API_KEY from environment
+        let apibara_api_key =
+            std::env::var("APIBARA_API_KEY").expect("APIBARA_API_KEY must be set");
+
         Self {
-            indexer_url,
             publishers,
             data_info,
             network: Network {
@@ -110,6 +110,7 @@ impl Config {
                 oracle_address: config_input.oracle_address,
                 publisher_registry_address,
             },
+            apibara_api_key,
         }
     }
 
@@ -144,10 +145,6 @@ impl Config {
         self.network.name.clone().into()
     }
 
-    pub fn indexer_url(&self) -> &str {
-        &self.indexer_url
-    }
-
     pub fn table_name(&self, data_type: DataType) -> String {
         let table_name = &self.data_info.get(&data_type).unwrap().table_name;
         match self.network.name {
@@ -158,6 +155,10 @@ impl Config {
 
     pub fn all_publishers(&self) -> &HashMap<String, Felt> {
         &self.publishers
+    }
+
+    pub fn apibara_api_key(&self) -> &str {
+        &self.apibara_api_key
     }
 }
 

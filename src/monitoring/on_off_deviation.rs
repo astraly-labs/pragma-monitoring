@@ -93,7 +93,7 @@ pub async fn on_off_price_deviation(
                 .to_string();
 
             let coins_prices =
-                query_defillama_api(timestamp, coingecko_id.to_owned(), cache).await?;
+                query_defillama_api(timestamp, coingecko_id.to_owned(), cache.clone()).await?;
 
             let api_id = format!("coingecko:{}", coingecko_id);
 
