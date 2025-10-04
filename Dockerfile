@@ -16,8 +16,18 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
     libssl-dev \
     ca-certificates \
     wget \
-    protobuf-compiler \
+    curl \
+    unzip \
     && rm -rf /var/lib/apt/lists/*
+
+# Install newer protoc version that supports proto3 optional fields
+RUN PROTOC_VERSION=26.1 && \
+    curl -L "https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOC_VERSION}/protoc-${PROTOC_VERSION}-linux-x86_64.zip" -o /tmp/protoc.zip && \
+    unzip /tmp/protoc.zip -d /tmp/protoc && \
+    cp /tmp/protoc/bin/protoc /usr/local/bin/ && \
+    cp -r /tmp/protoc/include/* /usr/local/include/ && \
+    rm -rf /tmp/protoc* && \
+    protoc --version
 
 # Copy source code before cooking to ensure patches are available
 COPY . .
