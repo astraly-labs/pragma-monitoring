@@ -75,6 +75,9 @@ tracing-subscriber = { version = "0.3.18", features = [
   "std",
 ] }
 
+# Patch size-of to use forked version
+[patch.crates-io]
+size-of = { git = "https://github.com/astraly-labs/size-of", branch = "main" }
 
 [dev-dependencies]
 rstest = "0.18.2"

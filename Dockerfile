@@ -19,8 +19,12 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
     protobuf-compiler \
     && rm -rf /var/lib/apt/lists/*
 
-RUN cargo chef cook --profile release --recipe-path recipe.json
+# Copy source code before cooking to ensure patches are available
 COPY . .
+
+# Update cargo chef to cook with the actual source (including patches)
+RUN cargo chef cook --profile release --recipe-path recipe.json
+
 RUN cargo build --locked --release
 
 FROM debian:bullseye-slim AS final
