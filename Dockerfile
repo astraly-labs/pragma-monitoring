@@ -5,6 +5,8 @@ WORKDIR /app
 
 FROM cargo-chef AS planner
 COPY . .
+
+RUN apt-get update && apt-get install -y curl
 RUN cargo chef prepare --recipe-path recipe.json
 
 FROM cargo-chef AS builder
@@ -20,22 +22,19 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
     unzip \
     && rm -rf /var/lib/apt/lists/*
 
-# Install newer protoc version that supports proto3 optional fields
-RUN PROTOC_VERSION=26.1 && \
-    curl -L "https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOC_VERSION}/protoc-${PROTOC_VERSION}-linux-x86_64.zip" -o /tmp/protoc.zip && \
-    unzip /tmp/protoc.zip -d /tmp/protoc && \
-    cp /tmp/protoc/bin/protoc /usr/local/bin/ && \
-    cp -r /tmp/protoc/include/* /usr/local/include/ && \
-    rm -rf /tmp/protoc* && \
-    protoc --version
+# Install the same newer version of protobuf compiler in the final stage
+RUN PROTOC_VERSION=32.0 && \
+    PROTOC_ZIP=protoc-${PROTOC_VERSION}-linux-x86_64.zip && \
+    curl -OL https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOC_VERSION}/${PROTOC_ZIP} && \
+    unzip -o ${PROTOC_ZIP} -d /usr/local bin/protoc && \
+    unzip -o ${PROTOC_ZIP} -d /usr/local 'include/*' && \
+    rm -f ${PROTOC_ZIP}
 
-# Copy source code before cooking to ensure patches are available
-COPY . .
-
-# Update cargo chef to cook with the actual source (including patches)
 RUN cargo chef cook --profile release --recipe-path recipe.json
 
-RUN cargo build --locked --release
+COPY . .
+
+RUN cargo build --locked --release --workspace --exclude tests
 
 FROM debian:bullseye-slim AS final
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
@@ -46,7 +45,14 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
 
 ARG APP_NAME=pragma-monitoring
 ENV APP_NAME $APP_NAME
+
+# Create app directory
+RUN mkdir /app
+
+# Copy the binary
 COPY --from=builder /app/target/release/${APP_NAME} /bin/server
+
+# Copy the certificates
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 
 RUN adduser \
@@ -57,10 +63,17 @@ RUN adduser \
     --no-create-home \
     --uid 10001 \
     appuser
+
+# Set permissions for all required directories
+RUN chown -R appuser:appuser /app && \
+    chmod -R 755 /app
+
 USER appuser
+
+WORKDIR /app
 
 EXPOSE 8080
 
-ENV RUST_LOG=info
+ENV RUST_LOG="evian=error,pragma-monitoring=info"
 
 CMD ["/bin/server"]
