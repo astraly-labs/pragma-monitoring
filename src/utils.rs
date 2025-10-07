@@ -1,8 +1,14 @@
-use std::{collections::HashMap, fmt::Display};
+use std::{collections::HashMap, fmt::Display, time::Duration};
 
+use deadpool::managed::Pool;
+use diesel_async::AsyncPgConnection;
+use diesel_async::pooled_connection::AsyncDieselConnectionManager;
 use num_bigint::BigUint;
 use starknet::core::types::Felt;
 use tokio::task::JoinError;
+use tokio::time::sleep;
+
+use crate::error::MonitoringError;
 
 #[derive(Debug)]
 pub enum FeltConversionError {
@@ -48,4 +54,43 @@ pub(crate) fn log_monitoring_results(results: HashMap<String, Result<(), tokio::
             Err(e) => tracing::error!("[{}] Monitoring failed: {:?}", task_name, e),
         }
     }
+}
+
+/// Get database connection with retry logic
+pub(crate) async fn get_db_connection_with_retry(
+    pool: &Pool<AsyncDieselConnectionManager<AsyncPgConnection>>,
+    operation: &str,
+) -> Result<
+    deadpool::managed::Object<AsyncDieselConnectionManager<AsyncPgConnection>>,
+    MonitoringError,
+> {
+    const MAX_RETRIES: u32 = 3;
+    const RETRY_DELAY: Duration = Duration::from_millis(500);
+
+    for attempt in 1..=MAX_RETRIES {
+        match pool.get().await {
+            Ok(conn) => return Ok(conn),
+            Err(e) => {
+                if attempt < MAX_RETRIES {
+                    tracing::warn!(
+                        "Failed to get database connection for {} (attempt {}/{}): {:?}. Retrying...",
+                        operation,
+                        attempt,
+                        MAX_RETRIES,
+                        e
+                    );
+                    sleep(RETRY_DELAY).await;
+                } else {
+                    tracing::error!(
+                        "Failed to get database connection for {} after {} attempts: {:?}",
+                        operation,
+                        MAX_RETRIES,
+                        e
+                    );
+                    return Err(MonitoringError::Connection(e));
+                }
+            }
+        }
+    }
+    unreachable!()
 }

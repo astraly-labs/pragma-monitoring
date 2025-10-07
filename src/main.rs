@@ -29,16 +29,20 @@ use std::collections::HashMap;
 use std::time::Duration;
 use std::{env, vec};
 
+use axum::{Router, extract::State, response::Json, routing::get};
 use deadpool::managed::Pool;
 use diesel_async::AsyncPgConnection;
+use diesel_async::RunQueryDsl;
 use diesel_async::pooled_connection::AsyncDieselConnectionManager;
 use dotenv::dotenv;
 use moka::future::Cache;
 use monitoring::price_deviation::CoinPricesDTO;
+use serde_json::{Value, json};
 use tokio::task::JoinHandle;
 use tokio::time::interval;
 
 use config::{DataType, get_config, periodic_config_update};
+use error::MonitoringError;
 use evian::utils::indexer::handler::OutputEvent;
 use indexing::{
     database_handler::DatabaseHandler, start_pragma_indexer, status::INTERNAL_INDEXER_TRACKER,
@@ -47,6 +51,30 @@ use processing::common::{check_publisher_balance, data_indexers_are_synced};
 use tokio::time::sleep;
 use tracing::instrument;
 use utils::{log_monitoring_results, log_tasks_results};
+
+/// Test database connectivity before starting the application
+async fn test_database_connection(
+    pool: &Pool<AsyncDieselConnectionManager<AsyncPgConnection>>,
+) -> Result<(), MonitoringError> {
+    tracing::info!("Testing database connectivity...");
+
+    let mut conn = pool.get().await.map_err(MonitoringError::Connection)?;
+
+    // Simple query to test connectivity
+    match diesel::sql_query("SELECT 1 as test")
+        .execute(&mut conn)
+        .await
+    {
+        Ok(_) => {
+            tracing::info!("Database connectivity test successful");
+            Ok(())
+        }
+        Err(e) => {
+            tracing::error!("Database connectivity test failed: {:?}", e);
+            Err(MonitoringError::Database(e))
+        }
+    }
+}
 
 #[derive(Debug)]
 struct MonitoringTask {
@@ -69,9 +97,61 @@ async fn main() {
     let monitoring_config = get_config(None).await;
     tracing::info!("Successfully fetched config: {:?}", monitoring_config);
 
-    let database_url: String = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
-    let config = AsyncDieselConnectionManager::<diesel_async::AsyncPgConnection>::new(database_url);
-    let pool = Pool::builder(config).build().unwrap();
+    let database_url: String = match env::var("DATABASE_URL") {
+        Ok(url) => {
+            tracing::info!("Database URL configured successfully");
+            url
+        }
+        Err(e) => {
+            tracing::error!(
+                "DATABASE_URL environment variable is required but not set: {:?}",
+                e
+            );
+            std::process::exit(1);
+        }
+    };
+
+    let config =
+        AsyncDieselConnectionManager::<diesel_async::AsyncPgConnection>::new(database_url.clone());
+    let pool = match Pool::builder(config).max_size(20).build() {
+        Ok(pool) => {
+            tracing::info!("Database connection pool created successfully");
+            pool
+        }
+        Err(e) => {
+            tracing::error!("Failed to create database connection pool: {:?}", e);
+            std::process::exit(1);
+        }
+    };
+
+    // Test database connectivity before starting monitoring
+    match test_database_connection(&pool).await {
+        Ok(_) => {
+            tracing::info!("Database connectivity test passed");
+        }
+        Err(e) => {
+            tracing::error!("Database connectivity test failed: {:?}", e);
+            tracing::error!("Please check your DATABASE_URL and ensure the database is accessible");
+            std::process::exit(1);
+        }
+    }
+
+    // Start health check server
+    let health_pool = pool.clone();
+    tokio::spawn(async move {
+        let app = Router::new()
+            .route("/health", get(health_check))
+            .route("/health/detailed", get(detailed_health_check))
+            .with_state(health_pool);
+
+        let health_port = env::var("HEALTH_PORT").unwrap_or_else(|_| "8080".to_string());
+        let health_bind_addr = format!("0.0.0.0:{}", health_port);
+        tracing::info!("Health check server started on {}", health_bind_addr);
+        axum::Server::bind(&health_bind_addr.parse().unwrap())
+            .serve(app.into_make_service())
+            .await
+            .unwrap();
+    });
 
     // Monitor spot/future in parallel
     let monitoring_tasks = spawn_monitoring_tasks(pool.clone()).await;
@@ -290,8 +370,9 @@ pub(crate) async fn pragma_indexing_monitor(
     INTERNAL_INDEXER_TRACKER.set_running(true).await;
 
     let mut restart_count = 0;
-    const MAX_RESTARTS: u32 = 5;
+    const MAX_RESTARTS: u32 = 10; // Increased from 5 to 10
     const RESTART_DELAY: Duration = Duration::from_secs(30);
+    const EXPONENTIAL_BACKOFF_MAX: Duration = Duration::from_secs(300); // 5 minutes max
 
     loop {
         // Start the indexer with retry logic
@@ -318,8 +399,21 @@ pub(crate) async fn pragma_indexing_monitor(
                     break;
                 }
 
-                tracing::info!("Restarting indexer in {:?}...", RESTART_DELAY);
-                sleep(RESTART_DELAY).await;
+                // Exponential backoff with jitter
+                let backoff_delay = std::cmp::min(
+                    RESTART_DELAY * (2_u32.pow(restart_count.min(10))), // Cap exponential growth
+                    EXPONENTIAL_BACKOFF_MAX,
+                );
+                let jitter = Duration::from_millis(fastrand::u64(0..1000));
+                let total_delay = backoff_delay + jitter;
+
+                tracing::info!(
+                    "Restarting indexer in {:?} (backoff: {:?}, jitter: {:?})...",
+                    total_delay,
+                    backoff_delay,
+                    jitter
+                );
+                sleep(total_delay).await;
                 continue;
             }
         };
@@ -421,4 +515,49 @@ pub(crate) async fn pragma_indexing_monitor(
         tracing::info!("Restarting indexer in {:?}...", RESTART_DELAY);
         sleep(RESTART_DELAY).await;
     }
+}
+
+/// Simple health check endpoint
+async fn health_check() -> Json<Value> {
+    let status = if INTERNAL_INDEXER_TRACKER.is_healthy().await {
+        "healthy"
+    } else {
+        "unhealthy"
+    };
+
+    Json(json!({
+        "status": status,
+        "timestamp": chrono::Utc::now().to_rfc3339(),
+        "service": "pragma-monitoring"
+    }))
+}
+
+/// Detailed health check endpoint
+async fn detailed_health_check(
+    State(pool): State<Pool<AsyncDieselConnectionManager<AsyncPgConnection>>>,
+) -> Json<Value> {
+    let indexer_status = INTERNAL_INDEXER_TRACKER.get_status().await;
+    let is_healthy = INTERNAL_INDEXER_TRACKER.is_healthy().await;
+
+    // Test database connectivity
+    let db_healthy = test_database_connection(&pool).await.is_ok();
+
+    Json(json!({
+        "status": if is_healthy && db_healthy { "healthy" } else { "unhealthy" },
+        "timestamp": chrono::Utc::now().to_rfc3339(),
+        "service": "pragma-monitoring",
+        "components": {
+            "indexer": {
+                "running": indexer_status.is_running,
+                "last_processed_block": indexer_status.last_processed_block,
+                "events_processed": indexer_status.events_processed,
+                "error_count": indexer_status.error_count,
+                "last_error": indexer_status.last_error,
+                "healthy": is_healthy
+            },
+            "database": {
+                "healthy": db_healthy
+            }
+        }
+    }))
 }

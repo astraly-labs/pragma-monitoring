@@ -125,14 +125,40 @@ pub async fn query_pragma_api(
             aggregation = aggregation,
             interval = interval,
         ),
-        _ => panic!("Invalid network env"),
+        _ => {
+            tracing::error!("Invalid network environment: {}", network_env);
+            return Err(MonitoringError::Api(format!(
+                "Invalid network environment: {}",
+                network_env
+            )));
+        }
     };
     // Set headers
     let mut headers = HeaderMap::new();
-    let api_key = std::env::var("PRAGMA_API_KEY").expect("PRAGMA_API_KEY must be set");
+    let api_key = match std::env::var("PRAGMA_API_KEY") {
+        Ok(key) => key,
+        Err(e) => {
+            tracing::error!(
+                "PRAGMA_API_KEY environment variable is required but not set: {:?}",
+                e
+            );
+            return Err(MonitoringError::Api(
+                "PRAGMA_API_KEY must be set".to_string(),
+            ));
+        }
+    };
     headers.insert(
         HeaderName::from_static("x-api-key"),
-        HeaderValue::from_str(&api_key).expect("Failed to parse api key"),
+        match HeaderValue::from_str(&api_key) {
+            Ok(value) => value,
+            Err(e) => {
+                tracing::error!("Failed to parse PRAGMA_API_KEY as header value: {:?}", e);
+                return Err(MonitoringError::Api(format!(
+                    "Failed to parse API key: {}",
+                    e
+                )));
+            }
+        },
     );
 
     let client = reqwest::Client::new();
