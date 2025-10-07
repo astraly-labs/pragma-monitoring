@@ -11,6 +11,7 @@ use crate::monitoring::price_deviation::CoinPricesDTO;
 use crate::monitoring::{
     on_off_price_deviation, price_deviation, source_deviation, time_since_last_update,
 };
+use crate::utils::get_db_connection_with_retry;
 use diesel::QueryDsl;
 
 use crate::schema::future_entry::dsl as testnet_dsl;
@@ -28,17 +29,8 @@ pub async fn process_data_by_pair(
     pair: String,
     cache: Cache<(String, u64), CoinPricesDTO>,
 ) -> Result<u64, MonitoringError> {
-    let mut conn = match pool.get().await {
-        Ok(conn) => conn,
-        Err(e) => {
-            tracing::error!(
-                "Failed to get database connection for pair {}: {:?}",
-                pair,
-                e
-            );
-            return Err(MonitoringError::Connection(e));
-        }
-    };
+    let mut conn =
+        get_db_connection_with_retry(&pool, &format!("process_data_by_pair({})", pair)).await?;
 
     let config = get_config(None).await;
 
@@ -108,10 +100,16 @@ pub async fn process_data_by_pair_and_sources(
 
     let config = get_config(None).await;
 
-    let decimals = *config
-        .decimals(DataType::Future)
-        .get(&pair.clone())
-        .unwrap();
+    let decimals = match config.decimals(DataType::Future).get(&pair.clone()) {
+        Some(decimals) => *decimals,
+        None => {
+            tracing::error!("No decimals found for pair: {}", pair);
+            return Err(MonitoringError::Conversion(format!(
+                "No decimals found for pair: {}",
+                pair
+            )));
+        }
+    };
 
     for src in sources {
         tracing::info!("Processing data for pair: {} and source: {}", pair, src);
@@ -121,7 +119,16 @@ pub async fn process_data_by_pair_and_sources(
         timestamps.push(res);
     }
 
-    Ok(*timestamps.last().unwrap())
+    match timestamps.last() {
+        Some(timestamp) => Ok(*timestamp),
+        None => {
+            tracing::error!("No timestamps collected for pair: {}", pair);
+            Err(MonitoringError::Conversion(format!(
+                "No timestamps collected for pair: {}",
+                pair
+            )))
+        }
+    }
 }
 
 pub async fn process_data_by_pair_and_source(
@@ -131,18 +138,11 @@ pub async fn process_data_by_pair_and_source(
     decimals: u32,
     cache: Cache<(String, u64), CoinPricesDTO>,
 ) -> Result<u64, MonitoringError> {
-    let mut conn = match pool.get().await {
-        Ok(conn) => conn,
-        Err(e) => {
-            tracing::error!(
-                "Failed to get database connection for pair {} source {}: {:?}",
-                pair,
-                src,
-                e
-            );
-            return Err(MonitoringError::Connection(e));
-        }
-    };
+    let mut conn = get_db_connection_with_retry(
+        &pool,
+        &format!("process_data_by_pair_and_source({}, {})", pair, src),
+    )
+    .await?;
 
     let config = get_config(None).await;
 
@@ -204,17 +204,9 @@ pub async fn process_data_by_publisher(
     pool: deadpool::managed::Pool<AsyncDieselConnectionManager<AsyncPgConnection>>,
     publisher: String,
 ) -> Result<(), MonitoringError> {
-    let mut conn = match pool.get().await {
-        Ok(conn) => conn,
-        Err(e) => {
-            tracing::error!(
-                "Failed to get database connection for publisher {}: {:?}",
-                publisher,
-                e
-            );
-            return Err(MonitoringError::Connection(e));
-        }
-    };
+    let mut conn =
+        get_db_connection_with_retry(&pool, &format!("process_data_by_publisher({})", publisher))
+            .await?;
 
     let config = get_config(None).await;
 

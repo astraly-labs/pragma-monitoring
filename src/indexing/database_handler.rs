@@ -78,11 +78,20 @@ impl DatabaseHandler {
         &self,
         events: Vec<OutputEvent<PragmaEvent>>,
     ) -> Result<()> {
+        if events.is_empty() {
+            tracing::debug!("No events to process");
+            return Ok(());
+        }
+
+        let total_events = events.len();
+        tracing::info!("Processing batch of {} events", total_events);
+
         let config = get_config(None).await;
         let network_name = &config.network().name;
         let mut events_processed = 0u64;
+        let mut failed_events = 0u64;
 
-        for event in events {
+        for (index, event) in events.into_iter().enumerate() {
             match event {
                 OutputEvent::Event {
                     event,
@@ -91,18 +100,49 @@ impl DatabaseHandler {
                     match event {
                         PragmaEvent::Spot(spot_event) => {
                             let block_number = event_metadata.block_number;
-                            self.insert_spot_entry_with_retry(
-                                spot_event,
-                                event_metadata,
-                                network_name,
-                            )
-                            .await?;
-                            events_processed += 1;
+                            tracing::debug!(
+                                "Processing spot event {}/{}: pair={}, publisher={}, block={}",
+                                index + 1,
+                                total_events,
+                                spot_event.pair_id,
+                                spot_event.base.publisher,
+                                block_number
+                            );
 
-                            // Update status tracker
-                            INTERNAL_INDEXER_TRACKER
-                                .update_processed_block(block_number)
-                                .await;
+                            match self
+                                .insert_spot_entry_with_retry(
+                                    spot_event.clone(),
+                                    event_metadata,
+                                    network_name,
+                                )
+                                .await
+                            {
+                                Ok(_) => {
+                                    events_processed += 1;
+                                    tracing::debug!(
+                                        "Successfully processed spot event: pair={}, publisher={}, block={}",
+                                        spot_event.pair_id,
+                                        spot_event.base.publisher,
+                                        block_number
+                                    );
+
+                                    // Update status tracker
+                                    INTERNAL_INDEXER_TRACKER
+                                        .update_processed_block(block_number)
+                                        .await;
+                                }
+                                Err(e) => {
+                                    failed_events += 1;
+                                    tracing::error!(
+                                        "Failed to process spot event: pair={}, publisher={}, block={}, error={:?}",
+                                        spot_event.pair_id,
+                                        spot_event.base.publisher,
+                                        block_number,
+                                        e
+                                    );
+                                    // Continue processing other events instead of failing the entire batch
+                                }
+                            }
                         }
                     }
                 }
@@ -136,6 +176,23 @@ impl DatabaseHandler {
             INTERNAL_INDEXER_TRACKER
                 .increment_events_processed(events_processed)
                 .await;
+        }
+
+        if failed_events > 0 {
+            tracing::warn!(
+                "Batch processing completed with {} successful and {} failed events",
+                events_processed,
+                failed_events
+            );
+            // If all events failed, return an error
+            if failed_events == total_events as u64 {
+                return Err(anyhow::anyhow!("All events in batch failed to process"));
+            }
+        } else {
+            tracing::info!(
+                "Batch processing completed successfully: {} events processed",
+                events_processed
+            );
         }
 
         Ok(())
@@ -190,7 +247,26 @@ impl DatabaseHandler {
         event_metadata: &StarknetEventMetadata,
         network_name: &NetworkName,
     ) -> Result<(), MonitoringError> {
-        let mut conn = self.pool.get().await.map_err(MonitoringError::Connection)?;
+        tracing::debug!(
+            "Attempting to insert spot entry: pair={}, publisher={}, source={}, block={}, price={}, volume={}",
+            spot_event.pair_id,
+            spot_event.base.publisher,
+            spot_event.base.source,
+            event_metadata.block_number,
+            spot_event.price,
+            spot_event.volume
+        );
+
+        let mut conn = match self.pool.get().await {
+            Ok(conn) => {
+                tracing::debug!("Database connection acquired successfully");
+                conn
+            }
+            Err(e) => {
+                tracing::error!("Failed to acquire database connection: {:?}", e);
+                return Err(MonitoringError::Connection(e));
+            }
+        };
 
         let data_id = format!(
             "{}_{}_{}_{}",
@@ -249,6 +325,7 @@ impl DatabaseHandler {
 
         match network_name {
             NetworkName::Mainnet => {
+                tracing::debug!("Inserting into mainnet_spot_entry table");
                 let spot_entry = NewMainnetSpotEntry {
                     network: network_str.to_string(),
                     pair_id: spot_event.pair_id,
@@ -265,13 +342,25 @@ impl DatabaseHandler {
                     _cursor: event_metadata.block_number as i64, // Use block number as cursor for now
                 };
 
-                diesel::insert_into(mainnet_spot_dsl::mainnet_spot_entry)
-                    .values(spot_entry)
+                match diesel::insert_into(mainnet_spot_dsl::mainnet_spot_entry)
+                    .values(&spot_entry)
                     .execute(&mut conn)
                     .await
-                    .map_err(MonitoringError::Database)?;
+                {
+                    Ok(rows_affected) => {
+                        tracing::debug!(
+                            "Successfully inserted mainnet spot entry: {} rows affected",
+                            rows_affected
+                        );
+                    }
+                    Err(e) => {
+                        tracing::error!("Failed to insert mainnet spot entry: {:?}", e);
+                        return Err(MonitoringError::Database(e));
+                    }
+                }
             }
             NetworkName::Testnet => {
+                tracing::debug!("Inserting into spot_entry table");
                 let spot_entry = NewSpotEntry {
                     network: network_str.to_string(),
                     pair_id: spot_event.pair_id,
@@ -288,11 +377,22 @@ impl DatabaseHandler {
                     _cursor: event_metadata.block_number as i64, // Use block number as cursor for now
                 };
 
-                diesel::insert_into(spot_dsl::spot_entry)
-                    .values(spot_entry)
+                match diesel::insert_into(spot_dsl::spot_entry)
+                    .values(&spot_entry)
                     .execute(&mut conn)
                     .await
-                    .map_err(MonitoringError::Database)?;
+                {
+                    Ok(rows_affected) => {
+                        tracing::debug!(
+                            "Successfully inserted testnet spot entry: {} rows affected",
+                            rows_affected
+                        );
+                    }
+                    Err(e) => {
+                        tracing::error!("Failed to insert testnet spot entry: {:?}", e);
+                        return Err(MonitoringError::Database(e));
+                    }
+                }
             }
         }
 

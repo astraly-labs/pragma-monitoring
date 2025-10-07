@@ -73,8 +73,29 @@ pub static CONFIG: OnceCell<ArcSwap<Config>> = OnceCell::const_new();
 impl Config {
     pub async fn new(config_input: ConfigInput) -> Self {
         // Create RPC Client
-        let rpc_url = std::env::var("RPC_URL").expect("RPC_URL must be set");
-        let rpc_client = JsonRpcClient::new(HttpTransport::new(Url::parse(&rpc_url).unwrap()));
+        let rpc_url = match std::env::var("RPC_URL") {
+            Ok(url) => {
+                tracing::info!("RPC URL configured");
+                url
+            }
+            Err(e) => {
+                tracing::error!(
+                    "RPC_URL environment variable is required but not set: {:?}",
+                    e
+                );
+                panic!("RPC_URL must be set");
+            }
+        };
+
+        let parsed_url = match Url::parse(&rpc_url) {
+            Ok(url) => url,
+            Err(e) => {
+                tracing::error!("Invalid RPC_URL format: {:?}", e);
+                panic!("Invalid RPC_URL format: {}", e);
+            }
+        };
+
+        let rpc_client = JsonRpcClient::new(HttpTransport::new(parsed_url));
 
         let (publishers, publisher_registry_address) =
             init_publishers(&rpc_client, config_input.oracle_address).await;
@@ -98,8 +119,19 @@ impl Config {
             .collect::<HashMap<DataType, DataInfo>>();
 
         // Get APIBARA_API_KEY from environment
-        let apibara_api_key =
-            std::env::var("APIBARA_API_KEY").expect("APIBARA_API_KEY must be set");
+        let apibara_api_key = match std::env::var("APIBARA_API_KEY") {
+            Ok(key) => {
+                tracing::info!("APIBARA_API_KEY configured (length: {})", key.len());
+                key
+            }
+            Err(e) => {
+                tracing::error!(
+                    "APIBARA_API_KEY environment variable is required but not set: {:?}",
+                    e
+                );
+                panic!("APIBARA_API_KEY must be set");
+            }
+        };
 
         Self {
             publishers,
@@ -115,10 +147,61 @@ impl Config {
     }
 
     pub async fn create_from_env() -> Config {
-        let network = std::env::var("NETWORK").expect("NETWORK must be set");
-        let oracle_address = std::env::var("ORACLE_ADDRESS").expect("ORACLE_ADDRESS must be set");
-        let spot_pairs = std::env::var("SPOT_PAIRS").expect("SPOT_PAIRS must be set");
-        let future_pairs = std::env::var("FUTURE_PAIRS").expect("FUTURE_PAIRS must be set");
+        let network = match std::env::var("NETWORK") {
+            Ok(network) => {
+                tracing::info!("Network configured: {}", network);
+                network
+            }
+            Err(e) => {
+                tracing::error!(
+                    "NETWORK environment variable is required but not set: {:?}",
+                    e
+                );
+                panic!("NETWORK must be set");
+            }
+        };
+
+        let oracle_address = match std::env::var("ORACLE_ADDRESS") {
+            Ok(address) => {
+                tracing::info!("Oracle address configured: {}", address);
+                address
+            }
+            Err(e) => {
+                tracing::error!(
+                    "ORACLE_ADDRESS environment variable is required but not set: {:?}",
+                    e
+                );
+                panic!("ORACLE_ADDRESS must be set");
+            }
+        };
+
+        let spot_pairs = match std::env::var("SPOT_PAIRS") {
+            Ok(pairs) => {
+                tracing::info!("Spot pairs configured: {}", pairs);
+                pairs
+            }
+            Err(e) => {
+                tracing::error!(
+                    "SPOT_PAIRS environment variable is required but not set: {:?}",
+                    e
+                );
+                panic!("SPOT_PAIRS must be set");
+            }
+        };
+
+        let future_pairs = match std::env::var("FUTURE_PAIRS") {
+            Ok(pairs) => {
+                tracing::info!("Future pairs configured: {}", pairs);
+                pairs
+            }
+            Err(e) => {
+                tracing::error!(
+                    "FUTURE_PAIRS environment variable is required but not set: {:?}",
+                    e
+                );
+                panic!("FUTURE_PAIRS must be set");
+            }
+        };
 
         Config::new(ConfigInput {
             network: NetworkName::from_str(&network).expect("Invalid network name"),

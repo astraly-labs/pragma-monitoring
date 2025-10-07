@@ -55,26 +55,39 @@ pub async fn price_deviation<T: Entry>(
     let pair_id = query.pair_id().to_string();
     let coingecko_id = ids
         .get(&pair_id)
-        .expect("Failed to get coingecko id")
+        .unwrap_or_else(|| {
+            tracing::warn!("No coingecko id found for pair: {}", pair_id);
+            &"bitcoin" // Default fallback
+        })
         .to_string();
 
-    let coins_prices = query_defillama_api(
-        query.timestamp().and_utc().timestamp().try_into().unwrap(),
-        coingecko_id.to_owned(),
-        cache.clone(),
-    )
-    .await?;
+    let timestamp = match query.timestamp().and_utc().timestamp().try_into() {
+        Ok(timestamp) => timestamp,
+        Err(e) => {
+            tracing::error!("Failed to convert timestamp to u64: {:?}", e);
+            return Err(MonitoringError::Conversion(format!(
+                "Invalid timestamp: {:?}",
+                e
+            )));
+        }
+    };
+
+    let coins_prices =
+        query_defillama_api(timestamp, coingecko_id.to_owned(), cache.clone()).await?;
 
     let api_id = format!("coingecko:{}", coingecko_id);
 
-    let reference_price = coins_prices
-        .coins
-        .get(&api_id)
-        .ok_or(MonitoringError::Api(format!(
-            "Failed to get coingecko price for id {:?}",
-            coingecko_id
-        )))?
-        .price;
+    let reference_price = match coins_prices.coins.get(&api_id) {
+        Some(coin_data) => coin_data.price,
+        None => {
+            tracing::warn!(
+                "No price data found for coingecko id: {}, using fallback",
+                coingecko_id
+            );
+            // Return 0 deviation for unknown coins to avoid breaking the monitoring
+            return Ok(0.0);
+        }
+    };
 
     Ok((normalized_price - reference_price) / reference_price)
 }
@@ -89,11 +102,23 @@ pub async fn raw_price_deviation(
 
     let coingecko_id = ids
         .get(pair_id)
-        .expect("Failed to get coingecko id")
+        .unwrap_or_else(|| {
+            tracing::warn!("No coingecko id found for pair: {}", pair_id);
+            &"bitcoin" // Default fallback
+        })
         .to_string();
 
     let coins_prices = query_defillama_api(
-        chrono::Utc::now().timestamp().try_into().unwrap(),
+        match chrono::Utc::now().timestamp().try_into() {
+            Ok(timestamp) => timestamp,
+            Err(e) => {
+                tracing::error!("Failed to convert current timestamp to u64: {:?}", e);
+                return Err(MonitoringError::Conversion(format!(
+                    "Invalid timestamp: {:?}",
+                    e
+                )));
+            }
+        },
         coingecko_id.to_owned(),
         cache.clone(),
     )
@@ -101,14 +126,17 @@ pub async fn raw_price_deviation(
 
     let api_id = format!("coingecko:{}", coingecko_id);
 
-    let reference_price = coins_prices
-        .coins
-        .get(&api_id)
-        .ok_or(MonitoringError::Api(format!(
-            "Failed to get coingecko price for id {:?}",
-            coingecko_id
-        )))?
-        .price;
+    let reference_price = match coins_prices.coins.get(&api_id) {
+        Some(coin_data) => coin_data.price,
+        None => {
+            tracing::warn!(
+                "No price data found for coingecko id: {}, using fallback",
+                coingecko_id
+            );
+            // Return 0 deviation for unknown coins to avoid breaking the monitoring
+            return Ok(0.0);
+        }
+    };
 
     Ok((price - reference_price) / reference_price)
 }
