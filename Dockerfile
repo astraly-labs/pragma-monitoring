@@ -74,6 +74,4 @@ WORKDIR /app
 
 EXPOSE 8080
 
-ENV RUST_LOG="evian=error,pragma-monitoring=info"
-
 CMD ["/bin/server"]
