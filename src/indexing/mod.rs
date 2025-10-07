@@ -17,6 +17,7 @@ use tokio::task::JoinHandle;
 
 use crate::config::{Config, NetworkName, get_config};
 use crate::schema::{future_entry, mainnet_future_entry, mainnet_spot_entry, spot_entry};
+use starknet::providers::Provider;
 
 /// Starts the Pragma data indexer and returns a receiver for indexed events
 pub async fn start_pragma_indexer() -> Result<(
@@ -54,11 +55,32 @@ pub async fn start_pragma_indexer() -> Result<(
         "Note: Warnings about 'Ignoring event for non-target asset' are expected and normal behavior"
     );
 
-    // Determine starting block
-    let starting_block = get_last_indexed_block(&config).await.unwrap_or(416490); // First oracle deployment block
+    // Determine starting block - use latest block from blockchain if no indexed data
+    let starting_block = match get_last_indexed_block(&config).await {
+        Some(block) => block,
+        None => {
+            tracing::warn!("No indexed blocks found, starting from recent blockchain block");
+            // Get the latest block from the blockchain, but start a few blocks back to catch recent events
+            match get_latest_block_from_blockchain(&config).await {
+                Some(latest) => {
+                    let start_block = if latest > 10 { latest - 10 } else { latest };
+                    tracing::info!(
+                        "Starting from recent block {} (latest: {})",
+                        start_block,
+                        latest
+                    );
+                    start_block
+                }
+                None => {
+                    tracing::warn!("No latest block found, starting from default block 2769044");
+                    2769044
+                }
+            }
+        }
+    };
 
     tracing::info!(
-        "Starting indexer from block {} (oracle deployment block: 416490)",
+        "Starting indexer from block {} (oracle deployment block: 2769044)",
         starting_block
     );
 
@@ -82,7 +104,7 @@ async fn get_last_indexed_block(config: &Config) -> Option<u64> {
     let database_url = match std::env::var("DATABASE_URL") {
         Ok(url) => url,
         Err(_) => {
-            tracing::warn!("DATABASE_URL not set, using default block 416490");
+            tracing::warn!("DATABASE_URL not set, using default block 2769044");
             return None;
         }
     };
@@ -193,9 +215,24 @@ async fn get_last_indexed_block(config: &Config) -> Option<u64> {
         }
         None => {
             tracing::info!(
-                "No indexed blocks found for network: {}, using default 416490",
+                "No indexed blocks found for network: {}, using default 2769044",
                 network_str
             );
+            None
+        }
+    }
+}
+
+/// Gets the latest block number from the blockchain
+async fn get_latest_block_from_blockchain(config: &Config) -> Option<u64> {
+    tracing::info!("Fetching latest block from blockchain...");
+    match config.network().provider.block_number().await {
+        Ok(block_number) => {
+            tracing::info!("Latest blockchain block: {}", block_number);
+            Some(block_number)
+        }
+        Err(e) => {
+            tracing::error!("Failed to get latest block from blockchain: {:?}", e);
             None
         }
     }
