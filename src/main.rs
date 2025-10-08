@@ -191,10 +191,10 @@ async fn spawn_monitoring_tasks(
             name: "Publisher Monitoring".to_string(),
             handle: tokio::spawn(publisher_monitor(pool.clone(), false)),
         },
-        MonitoringTask {
-            name: "API Monitoring".to_string(),
-            handle: tokio::spawn(api_monitor(cache.clone())),
-        },
+        // MonitoringTask {
+        //     name: "API Monitoring".to_string(),
+        //     handle: tokio::spawn(api_monitor(cache.clone())),
+        // },
         MonitoringTask {
             name: "Pragma Indexing".to_string(),
             handle: tokio::spawn(pragma_indexing_monitor(pool.clone())),

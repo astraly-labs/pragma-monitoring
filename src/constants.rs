@@ -17,6 +17,11 @@ pub(crate) static COINGECKO_IDS: phf::Map<&'static str, &'static str> = phf_map!
     "EKUBO/USD" => "ekubo-protocol",
     "XSTRK/USD" => "endur-fi-staked-strk",
     "ETH/STRK" => "ethereum",
+    "LBTC/USD" => "lombard-staked-btc",
+    "UNIBTC/USD" => "universal-btc",
+    "MRE7YIELD/USD" => "midas-mre7yield",
+    "MRE7BTC/USD" => "midas-mre7btc-2",
+    "BROTHER/USDPLUS" => "starknet-brother",
 };
 
 #[allow(unused)]
