@@ -245,10 +245,10 @@ async fn spawn_monitoring_tasks(
             name: "Publisher Monitoring".to_string(),
             handle: tokio::spawn(publisher_monitor(read_pool.clone(), false)),
         },
-        MonitoringTask {
-            name: "API Monitoring".to_string(),
-            handle: tokio::spawn(api_monitor(cache.clone())),
-        },
+        // MonitoringTask {
+        //     name: "API Monitoring".to_string(),
+        //     handle: tokio::spawn(api_monitor(cache.clone())),
+        // },
         MonitoringTask {
             name: "Pragma Indexing".to_string(),
             handle: tokio::spawn(pragma_indexing_monitor(
@@ -272,6 +272,7 @@ async fn handle_task_results(tasks: Vec<MonitoringTask>) {
 }
 
 #[instrument(skip(cache))]
+#[allow(dead_code)]
 pub(crate) async fn api_monitor(cache: Cache<(String, u64), CoinPricesDTO>) {
     let monitoring_config = get_config(None).await;
     tracing::info!("[API] Monitoring API..");
