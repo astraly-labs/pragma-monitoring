@@ -88,6 +88,12 @@ async fn main() {
     // Load environment variables from .env file
     dotenv().ok();
 
+    if env::var("RUST_LOG").is_err() {
+        unsafe {
+            env::set_var("RUST_LOG", "evian=error,pragma_monitoring=info");
+        }
+    }
+
     let otel_endpoint = std::env::var("OTEL_EXPORTER_OTLP_ENDPOINT")
         .unwrap_or_else(|_| "http://localhost:4317".to_string());
     pragma_common::telemetry::init_telemetry("pragma-monitoring", Some(otel_endpoint))
@@ -97,9 +103,10 @@ async fn main() {
     let monitoring_config = get_config(None).await;
     tracing::info!("Successfully fetched config: {:?}", monitoring_config);
 
-    let database_url: String = match env::var("DATABASE_URL") {
+    // Setup write connection pool (primary database)
+    let write_database_url: String = match env::var("DATABASE_URL") {
         Ok(url) => {
-            tracing::info!("Database URL configured successfully");
+            tracing::info!("Write database URL configured successfully");
             url
         }
         Err(e) => {
@@ -111,33 +118,77 @@ async fn main() {
         }
     };
 
-    let config =
-        AsyncDieselConnectionManager::<diesel_async::AsyncPgConnection>::new(database_url.clone());
-    let pool = match Pool::builder(config).max_size(20).build() {
+    let write_config = AsyncDieselConnectionManager::<diesel_async::AsyncPgConnection>::new(
+        write_database_url.clone(),
+    );
+    let write_pool = match Pool::builder(write_config).max_size(20).build() {
         Ok(pool) => {
-            tracing::info!("Database connection pool created successfully");
+            tracing::info!("Write database connection pool created successfully");
             pool
         }
         Err(e) => {
-            tracing::error!("Failed to create database connection pool: {:?}", e);
+            tracing::error!("Failed to create write database connection pool: {:?}", e);
             std::process::exit(1);
         }
     };
 
-    // Test database connectivity before starting monitoring
-    match test_database_connection(&pool).await {
-        Ok(_) => {
-            tracing::info!("Database connectivity test passed");
+    // Setup read connection pool (replica database or same as write if no replica)
+    let read_database_url: String = env::var("DATABASE_READ_URL").unwrap_or_else(|_| {
+        tracing::info!("DATABASE_READ_URL not set, using DATABASE_URL for reads");
+        write_database_url.clone()
+    });
+
+    let read_config = AsyncDieselConnectionManager::<diesel_async::AsyncPgConnection>::new(
+        read_database_url.clone(),
+    );
+    let read_pool = match Pool::builder(read_config).max_size(20).build() {
+        Ok(pool) => {
+            tracing::info!("Read database connection pool created successfully");
+            pool
         }
         Err(e) => {
-            tracing::error!("Database connectivity test failed: {:?}", e);
+            tracing::error!("Failed to create read database connection pool: {:?}", e);
+            std::process::exit(1);
+        }
+    };
+
+    // Get replication delay setting (in milliseconds)
+    let replication_delay_ms: u64 = env::var("REPLICATION_DELAY_MS")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(0);
+
+    if replication_delay_ms > 0 {
+        tracing::info!("Replication delay configured: {}ms", replication_delay_ms);
+    }
+
+    // Test database connectivity before starting monitoring
+    match test_database_connection(&write_pool).await {
+        Ok(_) => {
+            tracing::info!("Write database connectivity test passed");
+        }
+        Err(e) => {
+            tracing::error!("Write database connectivity test failed: {:?}", e);
             tracing::error!("Please check your DATABASE_URL and ensure the database is accessible");
             std::process::exit(1);
         }
     }
 
+    match test_database_connection(&read_pool).await {
+        Ok(_) => {
+            tracing::info!("Read database connectivity test passed");
+        }
+        Err(e) => {
+            tracing::error!("Read database connectivity test failed: {:?}", e);
+            tracing::error!(
+                "Please check your DATABASE_READ_URL and ensure the database is accessible"
+            );
+            std::process::exit(1);
+        }
+    }
+
     // Start health check server
-    let health_pool = pool.clone();
+    let health_pool = read_pool.clone();
     tokio::spawn(async move {
         let app = Router::new()
             .route("/health", get(health_check))
@@ -154,13 +205,16 @@ async fn main() {
     });
 
     // Monitor spot/future in parallel
-    let monitoring_tasks = spawn_monitoring_tasks(pool.clone()).await;
+    let monitoring_tasks =
+        spawn_monitoring_tasks(write_pool.clone(), read_pool.clone(), replication_delay_ms).await;
     handle_task_results(monitoring_tasks).await;
 }
 
 #[instrument(skip_all)]
 async fn spawn_monitoring_tasks(
-    pool: Pool<AsyncDieselConnectionManager<AsyncPgConnection>>,
+    write_pool: Pool<AsyncDieselConnectionManager<AsyncPgConnection>>,
+    read_pool: Pool<AsyncDieselConnectionManager<AsyncPgConnection>>,
+    replication_delay_ms: u64,
 ) -> Vec<MonitoringTask> {
     let cache = Cache::new(10_000);
 
@@ -172,7 +226,7 @@ async fn spawn_monitoring_tasks(
         MonitoringTask {
             name: "Spot Monitoring".to_string(),
             handle: tokio::spawn(onchain_monitor(
-                pool.clone(),
+                read_pool.clone(),
                 true,
                 &DataType::Spot,
                 cache.clone(),
@@ -181,7 +235,7 @@ async fn spawn_monitoring_tasks(
         // MonitoringTask {
         //     name: "Future Monitoring".to_string(),
         //     handle: tokio::spawn(onchain_monitor(
-        //         pool.clone(),
+        //         read_pool.clone(),
         //         true,
         //         &DataType::Future,
         //         cache.clone(),
@@ -189,7 +243,7 @@ async fn spawn_monitoring_tasks(
         // },
         MonitoringTask {
             name: "Publisher Monitoring".to_string(),
-            handle: tokio::spawn(publisher_monitor(pool.clone(), false)),
+            handle: tokio::spawn(publisher_monitor(read_pool.clone(), false)),
         },
         // MonitoringTask {
         //     name: "API Monitoring".to_string(),
@@ -197,7 +251,10 @@ async fn spawn_monitoring_tasks(
         // },
         MonitoringTask {
             name: "Pragma Indexing".to_string(),
-            handle: tokio::spawn(pragma_indexing_monitor(pool.clone())),
+            handle: tokio::spawn(pragma_indexing_monitor(
+                write_pool.clone(),
+                replication_delay_ms,
+            )),
         },
     ];
 
@@ -215,6 +272,7 @@ async fn handle_task_results(tasks: Vec<MonitoringTask>) {
 }
 
 #[instrument(skip(cache))]
+#[allow(dead_code)]
 pub(crate) async fn api_monitor(cache: Cache<(String, u64), CoinPricesDTO>) {
     let monitoring_config = get_config(None).await;
     tracing::info!("[API] Monitoring API..");
@@ -363,8 +421,16 @@ pub(crate) async fn publisher_monitor(
 #[instrument(skip(pool))]
 pub(crate) async fn pragma_indexing_monitor(
     pool: Pool<AsyncDieselConnectionManager<AsyncPgConnection>>,
+    replication_delay_ms: u64,
 ) {
     tracing::info!("[INDEXING] Starting Pragma data indexer..");
+
+    if replication_delay_ms > 0 {
+        tracing::info!(
+            "[INDEXING] Replication delay enabled: {}ms",
+            replication_delay_ms
+        );
+    }
 
     // Set indexer as running
     INTERNAL_INDEXER_TRACKER.set_running(true).await;
@@ -455,6 +521,10 @@ pub(crate) async fn pragma_indexing_monitor(
 
                         if let Err(e) = db_handler.process_indexed_events(std::mem::take(&mut event_batch)).await {
                             tracing::error!("Failed to process indexed events on timeout: {:?}", e);
+                        } else if replication_delay_ms > 0 {
+                            // Wait for replication to catch up after successful write
+                            tracing::debug!("Waiting {}ms for replication after batch write", replication_delay_ms);
+                            sleep(Duration::from_millis(replication_delay_ms)).await;
                         }
                     }
                 }
@@ -492,6 +562,13 @@ pub(crate) async fn pragma_indexing_monitor(
                 {
                     tracing::error!("Failed to process indexed events: {:?}", e);
                     // Continue processing other events even if one batch fails
+                } else if replication_delay_ms > 0 {
+                    // Wait for replication to catch up after successful write
+                    tracing::debug!(
+                        "Waiting {}ms for replication after batch write",
+                        replication_delay_ms
+                    );
+                    sleep(Duration::from_millis(replication_delay_ms)).await;
                 }
             }
         }
