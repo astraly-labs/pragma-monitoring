@@ -31,8 +31,17 @@ You can then access prometheus dashboard at <http://localhost:9000> and grafana 
 Make sure to first fill the envirronement file with your own config parameters:
 
 ```bash
-# The database URL the application will use to connect to the database.
+# The database URL the application will use for writes (primary database).
 DATABASE_URL='postgres://postgres:postgres@localhost:5432/postgres'
+
+# (Optional) The database URL for reads (replica database).
+# If not set, DATABASE_URL will be used for both reads and writes.
+DATABASE_READ_URL='postgres://postgres:postgres@replica:5432/postgres'
+
+# (Optional) Replication delay in milliseconds to wait after writes before reads.
+# Set this if you're using database replication and experiencing read-after-write consistency issues.
+# Default: 0 (no delay)
+REPLICATION_DELAY_MS=100
 
 # The OTEL endpoint to send metrics to.
 OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317
@@ -56,6 +65,19 @@ PAIRS=BTC/USD,ETH/USD
 IGNORE_SOURCES=BITSTAMP,DEFILLAMA
 IGNORE_PUBLISHERS=BINANCE
 ```
+
+### Database Configuration
+
+The monitoring service now supports separate read and write database connections to handle database replication scenarios:
+
+- **Single Database Setup**: If you're using a single database, only set `DATABASE_URL`. The service will use this for both reads and writes.
+
+- **Replicated Database Setup**: If you're using a primary-replica setup:
+  - Set `DATABASE_URL` to your primary (write) database
+  - Set `DATABASE_READ_URL` to your replica (read) database
+  - Set `REPLICATION_DELAY_MS` to a value (e.g., 100-500ms) to wait after writes before reads, allowing replication to catch up
+
+This prevents read-after-write consistency issues where data written to the primary isn't immediately available on the replica.
 
 In order for the full flow to work you will need to have tables following the table schemas defined [here in the schema.rs file](src/schema.rs).
 
