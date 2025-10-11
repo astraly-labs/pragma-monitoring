@@ -1,5 +1,5 @@
 use anyhow::Result;
-use bigdecimal::BigDecimal;
+use bigdecimal::{BigDecimal, ToPrimitive};
 use chrono::{DateTime, NaiveDateTime};
 use deadpool::managed::Pool;
 use diesel::prelude::*;
@@ -8,17 +8,25 @@ use diesel_async::RunQueryDsl;
 use diesel_async::pooled_connection::AsyncDieselConnectionManager;
 use evian::oracles::starknet::pragma::data::indexer::events::{PragmaEvent, SpotEntryEvent};
 use evian::utils::indexer::handler::{OutputEvent, StarknetEventMetadata};
+use moka::future::Cache;
 use std::time::Duration;
 use tokio::time::sleep;
 
-use crate::config::{NetworkName, get_config};
+use crate::config::{DataType, NetworkName, get_config};
 use crate::error::MonitoringError;
 use crate::indexing::status::INTERNAL_INDEXER_TRACKER;
-use crate::monitoring::metrics::MONITORING_METRICS;
+use crate::monitoring::{
+    metrics::MONITORING_METRICS,
+    on_off_deviation::on_off_price_deviation,
+    price_deviation::{CoinPricesDTO, price_deviation},
+    source_deviation::source_deviation,
+    time_since_last_update::time_since_last_update,
+};
 use crate::schema::future_entry::dsl as future_dsl;
 use crate::schema::mainnet_future_entry::dsl as mainnet_future_dsl;
 use crate::schema::mainnet_spot_entry::dsl as mainnet_spot_dsl;
 use crate::schema::spot_entry::dsl as spot_dsl;
+use crate::types::Entry;
 
 // Insertable structs for database operations
 #[derive(Insertable)]
@@ -37,6 +45,236 @@ struct NewSpotEntry {
     source: String,
     volume: BigDecimal,
     _cursor: i64,
+}
+
+async fn compute_spot_metrics(
+    spot_event: SpotEntryEvent,
+    block_number: u64,
+    network_name: NetworkName,
+    cache: Cache<(String, u64), CoinPricesDTO>,
+) -> Result<(), MonitoringError> {
+    if !INTERNAL_INDEXER_TRACKER.is_synced().await {
+        tracing::debug!(
+            "Skipping metrics computation for pair {} because indexer is not synced",
+            spot_event.pair_id
+        );
+        return Ok(());
+    }
+
+    let network_label = match network_name {
+        NetworkName::Mainnet => "Mainnet",
+        NetworkName::Testnet => "Testnet",
+    };
+
+    let config = get_config(None).await;
+
+    let Some(decimals) = config
+        .decimals(DataType::Spot)
+        .get(&spot_event.pair_id)
+        .copied()
+    else {
+        tracing::warn!(
+            "[{}] No decimals configured for pair {}, skipping metrics update",
+            network_label,
+            spot_event.pair_id
+        );
+        return Ok(());
+    };
+
+    let network_env = config.network_str().to_string();
+    drop(config);
+
+    let entry_timestamp = match DateTime::from_timestamp(spot_event.base.timestamp as i64, 0) {
+        Some(dt) => dt.naive_utc(),
+        None => {
+            tracing::warn!(
+                "[{}] Invalid entry timestamp {} for pair {}, skipping metrics update",
+                network_label,
+                spot_event.base.timestamp,
+                spot_event.pair_id
+            );
+            return Err(MonitoringError::InvalidTimestamp(spot_event.base.timestamp));
+        }
+    };
+
+    let price_decimal = BigDecimal::from(spot_event.price);
+    let publisher = spot_event.base.publisher.clone();
+    let record = SpotEntryMetricsRecord {
+        pair_id: spot_event.pair_id.clone(),
+        source: spot_event.base.source.clone(),
+        timestamp: entry_timestamp,
+        block_number: block_number as i64,
+        price: price_decimal.clone(),
+    };
+
+    let time_since_last_update = time_since_last_update(&record);
+    let data_type_label = "spot";
+
+    MONITORING_METRICS
+        .monitoring_metrics
+        .set_time_since_last_update_pair_id(
+            time_since_last_update as f64,
+            &network_env,
+            &record.pair_id,
+            data_type_label,
+        );
+
+    MONITORING_METRICS
+        .monitoring_metrics
+        .set_time_since_last_update_publisher(
+            time_since_last_update as f64,
+            &network_env,
+            &publisher,
+            data_type_label,
+        );
+
+    let Some(raw_price) = price_decimal.to_f64() else {
+        tracing::warn!(
+            "[{}] Failed to convert price to f64 for pair {}, source {}",
+            network_label,
+            record.pair_id,
+            record.source
+        );
+        return Err(MonitoringError::Conversion(
+            "Failed to convert price to f64".to_string(),
+        ));
+    };
+
+    let normalized_price = raw_price / (10_u64.pow(decimals) as f64);
+
+    MONITORING_METRICS.monitoring_metrics.set_pair_price(
+        normalized_price,
+        &network_env,
+        &record.pair_id,
+        &record.source,
+        data_type_label,
+    );
+
+    match price_deviation(&record, normalized_price, cache.clone()).await {
+        Ok(deviation) => {
+            MONITORING_METRICS.monitoring_metrics.set_price_deviation(
+                deviation,
+                &network_env,
+                &record.pair_id,
+                &record.source,
+                data_type_label,
+            );
+        }
+        Err(e) => {
+            tracing::warn!(
+                "[{}] Failed to compute price deviation for pair {}: {:?}",
+                network_label,
+                record.pair_id,
+                e
+            );
+        }
+    }
+
+    match source_deviation(&record, normalized_price).await {
+        Ok((deviation, _)) => {
+            MONITORING_METRICS
+                .monitoring_metrics
+                .set_price_deviation_source(
+                    deviation,
+                    &network_env,
+                    &record.pair_id,
+                    &record.source,
+                    data_type_label,
+                );
+        }
+        Err(e) => {
+            tracing::warn!(
+                "[{}] Failed to compute source deviation for pair {}: {:?}",
+                network_label,
+                record.pair_id,
+                e
+            );
+        }
+    }
+
+    match on_off_price_deviation(
+        record.pair_id.clone(),
+        spot_event.base.timestamp,
+        DataType::Spot,
+        cache.clone(),
+    )
+    .await
+    {
+        Ok((on_off_deviation, num_sources)) => {
+            MONITORING_METRICS
+                .monitoring_metrics
+                .set_on_off_price_deviation(
+                    on_off_deviation,
+                    &network_env,
+                    &record.pair_id,
+                    data_type_label,
+                );
+            MONITORING_METRICS.monitoring_metrics.set_num_sources(
+                num_sources as i64,
+                &network_env,
+                &record.pair_id,
+                data_type_label,
+            );
+        }
+        Err(e) => {
+            tracing::warn!(
+                "[{}] Failed to compute on/off deviation for pair {}: {:?}",
+                network_label,
+                record.pair_id,
+                e
+            );
+        }
+    }
+
+    tracing::debug!(
+        "[{}] Updated spot metrics for pair {}, source {}",
+        network_label,
+        record.pair_id,
+        record.source
+    );
+
+    Ok(())
+}
+
+#[derive(Debug, Clone)]
+struct SpotEntryMetricsRecord {
+    pair_id: String,
+    source: String,
+    timestamp: NaiveDateTime,
+    #[allow(dead_code)]
+    block_number: i64,
+    #[allow(dead_code)]
+    price: BigDecimal,
+}
+
+impl Entry for SpotEntryMetricsRecord {
+    fn pair_id(&self) -> &str {
+        &self.pair_id
+    }
+
+    fn source(&self) -> &str {
+        &self.source
+    }
+
+    fn timestamp(&self) -> NaiveDateTime {
+        self.timestamp
+    }
+
+    fn block_number(&self) -> i64 {
+        self.block_number
+    }
+
+    fn price(&self) -> BigDecimal {
+        self.price.clone()
+    }
+
+    fn expiration_timestamp(&self) -> Option<NaiveDateTime> {
+        None
+    }
+
+    fn data_type(&self) -> DataType {
+        DataType::Spot
+    }
 }
 
 #[derive(Insertable)]
@@ -62,14 +300,19 @@ pub struct DatabaseHandler {
     pool: Pool<AsyncDieselConnectionManager<AsyncPgConnection>>,
     max_retries: u32,
     retry_delay: Duration,
+    cache: Cache<(String, u64), CoinPricesDTO>,
 }
 
 impl DatabaseHandler {
-    pub fn new(pool: Pool<AsyncDieselConnectionManager<AsyncPgConnection>>) -> Self {
+    pub fn new(
+        pool: Pool<AsyncDieselConnectionManager<AsyncPgConnection>>,
+        cache: Cache<(String, u64), CoinPricesDTO>,
+    ) -> Self {
         Self {
             pool,
             max_retries: 3,
             retry_delay: Duration::from_secs(1),
+            cache,
         }
     }
 
@@ -87,7 +330,7 @@ impl DatabaseHandler {
         tracing::info!("Processing batch of {} events", total_events);
 
         let config = get_config(None).await;
-        let network_name = &config.network().name;
+        let network_name = config.network().name.clone();
         let mut events_processed = 0u64;
         let mut failed_events = 0u64;
 
@@ -113,7 +356,7 @@ impl DatabaseHandler {
                                 .insert_spot_entry_with_retry(
                                     spot_event.clone(),
                                     event_metadata,
-                                    network_name,
+                                    &network_name,
                                 )
                                 .await
                             {
@@ -125,6 +368,14 @@ impl DatabaseHandler {
                                         spot_event.base.publisher,
                                         block_number
                                     );
+
+                                    if INTERNAL_INDEXER_TRACKER.is_synced().await {
+                                        self.spawn_spot_metrics_task(
+                                            spot_event.clone(),
+                                            block_number,
+                                            network_name.clone(),
+                                        );
+                                    }
 
                                     // Update status tracker
                                     INTERNAL_INDEXER_TRACKER
@@ -148,6 +399,7 @@ impl DatabaseHandler {
                 }
                 OutputEvent::Synced => {
                     tracing::info!("Indexer is now synced with the blockchain");
+                    INTERNAL_INDEXER_TRACKER.set_synced(true).await;
                 }
                 OutputEvent::Finalized(block_number) => {
                     tracing::debug!("Block {} has been finalized", block_number);
@@ -162,7 +414,7 @@ impl DatabaseHandler {
                     // This is crucial because a reorg can invalidate multiple blocks:
                     // e.g., if we receive Invalidate(42), we might have indexed blocks 42->50,
                     // so we need to delete all events from block 42 onwards (42, 43, 44, ..., 50)
-                    self.delete_invalidated_events(block_number, network_name)
+                    self.delete_invalidated_events(block_number, &network_name)
                         .await?;
 
                     // Update status tracker to reflect the reorg
@@ -196,6 +448,22 @@ impl DatabaseHandler {
         }
 
         Ok(())
+    }
+
+    fn spawn_spot_metrics_task(
+        &self,
+        spot_event: SpotEntryEvent,
+        block_number: u64,
+        network_name: NetworkName,
+    ) {
+        let cache = self.cache.clone();
+        tokio::spawn(async move {
+            if let Err(e) =
+                compute_spot_metrics(spot_event, block_number, network_name, cache).await
+            {
+                tracing::warn!("Failed to compute spot metrics: {:?}", e);
+            }
+        });
     }
 
     /// Inserts a spot entry with retry logic

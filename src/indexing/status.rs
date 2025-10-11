@@ -6,6 +6,7 @@ use tokio::sync::RwLock;
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct InternalIndexerStatus {
     pub is_running: bool,
+    pub is_synced: bool,
     pub last_processed_block: Option<u64>,
     pub events_processed: u64,
     #[serde(skip)]
@@ -37,9 +38,22 @@ impl InternalIndexerTracker {
     pub async fn set_running(&self, running: bool) {
         let mut status = self.status.write().await;
         status.is_running = running;
+        if !running {
+            status.is_synced = false;
+        }
         if running {
             status.last_activity = Some(Instant::now());
         }
+    }
+
+    pub async fn set_synced(&self, synced: bool) {
+        let mut status = self.status.write().await;
+        status.is_synced = synced;
+        status.last_activity = Some(Instant::now());
+    }
+
+    pub async fn is_synced(&self) -> bool {
+        self.status.read().await.is_synced
     }
 
     pub async fn update_processed_block(&self, block_number: u64) {
@@ -76,6 +90,7 @@ impl InternalIndexerTracker {
             );
         }
 
+        status.is_synced = false;
         status.last_activity = Some(Instant::now());
     }
 

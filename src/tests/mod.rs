@@ -168,6 +168,3 @@ pub async fn set_test_config(mock_provider: &MockTestProvider) {
 }
 
 mod common;
-
-#[cfg(test)]
-mod monitoring;

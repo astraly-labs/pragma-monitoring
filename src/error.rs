@@ -6,6 +6,7 @@ use thiserror::Error;
 #[derive(Error, Debug)]
 pub enum MonitoringError {
     #[error("Price error: {0}")]
+    #[allow(dead_code)]
     Price(String),
 
     #[error("Database error: {0}")]

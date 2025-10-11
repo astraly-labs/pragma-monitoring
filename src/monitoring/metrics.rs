@@ -30,11 +30,7 @@ pub struct MonitoringMetricsRegistry {
     pub price_deviation_source: ObservableGauge<f64>,
     pub num_sources: ObservableGauge<i64>,
     pub publisher_balance: ObservableGauge<f64>,
-    pub api_price_deviation: ObservableGauge<f64>,
     pub on_off_price_deviation: ObservableGauge<f64>,
-    pub api_time_since_last_update: ObservableGauge<f64>,
-    pub api_num_sources: ObservableGauge<i64>,
-    pub api_sequencer_deviation: ObservableGauge<f64>,
     pub indexed_events_count: ObservableGauge<i64>,
     pub latest_indexed_block: ObservableGauge<i64>,
 }
@@ -81,33 +77,11 @@ impl MonitoringMetricsRegistry {
             .with_description("Balance of the publisher in ETH")
             .init();
 
-        let api_price_deviation = meter
-            .f64_observable_gauge("api_price_deviation")
-            .with_description(
-                "Price deviation for our API compared to a reference price (DefiLlama)",
-            )
-            .init();
-
         let on_off_price_deviation = meter
             .f64_observable_gauge("on_off_price_deviation")
             .with_description(
                 "Median on chain price deviation compared to a reference price (Defillama)",
             )
-            .init();
-
-        let api_time_since_last_update = meter
-            .f64_observable_gauge("api_time_since_last_update")
-            .with_description("Time since the last update in seconds")
-            .init();
-
-        let api_num_sources = meter
-            .i64_observable_gauge("api_num_sources")
-            .with_description("Number of sources aggregated for a pair")
-            .init();
-
-        let api_sequencer_deviation = meter
-            .f64_observable_gauge("api_sequencer_deviation")
-            .with_description("Price deviation from starknet gateway price")
             .init();
 
         let indexed_events_count = meter
@@ -129,11 +103,7 @@ impl MonitoringMetricsRegistry {
             price_deviation_source,
             num_sources,
             publisher_balance,
-            api_price_deviation,
             on_off_price_deviation,
-            api_time_since_last_update,
-            api_num_sources,
-            api_sequencer_deviation,
             indexed_events_count,
             latest_indexed_block,
         })
@@ -244,16 +214,6 @@ impl MonitoringMetricsRegistry {
         );
     }
 
-    pub fn set_api_price_deviation(&self, value: f64, network: &str, pair: &str) {
-        self.api_price_deviation.observe(
-            value,
-            &[
-                KeyValue::new("network", network.to_string()),
-                KeyValue::new("pair", pair.to_string()),
-            ],
-        );
-    }
-
     pub fn set_on_off_price_deviation(&self, value: f64, network: &str, pair: &str, type_: &str) {
         self.on_off_price_deviation.observe(
             value,
@@ -263,31 +223,6 @@ impl MonitoringMetricsRegistry {
                 KeyValue::new("type", type_.to_string()),
             ],
         );
-    }
-
-    pub fn set_api_time_since_last_update(&self, value: f64, network: &str, pair: &str) {
-        self.api_time_since_last_update.observe(
-            value,
-            &[
-                KeyValue::new("network", network.to_string()),
-                KeyValue::new("pair", pair.to_string()),
-            ],
-        );
-    }
-
-    pub fn set_api_num_sources(&self, value: i64, network: &str, pair: &str) {
-        self.api_num_sources.observe(
-            value,
-            &[
-                KeyValue::new("network", network.to_string()),
-                KeyValue::new("pair", pair.to_string()),
-            ],
-        );
-    }
-
-    pub fn set_api_sequencer_deviation(&self, value: f64, network: &str) {
-        self.api_sequencer_deviation
-            .observe(value, &[KeyValue::new("network", network.to_string())]);
     }
 
     pub fn set_indexed_events_count(

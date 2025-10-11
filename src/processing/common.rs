@@ -6,28 +6,8 @@ use crate::{
     error::MonitoringError,
 };
 use moka::future::Cache;
-use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
-use serde::{Deserialize, Serialize};
 use starknet::core::types::Felt;
 use std::time::Duration;
-
-#[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize)]
-pub struct IndexerServerStatus {
-    pub status: Option<i32>,
-    pub starting_block: Option<u64>,
-    pub current_block: Option<u64>,
-    pub head_block: Option<u64>,
-    #[serde(rename = "reason")]
-    pub reason_: Option<String>,
-}
-
-#[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize)]
-pub struct PragmaDataDTO {
-    pub price: String,
-    pub decimals: u32,
-    pub timestamp: i64,
-    pub num_sources_aggregated: u32,
-}
 
 /// Checks if indexers of the given data type are still syncing
 /// Now checks the internal indexer status
@@ -44,6 +24,12 @@ pub async fn data_is_syncing(data_type: &DataType) -> Result<bool, MonitoringErr
 
     // Check if we have recent activity
     let status = INTERNAL_INDEXER_TRACKER.get_status().await;
+
+    if !status.is_synced {
+        tracing::warn!("[{data_type}] Internal indexer not yet synced");
+        return Ok(true);
+    }
+
     if let Some(last_activity) = status.last_activity
         && last_activity.elapsed() > Duration::from_secs(300)
     {
@@ -104,92 +90,6 @@ pub async fn indexers_are_synced(table_name: &str) -> bool {
             );
             false
         }
-    }
-}
-
-/// Queries Pragma API
-pub async fn query_pragma_api(
-    pair: &str,
-    network_env: &str,
-    aggregation: &str,
-    interval: &str,
-) -> Result<PragmaDataDTO, MonitoringError> {
-    let request_url = match network_env {
-        "Testnet" => format!(
-            "https://api.devnet.pragma.build/node/v1/data/{pair}?aggregation={aggregation}&interval={interval}&routing=true",
-            pair = pair,
-        ),
-        "Mainnet" => format!(
-            "https://api.production.pragma.build/node/v1/data/{pair}?aggregation={aggregation}&interval={interval}&routing=true",
-            pair = pair,
-            aggregation = aggregation,
-            interval = interval,
-        ),
-        _ => {
-            tracing::error!("Invalid network environment: {}", network_env);
-            return Err(MonitoringError::Api(format!(
-                "Invalid network environment: {}",
-                network_env
-            )));
-        }
-    };
-    // Set headers
-    let mut headers = HeaderMap::new();
-    let api_key = match std::env::var("PRAGMA_API_KEY") {
-        Ok(key) => key,
-        Err(e) => {
-            tracing::error!(
-                "PRAGMA_API_KEY environment variable is required but not set: {:?}",
-                e
-            );
-            return Err(MonitoringError::Api(
-                "PRAGMA_API_KEY must be set".to_string(),
-            ));
-        }
-    };
-    headers.insert(
-        HeaderName::from_static("x-api-key"),
-        match HeaderValue::from_str(&api_key) {
-            Ok(value) => value,
-            Err(e) => {
-                tracing::error!("Failed to parse PRAGMA_API_KEY as header value: {:?}", e);
-                return Err(MonitoringError::Api(format!(
-                    "Failed to parse API key: {}",
-                    e
-                )));
-            }
-        },
-    );
-
-    let client = reqwest::Client::builder()
-        .timeout(Duration::from_secs(10))
-        .build()
-        .map_err(|e| MonitoringError::Api(format!("Failed to build HTTP client: {}", e)))?;
-
-    let response = client
-        .get(request_url.clone())
-        .headers(headers)
-        .send()
-        .await
-        .map_err(|e| MonitoringError::Api(e.to_string()))?;
-
-    match response.status() {
-        reqwest::StatusCode::OK => {
-            // on success, parse our JSON to an APIResponse
-            match response.json::<PragmaDataDTO>().await {
-                Ok(parsed) => Ok(parsed),
-                Err(e) => Err(MonitoringError::Api(e.to_string())),
-            }
-        }
-        reqwest::StatusCode::UNAUTHORIZED => Err(MonitoringError::Api("Unauthorized".to_string())),
-        reqwest::StatusCode::NOT_FOUND => {
-            tracing::warn!("Pair {} not found in Pragma API", pair);
-            Err(MonitoringError::Api(format!("Pair {} not found", pair)))
-        }
-        other => Err(MonitoringError::Api(format!(
-            "Unexpected response status: {}",
-            other
-        ))),
     }
 }
 

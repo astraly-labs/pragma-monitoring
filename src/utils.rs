@@ -57,6 +57,7 @@ pub(crate) fn log_monitoring_results(results: HashMap<String, Result<(), tokio::
 }
 
 /// Get database connection with retry logic
+#[allow(dead_code)]
 pub(crate) async fn get_db_connection_with_retry(
     pool: &Pool<AsyncDieselConnectionManager<AsyncPgConnection>>,
     operation: &str,

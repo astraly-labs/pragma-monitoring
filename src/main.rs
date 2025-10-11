@@ -132,26 +132,6 @@ async fn main() {
         }
     };
 
-    // Setup read connection pool (replica database or same as write if no replica)
-    let read_database_url: String = env::var("DATABASE_READ_URL").unwrap_or_else(|_| {
-        tracing::info!("DATABASE_READ_URL not set, using DATABASE_URL for reads");
-        write_database_url.clone()
-    });
-
-    let read_config = AsyncDieselConnectionManager::<diesel_async::AsyncPgConnection>::new(
-        read_database_url.clone(),
-    );
-    let read_pool = match Pool::builder(read_config).max_size(20).build() {
-        Ok(pool) => {
-            tracing::info!("Read database connection pool created successfully");
-            pool
-        }
-        Err(e) => {
-            tracing::error!("Failed to create read database connection pool: {:?}", e);
-            std::process::exit(1);
-        }
-    };
-
     // Get replication delay setting (in milliseconds)
     let replication_delay_ms: u64 = env::var("REPLICATION_DELAY_MS")
         .ok()
@@ -174,21 +154,8 @@ async fn main() {
         }
     }
 
-    match test_database_connection(&read_pool).await {
-        Ok(_) => {
-            tracing::info!("Read database connectivity test passed");
-        }
-        Err(e) => {
-            tracing::error!("Read database connectivity test failed: {:?}", e);
-            tracing::error!(
-                "Please check your DATABASE_READ_URL and ensure the database is accessible"
-            );
-            std::process::exit(1);
-        }
-    }
-
     // Start health check server
-    let health_pool = read_pool.clone();
+    let health_pool = write_pool.clone();
     tokio::spawn(async move {
         let app = Router::new()
             .route("/health", get(health_check))
@@ -205,50 +172,24 @@ async fn main() {
     });
 
     // Monitor spot/future in parallel
-    let monitoring_tasks =
-        spawn_monitoring_tasks(write_pool.clone(), read_pool.clone(), replication_delay_ms).await;
+    let monitoring_tasks = spawn_monitoring_tasks(write_pool.clone(), replication_delay_ms).await;
     handle_task_results(monitoring_tasks).await;
 }
 
 #[instrument(skip_all)]
 async fn spawn_monitoring_tasks(
     write_pool: Pool<AsyncDieselConnectionManager<AsyncPgConnection>>,
-    read_pool: Pool<AsyncDieselConnectionManager<AsyncPgConnection>>,
     replication_delay_ms: u64,
 ) -> Vec<MonitoringTask> {
-    let cache = Cache::new(10_000);
-
     let tasks = vec![
         MonitoringTask {
             name: "Config Update".to_string(),
             handle: tokio::spawn(periodic_config_update()),
         },
         MonitoringTask {
-            name: "Spot Monitoring".to_string(),
-            handle: tokio::spawn(onchain_monitor(
-                read_pool.clone(),
-                true,
-                &DataType::Spot,
-                cache.clone(),
-            )),
+            name: "Publisher Balance".to_string(),
+            handle: tokio::spawn(publisher_balance_monitor(false)),
         },
-        // MonitoringTask {
-        //     name: "Future Monitoring".to_string(),
-        //     handle: tokio::spawn(onchain_monitor(
-        //         read_pool.clone(),
-        //         true,
-        //         &DataType::Future,
-        //         cache.clone(),
-        //     )),
-        // },
-        MonitoringTask {
-            name: "Publisher Monitoring".to_string(),
-            handle: tokio::spawn(publisher_monitor(read_pool.clone(), false)),
-        },
-        // MonitoringTask {
-        //     name: "API Monitoring".to_string(),
-        //     handle: tokio::spawn(api_monitor(cache.clone())),
-        // },
         MonitoringTask {
             name: "Pragma Indexing".to_string(),
             handle: tokio::spawn(pragma_indexing_monitor(
@@ -271,119 +212,11 @@ async fn handle_task_results(tasks: Vec<MonitoringTask>) {
     log_monitoring_results(results);
 }
 
-#[instrument(skip(cache))]
-#[allow(dead_code)]
-pub(crate) async fn api_monitor(cache: Cache<(String, u64), CoinPricesDTO>) {
-    let monitoring_config = get_config(None).await;
-    tracing::info!("[API] Monitoring API..");
+#[instrument]
+pub(crate) async fn publisher_balance_monitor(wait_for_syncing: bool) {
+    tracing::info!("[PUBLISHERS] Monitoring publisher balances..");
 
-    let mut interval = interval(Duration::from_secs(30));
-
-    loop {
-        interval.tick().await; // Wait for the next tick
-
-        let mut tasks: Vec<_> = monitoring_config
-            .sources(DataType::Spot)
-            .iter()
-            .flat_map(|(pair, _)| {
-                let my_cache = cache.clone();
-                vec![tokio::spawn(Box::pin(
-                    processing::api::process_data_by_pair(pair.clone(), my_cache),
-                ))]
-            })
-            .collect();
-
-        tasks.push(tokio::spawn(Box::pin(
-            processing::api::process_sequencer_data(),
-        )));
-
-        let results: Vec<_> = futures::future::join_all(tasks).await;
-        log_tasks_results("API", results);
-    }
-}
-
-#[instrument(skip_all)]
-pub(crate) async fn onchain_monitor(
-    pool: Pool<AsyncDieselConnectionManager<AsyncPgConnection>>,
-    wait_for_syncing: bool,
-    data_type: &DataType,
-    cache: Cache<(String, u64), CoinPricesDTO>,
-) {
-    let mut interval = interval(Duration::from_secs(30));
-
-    loop {
-        interval.tick().await; // Wait for the next tick
-
-        // Skip if indexer is still syncing
-        if wait_for_syncing && !data_indexers_are_synced(data_type).await {
-            tracing::warn!("[{data_type}] Indexers are still syncing");
-            continue;
-        }
-
-        // Get fresh config for each iteration
-        let monitoring_config = get_config(None).await;
-
-        // Clone the sources map before moving into tasks
-        let sources_map = monitoring_config.sources(data_type.clone());
-
-        let tasks: Vec<_> = sources_map
-            .iter()
-            .flat_map(|(pair, sources)| {
-                let pair = pair.clone();
-                let sources = sources.clone();
-                match data_type {
-                    DataType::Spot => {
-                        vec![
-                            tokio::spawn(Box::pin(processing::spot::process_data_by_pair(
-                                pool.clone(),
-                                pair.clone(),
-                                cache.clone(),
-                            ))),
-                            tokio::spawn(Box::pin(
-                                processing::spot::process_data_by_pair_and_sources(
-                                    pool.clone(),
-                                    pair.clone(),
-                                    sources.to_vec(),
-                                    cache.clone(),
-                                ),
-                            )),
-                        ]
-                    }
-                    DataType::Future => {
-                        vec![
-                            tokio::spawn(Box::pin(processing::future::process_data_by_pair(
-                                pool.clone(),
-                                pair.clone(),
-                                cache.clone(),
-                            ))),
-                            tokio::spawn(Box::pin(
-                                processing::future::process_data_by_pair_and_sources(
-                                    pool.clone(),
-                                    pair.clone(),
-                                    sources.to_vec(),
-                                    cache.clone(),
-                                ),
-                            )),
-                        ]
-                    }
-                }
-            })
-            .collect();
-
-        let results: Vec<_> = futures::future::join_all(tasks).await;
-        log_tasks_results(data_type.into(), results);
-    }
-}
-
-#[instrument(skip(pool))]
-pub(crate) async fn publisher_monitor(
-    pool: Pool<AsyncDieselConnectionManager<AsyncPgConnection>>,
-    wait_for_syncing: bool,
-) {
-    tracing::info!("[PUBLISHERS] Monitoring Publishers..");
-
-    let mut interval = interval(Duration::from_secs(30));
-    let monitoring_config: arc_swap::Guard<std::sync::Arc<config::Config>> = get_config(None).await;
+    let mut interval = interval(Duration::from_secs(300));
 
     loop {
         interval.tick().await; // Wait for the next tick
@@ -393,29 +226,26 @@ pub(crate) async fn publisher_monitor(
             continue;
         }
 
-        let tasks: Vec<_> = monitoring_config
+        let config_guard = get_config(None).await;
+        let tasks: Vec<_> = config_guard
             .all_publishers()
             .iter()
-            .flat_map(|(publisher, address)| {
-                vec![
-                    tokio::spawn(Box::pin(check_publisher_balance(
-                        publisher.clone(),
-                        *address,
-                    ))),
-                    tokio::spawn(Box::pin(processing::spot::process_data_by_publisher(
-                        pool.clone(),
-                        publisher.clone(),
-                    ))),
-                    tokio::spawn(Box::pin(processing::future::process_data_by_publisher(
-                        pool.clone(),
-                        publisher.clone(),
-                    ))),
-                ]
+            .map(|(publisher, address)| {
+                tokio::spawn(Box::pin(check_publisher_balance(
+                    publisher.clone(),
+                    *address,
+                )))
             })
             .collect();
 
+        drop(config_guard);
+
+        if tasks.is_empty() {
+            continue;
+        }
+
         let results: Vec<_> = futures::future::join_all(tasks).await;
-        log_tasks_results("PUBLISHERS", results);
+        log_tasks_results("PUBLISHER_BALANCE", results);
     }
 }
 
@@ -435,6 +265,9 @@ pub(crate) async fn pragma_indexing_monitor(
 
     // Set indexer as running
     INTERNAL_INDEXER_TRACKER.set_running(true).await;
+    INTERNAL_INDEXER_TRACKER.set_synced(false).await;
+
+    let cache: Cache<(String, u64), CoinPricesDTO> = Cache::new(10_000);
 
     let mut restart_count = 0;
     const MAX_RESTARTS: u32 = 10; // Increased from 5 to 10
@@ -459,6 +292,7 @@ pub(crate) async fn pragma_indexing_monitor(
 
                 // Record error in status tracker
                 INTERNAL_INDEXER_TRACKER.record_error(error_msg).await;
+                INTERNAL_INDEXER_TRACKER.set_synced(false).await;
 
                 if restart_count >= MAX_RESTARTS {
                     tracing::error!("Max restart attempts reached. Stopping indexer.");
@@ -486,7 +320,7 @@ pub(crate) async fn pragma_indexing_monitor(
         };
 
         // Create database handler
-        let db_handler = DatabaseHandler::new(pool.clone());
+        let db_handler = DatabaseHandler::new(pool.clone(), cache.clone());
 
         // Process events in batches
         let mut event_batch = Vec::new();
@@ -575,6 +409,7 @@ pub(crate) async fn pragma_indexing_monitor(
         }
 
         // Log final statistics
+        INTERNAL_INDEXER_TRACKER.set_synced(false).await;
         tracing::info!(
             "[INDEXING] Indexer session ended. Events processed: {}, Last block: {}",
             events_processed,
