@@ -58,7 +58,7 @@ pub async fn process_data_by_pair(
 
     let seconds_since_last_publish = time_since_last_update(&data);
 
-    // Set time since last update metric
+    // Always set time since last update regardless of price deviation availability
     MONITORING_METRICS
         .monitoring_metrics
         .set_time_since_last_update_pair_id(
@@ -68,24 +68,32 @@ pub async fn process_data_by_pair(
             data_type,
         );
 
-    let (on_off_deviation, num_sources_aggregated) = on_off_price_deviation(
+    // Try to get on-off price deviation, but don't fail if pair is not supported
+    match on_off_price_deviation(
         pair.clone(),
         data.timestamp.and_utc().timestamp() as u64,
         DataType::Future,
         cache,
     )
-    .await?;
-
-    // Set on/off deviation and num sources metrics
-    MONITORING_METRICS
-        .monitoring_metrics
-        .set_on_off_price_deviation(on_off_deviation, network_env, &pair, data_type);
-    MONITORING_METRICS.monitoring_metrics.set_num_sources(
-        num_sources_aggregated as i64,
-        network_env,
-        &pair,
-        data_type,
-    );
+    .await
+    {
+        Ok((on_off_deviation, num_sources_aggregated)) => {
+            // Set metrics only if we successfully got the data
+            MONITORING_METRICS
+                .monitoring_metrics
+                .set_on_off_price_deviation(on_off_deviation, network_env, &pair, data_type);
+            MONITORING_METRICS.monitoring_metrics.set_num_sources(
+                num_sources_aggregated as i64,
+                network_env,
+                &pair,
+                data_type,
+            );
+        }
+        Err(e) => {
+            tracing::warn!("Failed to calculate on-off price deviation for {}: {:?}. Skipping metric update.", pair, e);
+            // Don't fail the entire function, just skip the metric
+        }
+    }
 
     Ok(seconds_since_last_publish)
 }

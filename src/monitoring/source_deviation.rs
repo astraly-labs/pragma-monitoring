@@ -7,6 +7,8 @@ use starknet::{
     macros::selector,
     providers::Provider,
 };
+use std::time::Duration;
+use tokio::time::timeout;
 
 use crate::{config::get_config, error::MonitoringError, types::Entry, utils::try_felt_to_u32};
 
@@ -22,25 +24,35 @@ pub async fn source_deviation<T: Entry>(
     let field_pair =
         cairo_short_string_to_felt(query.pair_id()).expect("failed to convert pair id");
 
-    let data = match client
-        .call(
-            FunctionCall {
-                contract_address: config.network().oracle_address,
-                entry_point_selector: selector!("get_data_median"),
-                calldata: vec![Felt::ZERO, field_pair],
-            },
-            BlockId::Tag(BlockTag::Latest),
-        )
-        .await
-    {
-        Ok(data) => data,
-        Err(e) => {
+    // Add timeout to RPC call (10 seconds)
+    let rpc_call = client.call(
+        FunctionCall {
+            contract_address: config.network().oracle_address,
+            entry_point_selector: selector!("get_data_median"),
+            calldata: vec![Felt::ZERO, field_pair],
+        },
+        BlockId::Tag(BlockTag::Latest),
+    );
+
+    let data = match timeout(Duration::from_secs(10), rpc_call).await {
+        Ok(Ok(data)) => data,
+        Ok(Err(e)) => {
             tracing::warn!(
                 "Failed to get data median for pair {}: {:?}",
                 query.pair_id(),
                 e
             );
             return Err(MonitoringError::OnChain(e.to_string()));
+        }
+        Err(_) => {
+            tracing::warn!(
+                "RPC call timeout for pair {}: exceeded 10 seconds",
+                query.pair_id()
+            );
+            return Err(MonitoringError::OnChain(format!(
+                "RPC call timeout for pair {}",
+                query.pair_id()
+            )));
         }
     };
 

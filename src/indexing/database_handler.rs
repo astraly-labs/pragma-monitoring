@@ -214,7 +214,7 @@ impl DatabaseHandler {
             {
                 Ok(()) => {
                     if attempt > 1 {
-                        tracing::info!(
+                        tracing::debug!(
                             "Successfully inserted spot entry after {} attempts",
                             attempt
                         );
@@ -412,7 +412,7 @@ impl DatabaseHandler {
             .monitoring_metrics
             .set_latest_indexed_block(event_metadata.block_number, network_str);
 
-        tracing::info!(
+        tracing::debug!(
             "Successfully inserted spot entry: pair={}, publisher={}, price={}, volume={}, block={}",
             pair_id,
             publisher,

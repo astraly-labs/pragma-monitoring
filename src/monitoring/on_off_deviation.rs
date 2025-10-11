@@ -8,6 +8,8 @@ use starknet::{
     macros::selector,
     providers::Provider,
 };
+use std::time::Duration;
+use tokio::time::timeout;
 
 use crate::processing::common::query_defillama_api;
 use crate::{
@@ -48,21 +50,28 @@ pub async fn on_off_price_deviation(
         DataType::Future => vec![Felt::ONE, field_pair, Felt::ZERO],
     };
 
-    let data = match client
-        .call(
-            FunctionCall {
-                contract_address: config.network().oracle_address,
-                entry_point_selector: selector!("get_data_median"),
-                calldata,
-            },
-            BlockId::Tag(BlockTag::Latest),
-        )
-        .await
-    {
-        Ok(data) => data,
-        Err(e) => {
+    // Add timeout to RPC call (10 seconds)
+    let rpc_call = client.call(
+        FunctionCall {
+            contract_address: config.network().oracle_address,
+            entry_point_selector: selector!("get_data_median"),
+            calldata,
+        },
+        BlockId::Tag(BlockTag::Latest),
+    );
+
+    let data = match timeout(Duration::from_secs(10), rpc_call).await {
+        Ok(Ok(data)) => data,
+        Ok(Err(e)) => {
             tracing::warn!("Failed to get data median for pair {}: {:?}", pair_id, e);
             return Err(MonitoringError::OnChain(e.to_string()));
+        }
+        Err(_) => {
+            tracing::warn!("RPC call timeout for pair {}: exceeded 10 seconds", pair_id);
+            return Err(MonitoringError::OnChain(format!(
+                "RPC call timeout for pair {}",
+                pair_id
+            )));
         }
     };
 
@@ -87,24 +96,39 @@ pub async fn on_off_price_deviation(
 
     let (deviation, num_sources_aggregated) = match data_type {
         DataType::Spot => {
-            let coingecko_id = ids
-                .get(&pair_id)
-                .expect("Failed to get coingecko id")
-                .to_string();
+            // Check if coingecko_id exists, skip gracefully if not
+            let coingecko_id = match ids.get(&pair_id) {
+                Some(id) => id.to_string(),
+                None => {
+                    tracing::warn!(
+                        "No coingecko_id mapping found for pair: {}. Skipping price deviation calculation.",
+                        pair_id
+                    );
+                    return Err(MonitoringError::Api(format!(
+                        "No coingecko_id mapping for pair: {}",
+                        pair_id
+                    )));
+                }
+            };
 
             let coins_prices =
                 query_defillama_api(timestamp, coingecko_id.to_owned(), cache.clone()).await?;
 
             let api_id = format!("coingecko:{}", coingecko_id);
 
-            let reference_price = coins_prices
-                .get_coins()
-                .get(&api_id)
-                .ok_or(MonitoringError::Api(format!(
-                    "Failed to get coingecko price for id {:?}",
-                    coingecko_id
-                )))?
-                .get_price();
+            let reference_price = match coins_prices.get_coins().get(&api_id) {
+                Some(coin_data) => coin_data.get_price(),
+                None => {
+                    tracing::warn!(
+                        "No price data found in DefiLlama response for coingecko id: {}. Skipping deviation.",
+                        coingecko_id
+                    );
+                    return Err(MonitoringError::Api(format!(
+                        "No price data for coingecko_id: {}",
+                        coingecko_id
+                    )));
+                }
+            };
 
             let deviation = (reference_price - on_chain_price) / on_chain_price;
             let num_sources = data.get(3).unwrap();

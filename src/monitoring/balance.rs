@@ -4,6 +4,8 @@ use starknet::{
     macros::selector,
     providers::Provider,
 };
+use std::time::Duration;
+use tokio::time::timeout;
 
 use crate::constants::{FEE_TOKEN_ADDRESS, FEE_TOKEN_DECIMALS};
 use crate::{config::get_config, error::MonitoringError};
@@ -14,21 +16,28 @@ pub async fn get_on_chain_balance(address: Felt) -> Result<f64, MonitoringError>
     let config = get_config(None).await;
 
     let client = &config.network().provider;
-    let token_balance = match client
-        .call(
-            FunctionCall {
-                contract_address: Felt::from_hex_unchecked(FEE_TOKEN_ADDRESS),
-                entry_point_selector: selector!("balanceOf"),
-                calldata: vec![address],
-            },
-            BlockId::Tag(BlockTag::Latest),
-        )
-        .await
-    {
-        Ok(balance) => balance,
-        Err(e) => {
+
+    // Add timeout to RPC call (10 seconds)
+    let rpc_call = client.call(
+        FunctionCall {
+            contract_address: Felt::from_hex_unchecked(FEE_TOKEN_ADDRESS),
+            entry_point_selector: selector!("balanceOf"),
+            calldata: vec![address],
+        },
+        BlockId::Tag(BlockTag::Latest),
+    );
+
+    let token_balance = match timeout(Duration::from_secs(10), rpc_call).await {
+        Ok(Ok(balance)) => balance,
+        Ok(Err(e)) => {
             tracing::warn!("Failed to get balance for address {}: {:?}", address, e);
             return Err(MonitoringError::OnChain(e.to_string()));
+        }
+        Err(_) => {
+            tracing::warn!("RPC call timeout for balance check: exceeded 10 seconds");
+            return Err(MonitoringError::OnChain(
+                "RPC call timeout for balance check".to_string(),
+            ));
         }
     };
 

@@ -5,6 +5,7 @@ use moka::future::Cache;
 use num_bigint::BigInt;
 use starknet::core::types::{BlockId, BlockTag};
 use starknet::providers::{JsonRpcClient, Provider, jsonrpc::HttpTransport};
+use tokio::time::timeout;
 
 use crate::{
     config::get_config,
@@ -144,13 +145,21 @@ pub async fn process_sequencer_data() -> Result<(), MonitoringError> {
         },
     )?));
 
-    let block = match provider
-        .get_block_with_tx_hashes(BlockId::Tag(BlockTag::Latest))
-        .await
-    {
-        Ok(block) => block,
-        Err(e) => {
+    // Add timeout to RPC call (10 seconds)
+    let rpc_call = provider.get_block_with_tx_hashes(BlockId::Tag(BlockTag::Latest));
+
+    let block = match timeout(Duration::from_secs(10), rpc_call).await {
+        Ok(Ok(block)) => block,
+        Ok(Err(e)) => {
             tracing::warn!("Failed to get block from RPC provider: {:?}", e);
+            // Set a default deviation of 0 to avoid missing metrics
+            MONITORING_METRICS
+                .monitoring_metrics
+                .set_api_sequencer_deviation(0.0, network_env);
+            return Ok(());
+        }
+        Err(_) => {
+            tracing::warn!("RPC call timeout for get_block: exceeded 10 seconds");
             // Set a default deviation of 0 to avoid missing metrics
             MONITORING_METRICS
                 .monitoring_metrics

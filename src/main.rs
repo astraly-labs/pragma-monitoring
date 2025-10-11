@@ -316,6 +316,7 @@ pub(crate) async fn onchain_monitor(
 
         // Skip if indexer is still syncing
         if wait_for_syncing && !data_indexers_are_synced(data_type).await {
+            tracing::warn!("[{data_type}] Indexers are still syncing");
             continue;
         }
 

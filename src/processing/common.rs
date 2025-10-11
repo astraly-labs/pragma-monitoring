@@ -161,7 +161,11 @@ pub async fn query_pragma_api(
         },
     );
 
-    let client = reqwest::Client::new();
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(10))
+        .build()
+        .map_err(|e| MonitoringError::Api(format!("Failed to build HTTP client: {}", e)))?;
+
     let response = client
         .get(request_url.clone())
         .headers(headers)
@@ -220,7 +224,15 @@ pub async fn query_defillama_api(
         )
     };
 
-    let response = reqwest::get(&request_url)
+    // Create client with timeout
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(10))
+        .build()
+        .map_err(|e| MonitoringError::Api(format!("Failed to build HTTP client: {}", e)))?;
+
+    let response = client
+        .get(&request_url)
+        .send()
         .await
         .map_err(|e| MonitoringError::Api(e.to_string()))?;
 
