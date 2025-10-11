@@ -36,7 +36,7 @@ use diesel_async::RunQueryDsl;
 use diesel_async::pooled_connection::AsyncDieselConnectionManager;
 use dotenv::dotenv;
 use moka::future::Cache;
-use monitoring::price_deviation::CoinPricesDTO;
+use monitoring::{last_update, price_deviation::CoinPricesDTO};
 use serde_json::{Value, json};
 use tokio::task::JoinHandle;
 use tokio::time::interval;
@@ -187,6 +187,10 @@ async fn spawn_monitoring_tasks(
             handle: tokio::spawn(periodic_config_update()),
         },
         MonitoringTask {
+            name: "Last Update Metrics".to_string(),
+            handle: last_update::spawn_refresh_task(Duration::from_secs(30)),
+        },
+        MonitoringTask {
             name: "Publisher Balance".to_string(),
             handle: tokio::spawn(publisher_balance_monitor(false)),
         },
@@ -267,7 +271,10 @@ pub(crate) async fn pragma_indexing_monitor(
     INTERNAL_INDEXER_TRACKER.set_running(true).await;
     INTERNAL_INDEXER_TRACKER.set_synced(false).await;
 
-    let cache: Cache<(String, u64), CoinPricesDTO> = Cache::new(10_000);
+    let cache: Cache<(String, u64), CoinPricesDTO> = Cache::builder()
+        .time_to_live(Duration::from_secs(30))
+        .max_capacity(10_000)
+        .build();
 
     let mut restart_count = 0;
     const MAX_RESTARTS: u32 = 10; // Increased from 5 to 10

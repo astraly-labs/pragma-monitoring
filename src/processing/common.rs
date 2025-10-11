@@ -105,7 +105,6 @@ pub async fn query_defillama_api(
     let api_key = std::env::var("DEFILLAMA_API_KEY");
 
     if let Some(cached_value) = cache.get(&(coingecko_id.clone(), timestamp)).await {
-        tracing::info!("Using cached defillama value..");
         return Ok(cached_value);
     }
 

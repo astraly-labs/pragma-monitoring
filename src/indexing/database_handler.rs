@@ -16,6 +16,7 @@ use crate::config::{DataType, NetworkName, get_config};
 use crate::error::MonitoringError;
 use crate::indexing::status::INTERNAL_INDEXER_TRACKER;
 use crate::monitoring::{
+    last_update::LAST_UPDATE_TRACKER,
     metrics::MONITORING_METRICS,
     on_off_deviation::on_off_price_deviation,
     price_deviation::{CoinPricesDTO, price_deviation},
@@ -109,6 +110,23 @@ async fn compute_spot_metrics(
 
     let time_since_last_update = time_since_last_update(&record);
     let data_type_label = "spot";
+
+    LAST_UPDATE_TRACKER
+        .record_pair_update(
+            &network_env,
+            &record.pair_id,
+            data_type_label,
+            spot_event.base.timestamp,
+        )
+        .await;
+    LAST_UPDATE_TRACKER
+        .record_publisher_update(
+            &network_env,
+            &publisher,
+            data_type_label,
+            spot_event.base.timestamp,
+        )
+        .await;
 
     MONITORING_METRICS
         .monitoring_metrics
