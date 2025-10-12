@@ -4,8 +4,10 @@
 
 This service runs an OTEL exporter.
 
-This service polls at a regular interval the database that is filled by our indexers.
-It then processes the data and computes the following metrics:
+An integrated Starknet indexer streams oracle events directly into the database. Metrics are
+computed on the fly as each event is indexed, and a lightweight background task continuously
+refreshes “time since last update” gauges so they keep increasing even when no new data arrives.
+The exporter exposes the following metrics:
 
 - `time_since_last_update_seconds{network, publisher, typr}`: Time since a publisher has published any data. (in seconds)
 - `pair_price{network, pair, source, type}`: Latest price of an asset for a given source and pair. (normalized to asset's decimals)
@@ -34,12 +36,7 @@ Make sure to first fill the envirronement file with your own config parameters:
 # The database URL the application will use for writes (primary database).
 DATABASE_URL='postgres://postgres:postgres@localhost:5432/postgres'
 
-# (Optional) The database URL for reads (replica database).
-# If not set, DATABASE_URL will be used for both reads and writes.
-DATABASE_READ_URL='postgres://postgres:postgres@replica:5432/postgres'
-
 # (Optional) Replication delay in milliseconds to wait after writes before reads.
-# Set this if you're using database replication and experiencing read-after-write consistency issues.
 # Default: 0 (no delay)
 REPLICATION_DELAY_MS=100
 
@@ -66,19 +63,12 @@ IGNORE_SOURCES=BITSTAMP,DEFILLAMA
 IGNORE_PUBLISHERS=BINANCE
 ```
 
-### Database Configuration
+### Notes
 
-The monitoring service now supports separate read and write database connections to handle database replication scenarios:
-
-- **Single Database Setup**: If you're using a single database, only set `DATABASE_URL`. The service will use this for both reads and writes.
-
-- **Replicated Database Setup**: If you're using a primary-replica setup:
-  - Set `DATABASE_URL` to your primary (write) database
-  - Set `DATABASE_READ_URL` to your replica (read) database
-  - Set `REPLICATION_DELAY_MS` to a value (e.g., 100-500ms) to wait after writes before reads, allowing replication to catch up
-
-This prevents read-after-write consistency issues where data written to the primary isn't immediately available on the replica.
+- Metrics are driven directly from indexed events; no scheduled database polling is required.
+- “Time since last update” gauges are recomputed every 30 seconds so alerts can trigger even when no new events are received.
+- DefiLlama quotes are cached for 30 seconds to avoid rate limits while keeping recent pricing information.
 
 In order for the full flow to work you will need to have tables following the table schemas defined [here in the schema.rs file](src/schema.rs).
 
-The monitoring service now includes integrated indexing functionality, so no separate indexer service is needed.
+The monitoring service includes integrated indexing functionality, so no separate indexer service is needed.
