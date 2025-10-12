@@ -1,6 +1,6 @@
 use anyhow::Result;
 use bigdecimal::{BigDecimal, ToPrimitive};
-use chrono::{DateTime, NaiveDateTime};
+use chrono::{DateTime, NaiveDateTime, Utc};
 use deadpool::managed::Pool;
 use diesel::prelude::*;
 use diesel_async::AsyncPgConnection;
@@ -21,7 +21,6 @@ use crate::monitoring::{
     on_off_deviation::on_off_price_deviation,
     price_deviation::{CoinPricesDTO, price_deviation},
     source_deviation::source_deviation,
-    time_since_last_update::time_since_last_update,
 };
 use crate::schema::future_entry::dsl as future_dsl;
 use crate::schema::mainnet_future_entry::dsl as mainnet_future_dsl;
@@ -83,6 +82,7 @@ async fn compute_spot_metrics(
     };
 
     let network_env = config.network_str().to_string();
+    let data_type_label = "spot";
     drop(config);
 
     let entry_timestamp = match DateTime::from_timestamp(spot_event.base.timestamp as i64, 0) {
@@ -99,7 +99,6 @@ async fn compute_spot_metrics(
     };
 
     let price_decimal = BigDecimal::from(spot_event.price);
-    let publisher = spot_event.base.publisher.clone();
     let record = SpotEntryMetricsRecord {
         pair_id: spot_event.pair_id.clone(),
         source: spot_event.base.source.clone(),
@@ -107,44 +106,6 @@ async fn compute_spot_metrics(
         block_number: block_number as i64,
         price: price_decimal.clone(),
     };
-
-    let time_since_last_update = time_since_last_update(&record);
-    let data_type_label = "spot";
-
-    LAST_UPDATE_TRACKER
-        .record_pair_update(
-            &network_env,
-            &record.pair_id,
-            data_type_label,
-            spot_event.base.timestamp,
-        )
-        .await;
-    LAST_UPDATE_TRACKER
-        .record_publisher_update(
-            &network_env,
-            &publisher,
-            data_type_label,
-            spot_event.base.timestamp,
-        )
-        .await;
-
-    MONITORING_METRICS
-        .monitoring_metrics
-        .set_time_since_last_update_pair_id(
-            time_since_last_update as f64,
-            &network_env,
-            &record.pair_id,
-            data_type_label,
-        );
-
-    MONITORING_METRICS
-        .monitoring_metrics
-        .set_time_since_last_update_publisher(
-            time_since_last_update as f64,
-            &network_env,
-            &publisher,
-            data_type_label,
-        );
 
     let Some(raw_price) = price_decimal.to_f64() else {
         tracing::warn!(
@@ -387,6 +348,8 @@ impl DatabaseHandler {
                                         block_number
                                     );
 
+                                    self.update_time_metrics(&spot_event, &network_name).await;
+
                                     if INTERNAL_INDEXER_TRACKER.is_synced().await {
                                         self.spawn_spot_metrics_task(
                                             spot_event.clone(),
@@ -482,6 +445,158 @@ impl DatabaseHandler {
                 tracing::warn!("Failed to compute spot metrics: {:?}", e);
             }
         });
+    }
+
+    async fn update_time_metrics(&self, spot_event: &SpotEntryEvent, network_name: &NetworkName) {
+        let network_label = match network_name {
+            NetworkName::Mainnet => "Mainnet",
+            NetworkName::Testnet => "Testnet",
+        };
+        let data_type_label = "spot";
+
+        LAST_UPDATE_TRACKER
+            .record_pair_update(
+                network_label,
+                &spot_event.pair_id,
+                data_type_label,
+                spot_event.base.timestamp,
+            )
+            .await;
+
+        LAST_UPDATE_TRACKER
+            .record_publisher_update(
+                network_label,
+                &spot_event.base.publisher,
+                data_type_label,
+                spot_event.base.timestamp,
+            )
+            .await;
+
+        MONITORING_METRICS
+            .monitoring_metrics
+            .set_time_since_last_update_pair_id(
+                0.0,
+                network_label,
+                &spot_event.pair_id,
+                data_type_label,
+            );
+        MONITORING_METRICS
+            .monitoring_metrics
+            .set_time_since_last_update_publisher(
+                0.0,
+                network_label,
+                &spot_event.base.publisher,
+                data_type_label,
+            );
+    }
+
+    async fn rebuild_last_update_state(
+        &self,
+        network_name: &NetworkName,
+    ) -> Result<(), MonitoringError> {
+        use diesel::dsl::max;
+
+        let network_label = match network_name {
+            NetworkName::Mainnet => "Mainnet",
+            NetworkName::Testnet => "Testnet",
+        };
+        let data_type_label = "spot";
+
+        let mut conn = self.pool.get().await.map_err(MonitoringError::Connection)?;
+
+        let pair_rows: Vec<(String, Option<NaiveDateTime>)> = match network_name {
+            NetworkName::Mainnet => mainnet_spot_dsl::mainnet_spot_entry
+                .filter(mainnet_spot_dsl::network.eq(network_label))
+                .group_by(mainnet_spot_dsl::pair_id)
+                .select((mainnet_spot_dsl::pair_id, max(mainnet_spot_dsl::timestamp)))
+                .load(&mut conn)
+                .await
+                .map_err(MonitoringError::Database)?,
+            NetworkName::Testnet => spot_dsl::spot_entry
+                .filter(spot_dsl::network.eq(network_label))
+                .group_by(spot_dsl::pair_id)
+                .select((spot_dsl::pair_id, max(spot_dsl::timestamp)))
+                .load(&mut conn)
+                .await
+                .map_err(MonitoringError::Database)?,
+        };
+
+        let publisher_rows: Vec<(String, Option<NaiveDateTime>)> = match network_name {
+            NetworkName::Mainnet => mainnet_spot_dsl::mainnet_spot_entry
+                .filter(mainnet_spot_dsl::network.eq(network_label))
+                .group_by(mainnet_spot_dsl::publisher)
+                .select((
+                    mainnet_spot_dsl::publisher,
+                    max(mainnet_spot_dsl::timestamp),
+                ))
+                .load(&mut conn)
+                .await
+                .map_err(MonitoringError::Database)?,
+            NetworkName::Testnet => spot_dsl::spot_entry
+                .filter(spot_dsl::network.eq(network_label))
+                .group_by(spot_dsl::publisher)
+                .select((spot_dsl::publisher, max(spot_dsl::timestamp)))
+                .load(&mut conn)
+                .await
+                .map_err(MonitoringError::Database)?,
+        };
+
+        drop(conn);
+
+        let mut pair_updates: Vec<(String, u64)> = Vec::new();
+        for (pair_id, timestamp) in pair_rows {
+            if let Some(ts) = timestamp {
+                let ts_sec = ts.and_utc().timestamp();
+                if ts_sec >= 0 {
+                    pair_updates.push((pair_id, ts_sec as u64));
+                }
+            }
+        }
+
+        let mut publisher_updates: Vec<(String, u64)> = Vec::new();
+        for (publisher, timestamp) in publisher_rows {
+            if let Some(ts) = timestamp {
+                let ts_sec = ts.and_utc().timestamp();
+                if ts_sec >= 0 {
+                    publisher_updates.push((publisher, ts_sec as u64));
+                }
+            }
+        }
+
+        LAST_UPDATE_TRACKER
+            .set_pair_updates(network_label, data_type_label, &pair_updates)
+            .await;
+        LAST_UPDATE_TRACKER
+            .set_publisher_updates(network_label, data_type_label, &publisher_updates)
+            .await;
+
+        let now = Utc::now().timestamp().max(0) as u64;
+
+        for (pair_id, ts) in &pair_updates {
+            let elapsed = now.saturating_sub(*ts) as f64;
+            MONITORING_METRICS
+                .monitoring_metrics
+                .set_time_since_last_update_pair_id(
+                    elapsed,
+                    network_label,
+                    pair_id,
+                    data_type_label,
+                );
+        }
+
+        for (publisher, ts) in &publisher_updates {
+            let elapsed = now.saturating_sub(*ts) as f64;
+            MONITORING_METRICS
+                .monitoring_metrics
+                .set_time_since_last_update_publisher(
+                    elapsed,
+                    network_label,
+                    publisher,
+                    data_type_label,
+                );
+        }
+
+        Ok(())
     }
 
     /// Inserts a spot entry with retry logic
@@ -897,6 +1012,8 @@ impl DatabaseHandler {
                 new_latest_block
             );
         }
+
+        self.rebuild_last_update_state(network_name).await?;
 
         Ok(())
     }

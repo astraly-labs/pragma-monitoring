@@ -75,6 +75,32 @@ impl LastUpdateTracker {
         guard.insert(PublisherKey::new(network, publisher, data_type), timestamp);
     }
 
+    pub async fn set_pair_updates(
+        &self,
+        network: &str,
+        data_type: &str,
+        entries: &[(String, u64)],
+    ) {
+        let mut guard = self.pair_updates.write().await;
+        guard.retain(|key, _| !(key.network == network && key.data_type == data_type));
+        for (pair, timestamp) in entries {
+            guard.insert(PairKey::new(network, pair, data_type), *timestamp);
+        }
+    }
+
+    pub async fn set_publisher_updates(
+        &self,
+        network: &str,
+        data_type: &str,
+        entries: &[(String, u64)],
+    ) {
+        let mut guard = self.publisher_updates.write().await;
+        guard.retain(|key, _| !(key.network == network && key.data_type == data_type));
+        for (publisher, timestamp) in entries {
+            guard.insert(PublisherKey::new(network, publisher, data_type), *timestamp);
+        }
+    }
+
     pub async fn refresh_metrics(&self) {
         let now = Utc::now().timestamp();
         if now <= 0 {
