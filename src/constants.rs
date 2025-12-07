@@ -28,6 +28,6 @@ pub(crate) static COINGECKO_IDS: phf::Map<&'static str, &'static str> = phf_map!
 pub const FEE_TOKEN_DECIMALS: u32 = 18;
 #[allow(unused)]
 pub const FEE_TOKEN_ADDRESS: &str =
-    "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7";
+    "0x04718f5a0Fc34cC1AF16A1cdee98fFB20C31f5cD61D6Ab07201858f4287c938D";
 
 pub const CONFIG_UPDATE_INTERVAL: u64 = 3 * 3600;
