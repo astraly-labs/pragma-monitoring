@@ -16,6 +16,7 @@ pub async fn get_on_chain_balance(address: Felt) -> Result<f64, MonitoringError>
     let config = get_config(None).await;
 
     let client = &config.network().provider;
+    tracing::info!("🧠 Getting on-chain balance for address {} with token address {}", address, FEE_TOKEN_ADDRESS);
 
     // Add timeout to RPC call (10 seconds)
     let rpc_call = client.call(
