@@ -164,6 +164,8 @@ pub async fn check_publisher_balance(
 
     let network_env = &config.network_str();
 
+    tracing::info!("Publisher balance: {} STRK", balance);
+
     MONITORING_METRICS
         .monitoring_metrics
         .set_publisher_balance(balance, network_env, &publisher);

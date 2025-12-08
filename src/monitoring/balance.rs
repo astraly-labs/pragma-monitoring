@@ -12,10 +12,12 @@ use crate::{config::get_config, error::MonitoringError};
 
 /// Returns the balance of a given adress
 /// Note: Currently only reads ETH balance
+#[tracing::instrument(skip(address))]
 pub async fn get_on_chain_balance(address: Felt) -> Result<f64, MonitoringError> {
     let config = get_config(None).await;
 
     let client = &config.network().provider;
+    tracing::info!("Client chain id : {:?}", client.chain_id().await.unwrap());
     tracing::info!("🧠 Getting on-chain balance for address {} with token address {}", address, FEE_TOKEN_ADDRESS);
 
     // Add timeout to RPC call (10 seconds)
@@ -54,3 +56,4 @@ pub async fn get_on_chain_balance(address: Felt) -> Result<f64, MonitoringError>
 
     Ok(on_chain_balance)
 }
+
