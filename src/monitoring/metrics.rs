@@ -88,9 +88,9 @@ impl MonitoringMetricsRegistry {
 
         // === Publisher metrics ===
         let publisher_balance = meter
-            .f64_gauge("pragma_publisher_balance_eth")
-            .with_description("Publisher ETH balance for gas")
-            .with_unit("ETH")
+            .f64_gauge("pragma_publisher_balance_strk")
+            .with_description("Publisher STRK balance for gas")
+            .with_unit("STRK")
             .init();
 
         // === Indexer metrics ===

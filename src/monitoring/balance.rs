@@ -11,7 +11,7 @@ use crate::constants::{FEE_TOKEN_ADDRESS, FEE_TOKEN_DECIMALS};
 use crate::{config::get_config, error::MonitoringError};
 
 /// Returns the balance of a given adress
-/// Note: Currently only reads ETH balance
+/// Note: Currently only reads STRK balance
 pub async fn get_on_chain_balance(address: Felt) -> Result<f64, MonitoringError> {
     let config = get_config(None).await;
 
