@@ -6,7 +6,7 @@ edition = "2024"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-pragma-common = { version = "0.4.1", features = ["telemetry"] }
+pragma-common = { version = "0.5.0", features = ["telemetry", "starknet"] }
 
 arc-swap = "1.6.0"
 axum = { version = "0.6", features = ["macros", "multipart"] }
@@ -49,11 +49,10 @@ tokio = { version = "1", features = ["full"] }
 url = "2.5.0"
 uuid = { version = "1.4", features = ["fast-rng", "v4", "serde"] }
 # Pragma crates
-evian = { version = "0.3.3", registry = "pragma", features = ["full"] }
+evian = { version = "0.7.3", registry = "pragma", features = ["pragma_oracle"] }
 
 # Additional dependencies for evian
 anyhow = "1.0"
-apibara-dna-sdk = "2.0.1"
 
 # David Bernard (sacre jojo)
 axum-tracing-opentelemetry = "0.23.0"
