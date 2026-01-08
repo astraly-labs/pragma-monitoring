@@ -12,19 +12,19 @@ pub enum MonitoringError {
     #[error("Database error: {0}")]
     Database(#[from] DieselError),
 
-    #[error("Connection error: {0}")]
+    #[error("Connection pool error: {0}")]
     Connection(#[from] PoolError),
 
-    #[error("API error: {0}")]
+    #[error("External API error: {0}")]
     Api(String),
 
-    #[error("Conversion error: {0}")]
+    #[error("Data conversion error: {0}")]
     Conversion(String),
 
-    #[error("OnChain error: {0}")]
+    #[error("On-chain RPC error: {0}")]
     OnChain(String),
 
-    #[error("Provider error: {0}")]
+    #[error("Starknet provider error: {0}")]
     Provider(#[from] ProviderError),
 
     #[error("Invalid timestamp: {0}")]

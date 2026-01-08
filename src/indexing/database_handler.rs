@@ -301,12 +301,11 @@ impl DatabaseHandler {
         events: Vec<OutputEvent<PragmaEvent>>,
     ) -> Result<()> {
         if events.is_empty() {
-            tracing::debug!("No events to process");
             return Ok(());
         }
 
         let total_events = events.len();
-        tracing::info!("Processing batch of {} events", total_events);
+        tracing::info!("📥 [DB] Processing batch of {} events", total_events);
 
         let config = get_config(None).await;
         let network_name = config.network().name.clone();
@@ -379,15 +378,15 @@ impl DatabaseHandler {
                     }
                 }
                 OutputEvent::Synced => {
-                    tracing::info!("Indexer is now synced with the blockchain");
+                    tracing::info!("🎯 [INDEXER] Synced with blockchain - now processing live events");
                     INTERNAL_INDEXER_TRACKER.set_synced(true).await;
                 }
                 OutputEvent::Finalized(block_number) => {
-                    tracing::debug!("Block {} has been finalized", block_number);
+                    tracing::debug!("🔒 [INDEXER] Block {} finalized", block_number);
                 }
                 OutputEvent::Invalidated(block_number) => {
                     tracing::warn!(
-                        "Block {} has been invalidated - handling reorg",
+                        "⚠️  [REORG] Block {} invalidated - cleaning up...",
                         block_number
                     );
 
@@ -413,7 +412,7 @@ impl DatabaseHandler {
 
         if failed_events > 0 {
             tracing::warn!(
-                "Batch processing completed with {} successful and {} failed events",
+                "⚠️  [DB] Batch done: {} ✅ / {} ❌",
                 events_processed,
                 failed_events
             );
@@ -423,7 +422,7 @@ impl DatabaseHandler {
             }
         } else {
             tracing::info!(
-                "Batch processing completed successfully: {} events processed",
+                "✅ [DB] Batch done: {} events stored",
                 events_processed
             );
         }
@@ -745,14 +744,16 @@ impl DatabaseHandler {
 
                 match diesel::insert_into(mainnet_spot_dsl::mainnet_spot_entry)
                     .values(&spot_entry)
+                    .on_conflict_do_nothing()
                     .execute(&mut conn)
                     .await
                 {
                     Ok(rows_affected) => {
-                        tracing::debug!(
-                            "Successfully inserted mainnet spot entry: {} rows affected",
-                            rows_affected
-                        );
+                        if rows_affected > 0 {
+                            tracing::debug!("Inserted mainnet spot entry");
+                        } else {
+                            tracing::debug!("Skipped duplicate mainnet spot entry");
+                        }
                     }
                     Err(e) => {
                         tracing::error!("Failed to insert mainnet spot entry: {:?}", e);
@@ -780,14 +781,16 @@ impl DatabaseHandler {
 
                 match diesel::insert_into(spot_dsl::spot_entry)
                     .values(&spot_entry)
+                    .on_conflict_do_nothing()
                     .execute(&mut conn)
                     .await
                 {
                     Ok(rows_affected) => {
-                        tracing::debug!(
-                            "Successfully inserted testnet spot entry: {} rows affected",
-                            rows_affected
-                        );
+                        if rows_affected > 0 {
+                            tracing::debug!("Inserted testnet spot entry");
+                        } else {
+                            tracing::debug!("Skipped duplicate testnet spot entry");
+                        }
                     }
                     Err(e) => {
                         tracing::error!("Failed to insert testnet spot entry: {:?}", e);

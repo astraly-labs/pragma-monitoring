@@ -271,12 +271,16 @@ pub async fn get_config(config_input: Option<ConfigInput>) -> Guard<Arc<Config>>
 /// configuration settings without restarting the service.
 #[allow(unused)]
 pub async fn periodic_config_update() {
-    let interval = Duration::from_secs(CONFIG_UPDATE_INTERVAL); // Set the update interval as needed (3 hours in this example)
+    let interval = Duration::from_secs(CONFIG_UPDATE_INTERVAL);
+    tracing::info!(
+        "🔄 [CONFIG] Config auto-refresh enabled (every {}h)",
+        CONFIG_UPDATE_INTERVAL / 3600
+    );
 
     let mut next_update = Instant::now() + interval;
 
     loop {
-        tracing::info!("[CONFIG] Updating config...");
+        tracing::info!("🔄 [CONFIG] Refreshing configuration...");
 
         let new_config = Config::create_from_env().await;
         let updated_config = ArcSwap::from_pointee(new_config.clone());

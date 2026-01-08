@@ -37,6 +37,10 @@ use diesel_async::pooled_connection::AsyncDieselConnectionManager;
 use dotenv::dotenv;
 use moka::future::Cache;
 use monitoring::{last_update, price_deviation::CoinPricesDTO};
+use opentelemetry::global;
+use opentelemetry_otlp::WithExportConfig;
+use opentelemetry_sdk::Resource;
+use opentelemetry_semantic_conventions::resource::SERVICE_NAME;
 use serde_json::{Value, json};
 use tokio::task::JoinHandle;
 use tokio::time::interval;
@@ -56,7 +60,7 @@ use utils::{log_monitoring_results, log_tasks_results};
 async fn test_database_connection(
     pool: &Pool<AsyncDieselConnectionManager<AsyncPgConnection>>,
 ) -> Result<(), MonitoringError> {
-    tracing::info!("Testing database connectivity...");
+    tracing::info!("🔌 Testing database connectivity...");
 
     let mut conn = pool.get().await.map_err(MonitoringError::Connection)?;
 
@@ -66,11 +70,11 @@ async fn test_database_connection(
         .await
     {
         Ok(_) => {
-            tracing::info!("Database connectivity test successful");
+            tracing::info!("✅ Database connectivity test successful");
             Ok(())
         }
         Err(e) => {
-            tracing::error!("Database connectivity test failed: {:?}", e);
+            tracing::error!("❌ Database connectivity test failed: {:?}", e);
             Err(MonitoringError::Database(e))
         }
     }
@@ -96,22 +100,55 @@ async fn main() {
 
     let otel_endpoint = std::env::var("OTEL_EXPORTER_OTLP_ENDPOINT")
         .unwrap_or_else(|_| "http://localhost:4317".to_string());
-    pragma_common::telemetry::init_telemetry("pragma-monitoring", Some(otel_endpoint))
+    pragma_common::telemetry::init_telemetry("pragma-monitoring", Some(otel_endpoint.clone()))
         .expect("Failed to initialize telemetry");
+
+    // Initialize OTEL metrics exporter (separate from pragma_common telemetry)
+    tracing::info!("📊 Initializing OTEL metrics exporter...");
+    let meter_provider = opentelemetry_otlp::new_pipeline()
+        .metrics(opentelemetry_sdk::runtime::Tokio)
+        .with_exporter(
+            opentelemetry_otlp::new_exporter()
+                .tonic()
+                .with_endpoint(&otel_endpoint),
+        )
+        .with_resource(Resource::new([
+            opentelemetry::KeyValue::new(SERVICE_NAME, "pragma-monitoring"),
+        ]))
+        .with_period(Duration::from_secs(5))
+        .build()
+        .expect("Failed to create meter provider");
+
+    global::set_meter_provider(meter_provider);
+    tracing::info!("   ✅ OTEL metrics exporter configured (export every 5s)");
+
+    tracing::info!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    tracing::info!("🚀 Starting Pragma Monitoring Service");
+    tracing::info!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 
     // Define the pairs to monitor
     let monitoring_config = get_config(None).await;
-    tracing::info!("Successfully fetched config: {:?}", monitoring_config);
+    tracing::info!("📋 Configuration loaded successfully");
+    tracing::info!("   📡 Network: {:?}", monitoring_config.network().name);
+    tracing::info!(
+        "   🎯 Oracle: {}",
+        monitoring_config.network().oracle_address
+    );
+    tracing::info!(
+        "   👥 Publishers: {}",
+        monitoring_config.all_publishers().len()
+    );
 
     // Setup write connection pool (primary database)
+    tracing::info!("🗄️  Setting up database connection...");
     let write_database_url: String = match env::var("DATABASE_URL") {
         Ok(url) => {
-            tracing::info!("Write database URL configured successfully");
+            tracing::info!("   ✅ DATABASE_URL configured");
             url
         }
         Err(e) => {
             tracing::error!(
-                "DATABASE_URL environment variable is required but not set: {:?}",
+                "❌ DATABASE_URL environment variable is required but not set: {:?}",
                 e
             );
             std::process::exit(1);
@@ -123,11 +160,11 @@ async fn main() {
     );
     let write_pool = match Pool::builder(write_config).max_size(20).build() {
         Ok(pool) => {
-            tracing::info!("Write database connection pool created successfully");
+            tracing::info!("   ✅ Connection pool created (max: 20 connections)");
             pool
         }
         Err(e) => {
-            tracing::error!("Failed to create write database connection pool: {:?}", e);
+            tracing::error!("❌ Failed to create database connection pool: {:?}", e);
             std::process::exit(1);
         }
     };
@@ -139,17 +176,17 @@ async fn main() {
         .unwrap_or(0);
 
     if replication_delay_ms > 0 {
-        tracing::info!("Replication delay configured: {}ms", replication_delay_ms);
+        tracing::info!("   ⏱️  Replication delay: {}ms", replication_delay_ms);
     }
 
     // Test database connectivity before starting monitoring
     match test_database_connection(&write_pool).await {
         Ok(_) => {
-            tracing::info!("Write database connectivity test passed");
+            tracing::info!("   ✅ Database connection verified");
         }
         Err(e) => {
-            tracing::error!("Write database connectivity test failed: {:?}", e);
-            tracing::error!("Please check your DATABASE_URL and ensure the database is accessible");
+            tracing::error!("❌ Database connectivity test failed: {:?}", e);
+            tracing::error!("   Please check your DATABASE_URL and ensure the database is accessible");
             std::process::exit(1);
         }
     }
@@ -164,12 +201,16 @@ async fn main() {
 
         let health_port = env::var("HEALTH_PORT").unwrap_or_else(|_| "8080".to_string());
         let health_bind_addr = format!("0.0.0.0:{}", health_port);
-        tracing::info!("Health check server started on {}", health_bind_addr);
+        tracing::info!("🏥 Health check server started on {}", health_bind_addr);
         axum::Server::bind(&health_bind_addr.parse().unwrap())
             .serve(app.into_make_service())
             .await
             .unwrap();
     });
+
+    tracing::info!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    tracing::info!("🔄 Starting monitoring tasks...");
+    tracing::info!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 
     // Monitor spot/future in parallel
     let monitoring_tasks = spawn_monitoring_tasks(write_pool.clone(), replication_delay_ms).await;
@@ -218,7 +259,7 @@ async fn handle_task_results(tasks: Vec<MonitoringTask>) {
 
 #[instrument]
 pub(crate) async fn publisher_balance_monitor(wait_for_syncing: bool) {
-    tracing::info!("[PUBLISHERS] Monitoring publisher balances..");
+    tracing::info!("💰 [PUBLISHERS] Starting publisher balance monitor (every 5 min)");
 
     let mut interval = interval(Duration::from_secs(300));
 
@@ -258,11 +299,11 @@ pub(crate) async fn pragma_indexing_monitor(
     pool: Pool<AsyncDieselConnectionManager<AsyncPgConnection>>,
     replication_delay_ms: u64,
 ) {
-    tracing::info!("[INDEXING] Starting Pragma data indexer..");
+    tracing::info!("📦 [INDEXER] Starting Pragma data indexer...");
 
     if replication_delay_ms > 0 {
         tracing::info!(
-            "[INDEXING] Replication delay enabled: {}ms",
+            "   ⏱️  Replication delay enabled: {}ms",
             replication_delay_ms
         );
     }
@@ -285,7 +326,7 @@ pub(crate) async fn pragma_indexing_monitor(
         // Start the indexer with retry logic
         let (mut event_rx, mut indexer_handle) = match start_pragma_indexer().await {
             Ok((rx, handle)) => {
-                tracing::info!("[INDEXING] Successfully started Pragma indexer");
+                tracing::info!("✅ [INDEXER] Successfully connected to Apibara");
                 restart_count = 0; // Reset restart count on successful start
                 (rx, handle)
             }
@@ -295,14 +336,14 @@ pub(crate) async fn pragma_indexing_monitor(
                     "Failed to start Pragma indexer (attempt {}): {:?}",
                     restart_count, e
                 );
-                tracing::error!("{}", error_msg);
+                tracing::error!("❌ [INDEXER] {}", error_msg);
 
                 // Record error in status tracker
                 INTERNAL_INDEXER_TRACKER.record_error(error_msg).await;
                 INTERNAL_INDEXER_TRACKER.set_synced(false).await;
 
                 if restart_count >= MAX_RESTARTS {
-                    tracing::error!("Max restart attempts reached. Stopping indexer.");
+                    tracing::error!("💀 [INDEXER] Max restart attempts reached. Stopping indexer.");
                     INTERNAL_INDEXER_TRACKER.set_running(false).await;
                     break;
                 }
@@ -316,10 +357,10 @@ pub(crate) async fn pragma_indexing_monitor(
                 let total_delay = backoff_delay + jitter;
 
                 tracing::info!(
-                    "Restarting indexer in {:?} (backoff: {:?}, jitter: {:?})...",
+                    "⏳ [INDEXER] Restarting in {:?} (attempt {}/{})...",
                     total_delay,
-                    backoff_delay,
-                    jitter
+                    restart_count,
+                    MAX_RESTARTS
                 );
                 sleep(total_delay).await;
                 continue;
@@ -346,7 +387,7 @@ pub(crate) async fn pragma_indexing_monitor(
                             events_processed += 1;
                         }
                         None => {
-                            tracing::warn!("Indexer event channel closed");
+                            tracing::warn!("⚠️  [INDEXER] Event channel closed");
                             break;
                         }
                     }
@@ -425,14 +466,21 @@ pub(crate) async fn pragma_indexing_monitor(
 
         // Handle indexer failure - restart logic
         restart_count += 1;
-        tracing::error!("Indexer failed (attempt {}): restarting...", restart_count);
+        tracing::error!(
+            "❌ [INDEXER] Session ended unexpectedly (attempt {}/{})",
+            restart_count,
+            MAX_RESTARTS
+        );
 
         if restart_count >= MAX_RESTARTS {
-            tracing::error!("Max restart attempts reached. Stopping indexer.");
+            tracing::error!("💀 [INDEXER] Max restart attempts reached. Giving up.");
             break;
         }
 
-        tracing::info!("Restarting indexer in {:?}...", RESTART_DELAY);
+        tracing::info!(
+            "⏳ [INDEXER] Restarting in {:?}...",
+            RESTART_DELAY
+        );
         sleep(RESTART_DELAY).await;
     }
 }

@@ -144,6 +144,10 @@ pub static LAST_UPDATE_TRACKER: LazyLock<Arc<LastUpdateTracker>> =
     LazyLock::new(|| Arc::new(LastUpdateTracker::new()));
 
 pub fn spawn_refresh_task(interval: Duration) -> tokio::task::JoinHandle<()> {
+    tracing::info!(
+        "⏰ [METRICS] Starting time-since-last-update refresh (every {}s)",
+        interval.as_secs()
+    );
     tokio::spawn(async move {
         LAST_UPDATE_TRACKER.refresh_metrics().await;
         let mut ticker = tokio::time::interval(interval);

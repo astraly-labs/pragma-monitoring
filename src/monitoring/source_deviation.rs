@@ -37,18 +37,11 @@ pub async fn source_deviation<T: Entry>(
     let data = match timeout(Duration::from_secs(10), rpc_call).await {
         Ok(Ok(data)) => data,
         Ok(Err(e)) => {
-            tracing::warn!(
-                "Failed to get data median for pair {}: {:?}",
-                query.pair_id(),
-                e
-            );
+            tracing::debug!("⚠️  [SOURCE_DEV] RPC error for {}: {:?}", query.pair_id(), e);
             return Err(MonitoringError::OnChain(e.to_string()));
         }
         Err(_) => {
-            tracing::warn!(
-                "RPC call timeout for pair {}: exceeded 10 seconds",
-                query.pair_id()
-            );
+            tracing::debug!("⏱️  [SOURCE_DEV] RPC timeout (10s) for {}", query.pair_id());
             return Err(MonitoringError::OnChain(format!(
                 "RPC call timeout for pair {}",
                 query.pair_id()

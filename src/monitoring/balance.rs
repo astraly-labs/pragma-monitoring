@@ -30,11 +30,11 @@ pub async fn get_on_chain_balance(address: Felt) -> Result<f64, MonitoringError>
     let token_balance = match timeout(Duration::from_secs(10), rpc_call).await {
         Ok(Ok(balance)) => balance,
         Ok(Err(e)) => {
-            tracing::warn!("Failed to get balance for address {}: {:?}", address, e);
+            tracing::warn!("⚠️  [BALANCE] RPC error for {}: {:?}", address, e);
             return Err(MonitoringError::OnChain(e.to_string()));
         }
         Err(_) => {
-            tracing::warn!("RPC call timeout for balance check: exceeded 10 seconds");
+            tracing::warn!("⏱️  [BALANCE] RPC timeout (10s) for {}", address);
             return Err(MonitoringError::OnChain(
                 "RPC call timeout for balance check".to_string(),
             ));

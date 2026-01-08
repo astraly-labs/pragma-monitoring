@@ -44,35 +44,35 @@ pub async fn start_pragma_indexer() -> Result<(
 
     // Log target assets before creating indexer
     tracing::info!(
-        "Configured target assets for indexing: {:?}",
+        "🎯 [INDEXER] Target pairs: {:?}",
         target_assets.iter().map(|p| &p.0).collect::<Vec<_>>()
     );
     tracing::info!(
-        "Starting Pragma data indexer with {} target assets",
+        "📊 [INDEXER] Monitoring {} pairs",
         target_assets.len()
-    );
-    tracing::info!(
-        "Note: Warnings about 'Ignoring event for non-target asset' are expected and normal behavior"
     );
 
     // Determine starting block - use latest block from blockchain if no indexed data
     let starting_block = match get_last_indexed_block(&config).await {
-        Some(block) => block,
+        Some(block) => {
+            tracing::info!("📍 [INDEXER] Resuming from block {}", block);
+            block
+        }
         None => {
-            tracing::warn!("No indexed blocks found, starting from recent blockchain block");
+            tracing::info!("🆕 [INDEXER] No previous state, fetching latest block...");
             // Get the latest block from the blockchain, but start a few blocks back to catch recent events
             match get_latest_block_from_blockchain(&config).await {
                 Some(latest) => {
                     let start_block = if latest > 10 { latest - 10 } else { latest };
                     tracing::info!(
-                        "Starting from recent block {} (latest: {})",
+                        "📍 [INDEXER] Starting from block {} (latest: {})",
                         start_block,
                         latest
                     );
                     start_block
                 }
                 None => {
-                    tracing::warn!("No latest block found, starting from default block 2769044");
+                    tracing::warn!("⚠️  [INDEXER] Could not fetch latest block, using default");
                     2769044
                 }
             }
@@ -80,7 +80,7 @@ pub async fn start_pragma_indexer() -> Result<(
     };
 
     tracing::info!(
-        "Starting indexer from block {} (oracle deployment block: 2769044)",
+        "🚀 [INDEXER] Starting from block {}",
         starting_block
     );
 

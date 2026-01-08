@@ -45,16 +45,16 @@ pub async fn data_is_syncing(data_type: &DataType) -> Result<bool, MonitoringErr
 pub async fn data_indexers_are_synced(data_type: &DataType) -> bool {
     match data_is_syncing(data_type).await {
         Ok(true) => {
-            tracing::info!("[{data_type}] Indexers are still syncing ♻️");
+            tracing::debug!("🔄 [{data_type}] Still syncing...");
             false
         }
         Ok(false) => {
-            tracing::info!("[{data_type}] Indexers are synced ✅");
+            tracing::debug!("✅ [{data_type}] Synced");
             true
         }
         Err(e) => {
             tracing::error!(
-                "[{data_type}] Failed to check if indexers are syncing: {:?}",
+                "❌ [{data_type}] Failed to check sync status: {:?}",
                 e
             );
             false
@@ -102,13 +102,16 @@ pub async fn query_defillama_api(
     coingecko_id: String,
     cache: Cache<(String, u64), CoinPricesDTO>,
 ) -> Result<CoinPricesDTO, MonitoringError> {
-    let api_key = std::env::var("DEFILLAMA_API_KEY");
+    // Check for non-empty API key
+    let api_key = std::env::var("DEFILLAMA_API_KEY")
+        .ok()
+        .filter(|k| !k.trim().is_empty());
 
     if let Some(cached_value) = cache.get(&(coingecko_id.clone(), timestamp)).await {
         return Ok(cached_value);
     }
 
-    let request_url = if let Ok(api_key) = api_key {
+    let request_url = if let Some(api_key) = api_key {
         format!(
             "https://pro-api.llama.fi/{apikey}/coins/prices/historical/{timestamp}/coingecko:{id}",
             timestamp = timestamp,

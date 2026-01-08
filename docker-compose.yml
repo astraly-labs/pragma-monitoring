@@ -1,0 +1,57 @@
+services:
+  # PostgreSQL/TimescaleDB Database
+  # NOTE: For full TimescaleDB features, run migrations manually after startup
+  postgres:
+    image: timescale/timescaledb-ha:pg17.4-ts2.18.2
+    container_name: pragma-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: pragma_monitoring
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # OpenTelemetry LGTM Stack (Loki, Grafana, Tempo, Mimir)
+  otel-lgtm:
+    image: grafana/otel-lgtm:latest
+    container_name: pragma-otel-lgtm
+    ports:
+      - "3000:3000"   # Grafana UI
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP
+    volumes:
+      - otel_data:/data
+    environment:
+      - ENABLE_LOGS_ALL=true
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+
+  # Pragma Monitoring Service (optional - for local dev you might run it directly)
+  # monitoring:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile
+  #   container_name: pragma-monitoring
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #     otel-lgtm:
+  #       condition: service_started
+  #   environment:
+  #     DATABASE_URL: postgres://postgres:postgres@postgres:5432/pragma_monitoring
+  #     OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-lgtm:4317
+  #     RUST_LOG: pragma_monitoring=info,evian=warn
+  #   env_file:
+  #     - .env
+  #   ports:
+  #     - "8080:8080"
+
+volumes:
+  postgres_data:
+  otel_data:

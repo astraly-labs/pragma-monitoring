@@ -34,13 +34,22 @@ pub(crate) fn log_tasks_results<T, E: Display>(
     category: &str,
     results: Vec<Result<Result<T, E>, JoinError>>,
 ) {
-    for result in &results {
-        match result {
-            Ok(data) => match data {
-                Ok(_) => tracing::info!("[{category}]: Task finished successfully",),
-                Err(e) => tracing::error!("[{category}]: Task failed with error: {e}"),
-            },
-            Err(e) => tracing::error!("[{category}]: Task failed with error: {:?}", e),
+    let total = results.len();
+    let success = results
+        .iter()
+        .filter(|r| matches!(r, Ok(Ok(_))))
+        .count();
+
+    if success == total {
+        tracing::info!("✅ [{category}] All {total} tasks completed");
+    } else {
+        tracing::warn!("⚠️  [{category}] {success}/{total} tasks succeeded");
+        for result in &results {
+            if let Ok(Err(e)) = result {
+                tracing::error!("   ❌ [{category}] Error: {e}");
+            } else if let Err(e) = result {
+                tracing::error!("   ❌ [{category}] Task panic: {:?}", e);
+            }
         }
     }
 }
@@ -48,10 +57,13 @@ pub(crate) fn log_tasks_results<T, E: Display>(
 /// Process or output the results of tokio monitoring tasks
 #[allow(dead_code)]
 pub(crate) fn log_monitoring_results(results: HashMap<String, Result<(), tokio::task::JoinError>>) {
+    tracing::info!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    tracing::info!("📊 Monitoring Tasks Summary");
+    tracing::info!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
     for (task_name, result) in results {
         match result {
-            Ok(_) => tracing::info!("[{}] Monitoring completed successfully", task_name),
-            Err(e) => tracing::error!("[{}] Monitoring failed: {:?}", task_name, e),
+            Ok(_) => tracing::info!("   ✅ {} completed", task_name),
+            Err(e) => tracing::error!("   ❌ {} failed: {:?}", task_name, e),
         }
     }
 }

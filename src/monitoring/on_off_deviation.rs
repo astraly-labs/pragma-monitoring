@@ -63,11 +63,11 @@ pub async fn on_off_price_deviation(
     let data = match timeout(Duration::from_secs(10), rpc_call).await {
         Ok(Ok(data)) => data,
         Ok(Err(e)) => {
-            tracing::warn!("Failed to get data median for pair {}: {:?}", pair_id, e);
+            tracing::debug!("⚠️  [DEVIATION] RPC error for {}: {:?}", pair_id, e);
             return Err(MonitoringError::OnChain(e.to_string()));
         }
         Err(_) => {
-            tracing::warn!("RPC call timeout for pair {}: exceeded 10 seconds", pair_id);
+            tracing::debug!("⏱️  [DEVIATION] RPC timeout (10s) for {}", pair_id);
             return Err(MonitoringError::OnChain(format!(
                 "RPC call timeout for pair {}",
                 pair_id

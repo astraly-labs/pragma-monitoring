@@ -68,6 +68,13 @@ impl InternalIndexerTracker {
         status.last_activity = Some(Instant::now());
     }
 
+    /// Update last_activity to indicate the indexer is still receiving events
+    /// This should be called even when events are filtered out (non-target assets)
+    pub async fn touch_activity(&self) {
+        let mut status = self.status.write().await;
+        status.last_activity = Some(Instant::now());
+    }
+
     pub async fn record_error(&self, error: String) {
         let mut status = self.status.write().await;
         status.error_count += 1;
@@ -83,8 +90,8 @@ impl InternalIndexerTracker {
             && current_last_block >= invalidated_block
         {
             status.last_processed_block = Some(invalidated_block.saturating_sub(1));
-            tracing::info!(
-                "Reorg handled: Updated last processed block from {} to {}",
+            tracing::warn!(
+                "🔄 [REORG] Rolled back: block {} → {}",
                 current_last_block,
                 status.last_processed_block.unwrap()
             );
