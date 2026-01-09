@@ -382,6 +382,12 @@ impl DatabaseHandler {
                         "🎯 [INDEXER] Synced with blockchain - now processing live events"
                     );
                     INTERNAL_INDEXER_TRACKER.set_synced(true).await;
+
+                    if let Err(e) = self.rebuild_last_update_state(&network_name).await {
+                        tracing::error!("Failed to rebuild last update state from DB: {:?}", e);
+                    } else {
+                        tracing::info!("📊 [METRICS] Rebuilt last update state from database");
+                    }
                 }
                 OutputEvent::Finalized(block_number) => {
                     tracing::debug!("🔒 [INDEXER] Block {} finalized", block_number);
@@ -488,7 +494,7 @@ impl DatabaseHandler {
             );
     }
 
-    async fn rebuild_last_update_state(
+    pub async fn rebuild_last_update_state(
         &self,
         network_name: &NetworkName,
     ) -> Result<(), MonitoringError> {
