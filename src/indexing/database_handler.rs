@@ -476,10 +476,13 @@ impl DatabaseHandler {
             )
             .await;
 
+        let now = Utc::now().timestamp().max(0) as u64;
+        let elapsed = now.saturating_sub(spot_event.base.timestamp) as f64;
+
         MONITORING_METRICS
             .monitoring_metrics
             .set_time_since_last_update_pair_id(
-                0.0,
+                elapsed,
                 network_label,
                 &spot_event.pair_id,
                 data_type_label,
@@ -487,7 +490,7 @@ impl DatabaseHandler {
         MONITORING_METRICS
             .monitoring_metrics
             .set_time_since_last_update_publisher(
-                0.0,
+                elapsed,
                 network_label,
                 &spot_event.base.publisher,
                 data_type_label,
