@@ -373,6 +373,22 @@ pub(crate) async fn pragma_indexing_monitor(
         // Create database handler
         let db_handler = DatabaseHandler::new(pool.clone(), cache.clone());
 
+        // Immediately rebuild last update state from database on connection
+        // This ensures metrics are accurate even if indexer never reaches Synced state
+        // (e.g., due to gRPC timeouts causing restarts before sync completes)
+        let config = get_config(None).await;
+        let network_name = config.network().name.clone();
+        drop(config);
+
+        if let Err(e) = db_handler.rebuild_last_update_state(&network_name).await {
+            tracing::warn!(
+                "⚠️  [INDEXER] Failed to rebuild last update state on connect: {:?}",
+                e
+            );
+        } else {
+            tracing::info!("✅ [INDEXER] Rebuilt last update state from database");
+        }
+
         // Process events in batches
         let mut event_batch = Vec::new();
         let batch_size = 100;

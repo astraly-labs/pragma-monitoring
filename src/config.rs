@@ -60,7 +60,8 @@ pub struct Config {
     pub(crate) data_info: HashMap<DataType, DataInfo>,
     pub(crate) publishers: HashMap<String, Felt>,
     pub(crate) network: Network,
-    pub(crate) apibara_api_key: String,
+    pub(crate) apibara_api_key: Option<String>,
+    pub(crate) apibara_endpoint: Option<String>,
 }
 
 /// We are using `ArcSwap` as it allow us to replace the new `Config` with
@@ -118,18 +119,27 @@ impl Config {
             .into_iter()
             .collect::<HashMap<DataType, DataInfo>>();
 
-        // Get APIBARA_API_KEY from environment
+        // Get APIBARA_API_KEY from environment (optional)
         let apibara_api_key = match std::env::var("APIBARA_API_KEY") {
-            Ok(key) => {
+            Ok(key) if !key.is_empty() => {
                 tracing::info!("APIBARA_API_KEY configured (length: {})", key.len());
-                key
+                Some(key)
             }
-            Err(e) => {
-                tracing::error!(
-                    "APIBARA_API_KEY environment variable is required but not set: {:?}",
-                    e
-                );
-                panic!("APIBARA_API_KEY must be set");
+            _ => {
+                tracing::info!("APIBARA_API_KEY not set, using custom endpoint without auth");
+                None
+            }
+        };
+
+        // Get APIBARA_ENDPOINT from environment (optional, for custom DNA endpoints)
+        let apibara_endpoint = match std::env::var("APIBARA_ENDPOINT") {
+            Ok(endpoint) if !endpoint.is_empty() => {
+                tracing::info!("APIBARA_ENDPOINT configured: {}", endpoint);
+                Some(endpoint)
+            }
+            _ => {
+                tracing::info!("APIBARA_ENDPOINT not set, using default Apibara endpoint");
+                None
             }
         };
 
@@ -143,6 +153,7 @@ impl Config {
                 publisher_registry_address,
             },
             apibara_api_key,
+            apibara_endpoint,
         }
     }
 
@@ -240,8 +251,12 @@ impl Config {
         &self.publishers
     }
 
-    pub fn apibara_api_key(&self) -> &str {
-        &self.apibara_api_key
+    pub fn apibara_api_key(&self) -> Option<&str> {
+        self.apibara_api_key.as_deref()
+    }
+
+    pub fn apibara_endpoint(&self) -> Option<&str> {
+        self.apibara_endpoint.as_deref()
     }
 }
 

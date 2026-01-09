@@ -6,7 +6,7 @@ edition = "2024"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-pragma-common = { version = "0.5.0", features = ["telemetry", "starknet"] }
+pragma-common = { version = "0.6.0", features = ["telemetry", "starknet"] }
 
 arc-swap = "1.6.0"
 axum = { version = "0.6", features = ["macros", "multipart"] }
@@ -49,7 +49,7 @@ tokio = { version = "1", features = ["full"] }
 url = "2.5.0"
 uuid = { version = "1.4", features = ["fast-rng", "v4", "serde"] }
 # Pragma crates
-evian = { version = "0.7.3", registry = "pragma", features = ["pragma_oracle"] }
+evian = { version = "0.7.8", registry = "pragma", features = ["pragma_oracle"] }
 
 # Additional dependencies for evian
 anyhow = "1.0"

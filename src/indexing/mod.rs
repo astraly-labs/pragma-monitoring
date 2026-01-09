@@ -32,8 +32,9 @@ pub async fn start_pragma_indexer() -> Result<(
         crate::config::NetworkName::Testnet => StarknetNetwork::Sepolia, // Assuming testnet maps to Sepolia
     };
 
-    // Get API key from config
-    let apibara_api_key = config.apibara_api_key().to_string();
+    // Get API key and endpoint from config
+    let apibara_api_key = config.apibara_api_key().map(|s| s.to_string());
+    let apibara_endpoint = config.apibara_endpoint().map(|s| s.to_string());
 
     // Get target assets from config
     let target_assets: HashSet<PairId> = config
@@ -84,6 +85,7 @@ pub async fn start_pragma_indexer() -> Result<(
         apibara_api_key,
         target_assets,
         Some(starting_block),
+        apibara_endpoint,
     )?;
 
     let (event_rx, handle) = indexer.start().await?;

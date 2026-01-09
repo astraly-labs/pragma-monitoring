@@ -2,7 +2,7 @@
 /data
 .idea
 .env
-.env.*
+!.env.example
 /bin/*
 /tmp/*
 .DS_Store
