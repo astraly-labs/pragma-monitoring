@@ -378,7 +378,9 @@ impl DatabaseHandler {
                     }
                 }
                 OutputEvent::Synced => {
-                    tracing::info!("🎯 [INDEXER] Synced with blockchain - now processing live events");
+                    tracing::info!(
+                        "🎯 [INDEXER] Synced with blockchain - now processing live events"
+                    );
                     INTERNAL_INDEXER_TRACKER.set_synced(true).await;
                 }
                 OutputEvent::Finalized(block_number) => {
@@ -421,10 +423,7 @@ impl DatabaseHandler {
                 return Err(anyhow::anyhow!("All events in batch failed to process"));
             }
         } else {
-            tracing::info!(
-                "✅ [DB] Batch done: {} events stored",
-                events_processed
-            );
+            tracing::info!("✅ [DB] Batch done: {} events stored", events_processed);
         }
 
         Ok(())

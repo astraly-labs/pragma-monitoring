@@ -53,10 +53,7 @@ pub async fn data_indexers_are_synced(data_type: &DataType) -> bool {
             true
         }
         Err(e) => {
-            tracing::error!(
-                "❌ [{data_type}] Failed to check sync status: {:?}",
-                e
-            );
+            tracing::error!("❌ [{data_type}] Failed to check sync status: {:?}", e);
             false
         }
     }

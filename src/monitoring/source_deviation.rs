@@ -37,7 +37,11 @@ pub async fn source_deviation<T: Entry>(
     let data = match timeout(Duration::from_secs(10), rpc_call).await {
         Ok(Ok(data)) => data,
         Ok(Err(e)) => {
-            tracing::debug!("⚠️  [SOURCE_DEV] RPC error for {}: {:?}", query.pair_id(), e);
+            tracing::debug!(
+                "⚠️  [SOURCE_DEV] RPC error for {}: {:?}",
+                query.pair_id(),
+                e
+            );
             return Err(MonitoringError::OnChain(e.to_string()));
         }
         Err(_) => {

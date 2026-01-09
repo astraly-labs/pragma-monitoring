@@ -35,10 +35,7 @@ pub(crate) fn log_tasks_results<T, E: Display>(
     results: Vec<Result<Result<T, E>, JoinError>>,
 ) {
     let total = results.len();
-    let success = results
-        .iter()
-        .filter(|r| matches!(r, Ok(Ok(_))))
-        .count();
+    let success = results.iter().filter(|r| matches!(r, Ok(Ok(_)))).count();
 
     if success == total {
         tracing::info!("✅ [{category}] All {total} tasks completed");

@@ -47,10 +47,7 @@ pub async fn start_pragma_indexer() -> Result<(
         "🎯 [INDEXER] Target pairs: {:?}",
         target_assets.iter().map(|p| &p.0).collect::<Vec<_>>()
     );
-    tracing::info!(
-        "📊 [INDEXER] Monitoring {} pairs",
-        target_assets.len()
-    );
+    tracing::info!("📊 [INDEXER] Monitoring {} pairs", target_assets.len());
 
     // Determine starting block - use latest block from blockchain if no indexed data
     let starting_block = match get_last_indexed_block(&config).await {
@@ -79,10 +76,7 @@ pub async fn start_pragma_indexer() -> Result<(
         }
     };
 
-    tracing::info!(
-        "🚀 [INDEXER] Starting from block {}",
-        starting_block
-    );
+    tracing::info!("🚀 [INDEXER] Starting from block {}", starting_block);
 
     // Create and start the indexer
     let indexer = PragmaDataIndexer::new(
@@ -123,9 +117,10 @@ async fn get_last_indexed_block(config: &Config) -> Option<u64> {
     };
 
     // Determine which tables to query based on network
+    // IMPORTANT: Must match the casing used in database_handler.rs when inserting
     let network_str = match config.network.name {
-        NetworkName::Mainnet => "mainnet",
-        NetworkName::Testnet => "testnet",
+        NetworkName::Mainnet => "Mainnet",
+        NetworkName::Testnet => "Testnet",
     };
 
     // Query all relevant tables to find the maximum block number

@@ -112,9 +112,10 @@ async fn main() {
                 .tonic()
                 .with_endpoint(&otel_endpoint),
         )
-        .with_resource(Resource::new([
-            opentelemetry::KeyValue::new(SERVICE_NAME, "pragma-monitoring"),
-        ]))
+        .with_resource(Resource::new([opentelemetry::KeyValue::new(
+            SERVICE_NAME,
+            "pragma-monitoring",
+        )]))
         .with_period(Duration::from_secs(5))
         .build()
         .expect("Failed to create meter provider");
@@ -186,7 +187,9 @@ async fn main() {
         }
         Err(e) => {
             tracing::error!("❌ Database connectivity test failed: {:?}", e);
-            tracing::error!("   Please check your DATABASE_URL and ensure the database is accessible");
+            tracing::error!(
+                "   Please check your DATABASE_URL and ensure the database is accessible"
+            );
             std::process::exit(1);
         }
     }
@@ -477,10 +480,7 @@ pub(crate) async fn pragma_indexing_monitor(
             break;
         }
 
-        tracing::info!(
-            "⏳ [INDEXER] Restarting in {:?}...",
-            RESTART_DELAY
-        );
+        tracing::info!("⏳ [INDEXER] Restarting in {:?}...", RESTART_DELAY);
         sleep(RESTART_DELAY).await;
     }
 }
