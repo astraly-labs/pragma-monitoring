@@ -81,6 +81,21 @@ async fn compute_spot_metrics(
         return Ok(());
     };
 
+    let is_configured_source = config
+        .sources(DataType::Spot)
+        .get(&spot_event.pair_id)
+        .is_some_and(|sources| sources.contains(&spot_event.base.source));
+
+    if !is_configured_source {
+        tracing::debug!(
+            "[{}] Source {} not configured for pair {}, skipping price metrics",
+            network_label,
+            spot_event.base.source,
+            spot_event.pair_id
+        );
+        return Ok(());
+    }
+
     let network_env = config.network_str().to_string();
     let data_type_label = "spot";
     drop(config);
@@ -458,43 +473,57 @@ impl DatabaseHandler {
         };
         let data_type_label = "spot";
 
-        LAST_UPDATE_TRACKER
-            .record_pair_update(
-                network_label,
-                &spot_event.pair_id,
-                data_type_label,
-                spot_event.base.timestamp,
-            )
-            .await;
-
-        LAST_UPDATE_TRACKER
-            .record_publisher_update(
-                network_label,
-                &spot_event.base.publisher,
-                data_type_label,
-                spot_event.base.timestamp,
-            )
-            .await;
+        let config = get_config(None).await;
+        let is_configured_pair = config
+            .sources(DataType::Spot)
+            .contains_key(&spot_event.pair_id);
+        let is_configured_publisher = config
+            .all_publishers()
+            .contains_key(&spot_event.base.publisher);
+        drop(config);
 
         let now = Utc::now().timestamp().max(0) as u64;
         let elapsed = now.saturating_sub(spot_event.base.timestamp) as f64;
 
-        MONITORING_METRICS
-            .monitoring_metrics
-            .set_time_since_last_update_pair_id(
-                elapsed,
-                network_label,
-                &spot_event.pair_id,
-                data_type_label,
-            );
-        MONITORING_METRICS
-            .monitoring_metrics
-            .set_time_since_last_update_publisher(
-                elapsed,
-                network_label,
-                &spot_event.base.publisher,
-                data_type_label,
-            );
+        if is_configured_pair {
+            LAST_UPDATE_TRACKER
+                .record_pair_update(
+                    network_label,
+                    &spot_event.pair_id,
+                    data_type_label,
+                    spot_event.base.timestamp,
+                )
+                .await;
+
+            MONITORING_METRICS
+                .monitoring_metrics
+                .set_time_since_last_update_pair_id(
+                    elapsed,
+                    network_label,
+                    &spot_event.pair_id,
+                    data_type_label,
+                );
+        }
+
+        if is_configured_publisher {
+            LAST_UPDATE_TRACKER
+                .record_publisher_update(
+                    network_label,
+                    &spot_event.base.publisher,
+                    data_type_label,
+                    spot_event.base.timestamp,
+                )
+                .await;
+
+            MONITORING_METRICS
+                .monitoring_metrics
+                .set_time_since_last_update_publisher(
+                    elapsed,
+                    network_label,
+                    &spot_event.base.publisher,
+                    data_type_label,
+                );
+        }
     }
 
     pub async fn rebuild_last_update_state(
@@ -502,12 +531,20 @@ impl DatabaseHandler {
         network_name: &NetworkName,
     ) -> Result<(), MonitoringError> {
         use diesel::dsl::max;
+        use std::collections::HashSet;
 
         let network_label = match network_name {
             NetworkName::Mainnet => "Mainnet",
             NetworkName::Testnet => "Testnet",
         };
         let data_type_label = "spot";
+
+        let config = get_config(None).await;
+        let configured_pairs: HashSet<String> =
+            config.sources(DataType::Spot).keys().cloned().collect();
+        let configured_publishers: HashSet<String> =
+            config.all_publishers().keys().cloned().collect();
+        drop(config);
 
         let mut conn = self.pool.get().await.map_err(MonitoringError::Connection)?;
 
@@ -552,6 +589,9 @@ impl DatabaseHandler {
 
         let mut pair_updates: Vec<(String, u64)> = Vec::new();
         for (pair_id, timestamp) in pair_rows {
+            if !configured_pairs.contains(&pair_id) {
+                continue;
+            }
             if let Some(ts) = timestamp {
                 let ts_sec = ts.and_utc().timestamp();
                 if ts_sec >= 0 {
@@ -562,6 +602,9 @@ impl DatabaseHandler {
 
         let mut publisher_updates: Vec<(String, u64)> = Vec::new();
         for (publisher, timestamp) in publisher_rows {
+            if !configured_publishers.contains(&publisher) {
+                continue;
+            }
             if let Some(ts) = timestamp {
                 let ts_sec = ts.and_utc().timestamp();
                 if ts_sec >= 0 {
@@ -602,6 +645,12 @@ impl DatabaseHandler {
                     data_type_label,
                 );
         }
+
+        tracing::info!(
+            "📊 [METRICS] Rebuilt state: {} pairs, {} publishers",
+            pair_updates.len(),
+            publisher_updates.len()
+        );
 
         Ok(())
     }
