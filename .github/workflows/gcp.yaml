@@ -7,9 +7,7 @@ on:
 
 env:
   REGISTRY: europe-west1-docker.pkg.dev
-  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID_PROD }}
-  ARTIFACT_REGISTRY_REPO: ${{ secrets.ARTIFACT_REGISTRY_REPO_PROD }}
-  IMAGE_NAME: pragma-monitoring
+  IMAGE_NAME: europe-west1-docker.pkg.dev/prod-pragma/production-docker-repo/pragma-monitoring
 
 jobs:
   build-and-push:
@@ -44,8 +42,8 @@ jobs:
           context: .
           push: true
           tags: |
-            ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPO }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.VERSION }}
-            ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPO }}/${{ env.IMAGE_NAME }}:latest
-            ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPO }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}
+            ${{ env.IMAGE_NAME }}:${{ steps.version.outputs.VERSION }}
+            ${{ env.IMAGE_NAME }}:latest
+            ${{ env.IMAGE_NAME }}:${{ github.ref_name }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
