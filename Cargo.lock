@@ -1298,9 +1298,9 @@ dependencies = [
 
 [[package]]
 name = "evian"
-version = "0.7.8"
-source = "sparse+https://registry.devnet.pragma.build/api/v1/crates/"
-checksum = "dc6513e306ffe89f565b14d5093a86ac813de5b2c5532e5ce70ca3e7481a5538"
+version = "0.7.33"
+source = "sparse+https://registry.production.pragma.build/api/v1/crates/"
+checksum = "fc9fd05f993b94b1fa23f115cf572faa75e7953664534f0451f9ff506d1dd162"
 dependencies = [
  "anyhow",
  "apibara-dna-protocol",
@@ -1328,6 +1328,7 @@ dependencies = [
  "serde_json",
  "serde_urlencoded",
  "sha2",
+ "sha3",
  "simd-json",
  "starknet-crypto",
  "starknet-rust",

@@ -47,7 +47,7 @@ use tokio::time::interval;
 
 use config::{DataType, get_config, periodic_config_update};
 use error::MonitoringError;
-use evian::utils::indexer::handler::OutputEvent;
+use evian::utils::starknet_indexer::handler::OutputEvent;
 use indexing::{
     database_handler::DatabaseHandler, start_pragma_indexer, status::INTERNAL_INDEXER_TRACKER,
 };

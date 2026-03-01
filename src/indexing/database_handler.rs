@@ -7,7 +7,7 @@ use diesel_async::AsyncPgConnection;
 use diesel_async::RunQueryDsl;
 use diesel_async::pooled_connection::AsyncDieselConnectionManager;
 use evian::oracles::starknet::pragma::data::indexer::events::{PragmaEvent, SpotEntryEvent};
-use evian::utils::indexer::handler::{OutputEvent, StarknetEventMetadata};
+use evian::utils::starknet_indexer::handler::{OutputEvent, StarknetEventMetadata};
 use moka::future::Cache;
 use std::time::Duration;
 use tokio::time::sleep;

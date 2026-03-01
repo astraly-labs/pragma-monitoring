@@ -9,7 +9,7 @@ use diesel_async::RunQueryDsl;
 use diesel_async::pooled_connection::AsyncDieselConnectionManager;
 use evian::oracles::starknet::pragma::data::indexer::PragmaDataIndexer;
 use evian::oracles::starknet::pragma::data::indexer::events::{PairId, PragmaEvent};
-use evian::utils::indexer::handler::OutputEvent;
+use evian::utils::starknet_indexer::handler::OutputEvent;
 use pragma_common::starknet::network::StarknetNetwork;
 use std::collections::HashSet;
 use tokio::sync::mpsc;
