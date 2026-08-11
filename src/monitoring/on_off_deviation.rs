@@ -32,14 +32,16 @@ use super::price_deviation::CoinPricesDTO;
 ///
 /// # Returns
 ///
-/// * `Ok((deviation, num_sources_aggregated))` - The deviation and the number of sources aggregated.
-/// * `Err(MonitoringError)` - The error.
+/// * `Ok((Some(deviation), num_sources))` - the off-chain deviation and the on-chain source count.
+/// * `Ok((None, num_sources))` - the off-chain reference (DefiLlama) was unavailable; num_sources
+///   is still returned so its metric keeps being emitted independently of DefiLlama.
+/// * `Err(MonitoringError)` - a genuine on-chain failure (RPC error/timeout/decode).
 pub async fn on_off_price_deviation(
     pair_id: String,
     timestamp: u64,
     data_type: DataType,
     cache: Cache<(String, u64), CoinPricesDTO>,
-) -> Result<(f64, u32), MonitoringError> {
+) -> Result<(Option<f64>, u32), MonitoringError> {
     let ids = &COINGECKO_IDS;
     let config = get_config(None).await;
     let client = &config.network().provider;
@@ -96,52 +98,69 @@ pub async fn on_off_price_deviation(
 
     let (deviation, num_sources_aggregated) = match data_type {
         DataType::Spot => {
-            // Check if coingecko_id exists, skip gracefully if not
-            let coingecko_id = match ids.get(&pair_id) {
-                Some(id) => id.to_string(),
+            // `num_sources` is on-chain data (get_data_median field #3), independent of the
+            // off-chain reference. Extract it BEFORE the DefiLlama lookup so it keeps being
+            // emitted even when DefiLlama is unavailable (e.g. out of API credits).
+            let num_sources_aggregated = match data.get(3) {
+                Some(num_sources) => try_felt_to_u32(num_sources).map_err(|e| {
+                    MonitoringError::Conversion(format!("Failed to convert num sources {:?}", e))
+                })?,
                 None => {
-                    tracing::warn!(
-                        "No coingecko_id mapping found for pair: {}. Skipping price deviation calculation.",
-                        pair_id
-                    );
-                    return Err(MonitoringError::Api(format!(
-                        "No coingecko_id mapping for pair: {}",
+                    return Err(MonitoringError::OnChain(format!(
+                        "No num_sources field in on-chain data for pair: {}",
                         pair_id
                     )));
                 }
             };
 
-            let coins_prices =
-                query_defillama_api(timestamp, coingecko_id.to_owned(), cache.clone()).await?;
+            // The off-chain deviation is best-effort: if any part of it is unavailable we
+            // return `Ok((None, num_sources))` rather than erroring, so num_sources survives.
+            let Some(coingecko_id) = ids.get(&pair_id).map(|id| id.to_string()) else {
+                tracing::warn!(
+                    "No coingecko_id mapping found for pair: {}. Skipping on/off deviation.",
+                    pair_id
+                );
+                return Ok((None, num_sources_aggregated));
+            };
+
+            let coins_prices = match query_defillama_api(
+                timestamp,
+                coingecko_id.to_owned(),
+                cache.clone(),
+            )
+            .await
+            {
+                Ok(coins_prices) => coins_prices,
+                Err(e) => {
+                    tracing::warn!(
+                        "DefiLlama lookup failed for pair {}: {:?}. Skipping on/off deviation; num_sources still emitted.",
+                        pair_id,
+                        e
+                    );
+                    return Ok((None, num_sources_aggregated));
+                }
+            };
 
             let api_id = format!("coingecko:{}", coingecko_id);
 
-            let reference_price = match coins_prices.get_coins().get(&api_id) {
-                Some(coin_data) => coin_data.get_price(),
-                None => {
-                    tracing::warn!(
-                        "No price data found in DefiLlama response for coingecko id: {}. Skipping deviation.",
-                        coingecko_id
-                    );
-                    return Err(MonitoringError::Api(format!(
-                        "No price data for coingecko_id: {}",
-                        coingecko_id
-                    )));
-                }
+            let Some(reference_price) =
+                coins_prices.get_coins().get(&api_id).map(|c| c.get_price())
+            else {
+                tracing::warn!(
+                    "No price data found in DefiLlama response for coingecko id: {}. Skipping deviation.",
+                    coingecko_id
+                );
+                return Ok((None, num_sources_aggregated));
             };
 
             let deviation = (reference_price - on_chain_price) / on_chain_price;
-            let num_sources = data.get(3).unwrap();
-            let num_sources_aggregated = try_felt_to_u32(num_sources).map_err(|e| {
-                MonitoringError::Conversion(format!("Failed to convert num sources {:?}", e))
-            })?;
-            (deviation, num_sources_aggregated)
+            (Some(deviation), num_sources_aggregated)
         }
 
         DataType::Future => {
             // TODO: work on a different API for futures
 
-            (0.0, 5)
+            (Some(0.0), 5)
         }
     };
 
