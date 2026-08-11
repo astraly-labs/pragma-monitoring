@@ -195,14 +195,18 @@ async fn compute_spot_metrics(
     .await
     {
         Ok((on_off_deviation, num_sources)) => {
-            MONITORING_METRICS
-                .monitoring_metrics
-                .set_on_off_price_deviation(
-                    on_off_deviation,
-                    &network_env,
-                    &record.pair_id,
-                    data_type_label,
-                );
+            // num_sources is on-chain data and is always emitted; the DefiLlama-based
+            // on/off deviation is only recorded when it could actually be computed.
+            if let Some(on_off_deviation) = on_off_deviation {
+                MONITORING_METRICS
+                    .monitoring_metrics
+                    .set_on_off_price_deviation(
+                        on_off_deviation,
+                        &network_env,
+                        &record.pair_id,
+                        data_type_label,
+                    );
+            }
             MONITORING_METRICS.monitoring_metrics.set_num_sources(
                 num_sources as i64,
                 &network_env,
