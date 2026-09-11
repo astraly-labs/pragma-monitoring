@@ -1,0 +1,1514 @@
+{
+  "apiVersion": 1,
+  "groups": [
+    {
+      "orgId": 1,
+      "name": "pragma-oracle-safety",
+      "folder": "Onchain",
+      "interval": 60,
+      "rules": [
+        {
+          "uid": "pragma-monitor-missing",
+          "title": "Monitoring telemetry missing",
+          "condition": "B",
+          "data": [
+            {
+              "refId": "A",
+              "queryType": "",
+              "relativeTimeRange": {
+                "from": 1200,
+                "to": 0
+              },
+              "datasourceUid": "eemnwzj4tmubke",
+              "model": {
+                "refId": "A",
+                "expr": "absent_over_time(pragma_indexer_latest_block{network=\"Mainnet\"}[5m]) or vector(0)",
+                "instant": true,
+                "range": false,
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "eemnwzj4tmubke"
+                }
+              }
+            },
+            {
+              "refId": "B",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "refId": "B",
+                "type": "threshold",
+                "expression": "A",
+                "conditions": [
+                  {
+                    "evaluator": {
+                      "type": "gt",
+                      "params": [
+                        0.5
+                      ]
+                    },
+                    "operator": {
+                      "type": "and"
+                    },
+                    "reducer": {
+                      "type": "last",
+                      "params": []
+                    },
+                    "query": {
+                      "params": [
+                        "B"
+                      ]
+                    },
+                    "type": "query"
+                  }
+                ]
+              }
+            }
+          ],
+          "noDataState": "Alerting",
+          "execErrState": "Alerting",
+          "for": "1m",
+          "annotations": {
+            "summary": "Monitoring telemetry missing",
+            "description": "The oracle monitor has stopped reporting. Check the process, OTEL collector, Mimir and indexer; do not interpret missing data as healthy."
+          },
+          "labels": {
+            "service": "pragma-oracle",
+            "severity": "critical"
+          },
+          "isPaused": true,
+          "notification_settings": {
+            "receiver": "pragma-oracle-alerts"
+          }
+        },
+        {
+          "uid": "pragma-indexer-stalled",
+          "title": "Oracle indexer stopped advancing",
+          "condition": "B",
+          "data": [
+            {
+              "refId": "A",
+              "queryType": "",
+              "relativeTimeRange": {
+                "from": 1200,
+                "to": 0
+              },
+              "datasourceUid": "eemnwzj4tmubke",
+              "model": {
+                "refId": "A",
+                "expr": "((max_over_time(pragma_indexer_latest_block{network=\"Mainnet\"}[20m]) - min_over_time(pragma_indexer_latest_block{network=\"Mainnet\"}[20m])) == bool 0)",
+                "instant": true,
+                "range": false,
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "eemnwzj4tmubke"
+                }
+              }
+            },
+            {
+              "refId": "B",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "refId": "B",
+                "type": "threshold",
+                "expression": "A",
+                "conditions": [
+                  {
+                    "evaluator": {
+                      "type": "gt",
+                      "params": [
+                        0.5
+                      ]
+                    },
+                    "operator": {
+                      "type": "and"
+                    },
+                    "reducer": {
+                      "type": "last",
+                      "params": []
+                    },
+                    "query": {
+                      "params": [
+                        "B"
+                      ]
+                    },
+                    "type": "query"
+                  }
+                ]
+              }
+            }
+          ],
+          "noDataState": "Alerting",
+          "execErrState": "Alerting",
+          "for": "1m",
+          "annotations": {
+            "summary": "Oracle indexer stopped advancing",
+            "description": "No indexed-block progress for 20 minutes. Check Starknet head and indexer lag before trusting freshness gauges."
+          },
+          "labels": {
+            "service": "pragma-oracle",
+            "severity": "critical"
+          },
+          "isPaused": true,
+          "notification_settings": {
+            "receiver": "pragma-oracle-alerts"
+          }
+        },
+        {
+          "uid": "pragma-publisher-pragma",
+          "title": "PRAGMA publisher stopped",
+          "condition": "B",
+          "data": [
+            {
+              "refId": "A",
+              "queryType": "",
+              "relativeTimeRange": {
+                "from": 1200,
+                "to": 0
+              },
+              "datasourceUid": "eemnwzj4tmubke",
+              "model": {
+                "refId": "A",
+                "expr": "(max by (network,publisher) (pragma_publisher_last_update_seconds{network=\"Mainnet\",publisher=\"PRAGMA\"}) > bool 900) or absent(pragma_publisher_last_update_seconds{network=\"Mainnet\",publisher=\"PRAGMA\"})",
+                "instant": true,
+                "range": false,
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "eemnwzj4tmubke"
+                }
+              }
+            },
+            {
+              "refId": "B",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "refId": "B",
+                "type": "threshold",
+                "expression": "A",
+                "conditions": [
+                  {
+                    "evaluator": {
+                      "type": "gt",
+                      "params": [
+                        0.5
+                      ]
+                    },
+                    "operator": {
+                      "type": "and"
+                    },
+                    "reducer": {
+                      "type": "last",
+                      "params": []
+                    },
+                    "query": {
+                      "params": [
+                        "B"
+                      ]
+                    },
+                    "type": "query"
+                  }
+                ]
+              }
+            }
+          ],
+          "noDataState": "Alerting",
+          "execErrState": "Alerting",
+          "for": "1m",
+          "annotations": {
+            "summary": "PRAGMA publisher stopped",
+            "description": "PRAGMA has no observed submission for 15 minutes, or its metric is missing. Confirm process health, RPC, STRK gas and last accepted transaction. BTCFi configuration normally permits a 600-second heartbeat."
+          },
+          "labels": {
+            "service": "pragma-oracle",
+            "severity": "critical"
+          },
+          "isPaused": true,
+          "notification_settings": {
+            "receiver": "pragma-oracle-alerts"
+          }
+        },
+        {
+          "uid": "pragma-publisher-argent",
+          "title": "ARGENT publisher stopped",
+          "condition": "B",
+          "data": [
+            {
+              "refId": "A",
+              "queryType": "",
+              "relativeTimeRange": {
+                "from": 1200,
+                "to": 0
+              },
+              "datasourceUid": "eemnwzj4tmubke",
+              "model": {
+                "refId": "A",
+                "expr": "(max by (network,publisher) (pragma_publisher_last_update_seconds{network=\"Mainnet\",publisher=\"ARGENT\"}) > bool 900) or absent(pragma_publisher_last_update_seconds{network=\"Mainnet\",publisher=\"ARGENT\"})",
+                "instant": true,
+                "range": false,
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "eemnwzj4tmubke"
+                }
+              }
+            },
+            {
+              "refId": "B",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "refId": "B",
+                "type": "threshold",
+                "expression": "A",
+                "conditions": [
+                  {
+                    "evaluator": {
+                      "type": "gt",
+                      "params": [
+                        0.5
+                      ]
+                    },
+                    "operator": {
+                      "type": "and"
+                    },
+                    "reducer": {
+                      "type": "last",
+                      "params": []
+                    },
+                    "query": {
+                      "params": [
+                        "B"
+                      ]
+                    },
+                    "type": "query"
+                  }
+                ]
+              }
+            }
+          ],
+          "noDataState": "Alerting",
+          "execErrState": "Alerting",
+          "for": "1m",
+          "annotations": {
+            "summary": "ARGENT publisher stopped",
+            "description": "ARGENT has no observed submission for 15 minutes, or its metric is missing. Confirm process health, RPC, STRK gas and last accepted transaction. BTCFi configuration normally permits a 600-second heartbeat."
+          },
+          "labels": {
+            "service": "pragma-oracle",
+            "severity": "critical"
+          },
+          "isPaused": true,
+          "notification_settings": {
+            "receiver": "pragma-oracle-alerts"
+          }
+        },
+        {
+          "uid": "pragma-publisher-starkware",
+          "title": "STARKWARE publisher stopped",
+          "condition": "B",
+          "data": [
+            {
+              "refId": "A",
+              "queryType": "",
+              "relativeTimeRange": {
+                "from": 1200,
+                "to": 0
+              },
+              "datasourceUid": "eemnwzj4tmubke",
+              "model": {
+                "refId": "A",
+                "expr": "(max by (network,publisher) (pragma_publisher_last_update_seconds{network=\"Mainnet\",publisher=\"STARKWARE\"}) > bool 900) or absent(pragma_publisher_last_update_seconds{network=\"Mainnet\",publisher=\"STARKWARE\"})",
+                "instant": true,
+                "range": false,
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "eemnwzj4tmubke"
+                }
+              }
+            },
+            {
+              "refId": "B",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "refId": "B",
+                "type": "threshold",
+                "expression": "A",
+                "conditions": [
+                  {
+                    "evaluator": {
+                      "type": "gt",
+                      "params": [
+                        0.5
+                      ]
+                    },
+                    "operator": {
+                      "type": "and"
+                    },
+                    "reducer": {
+                      "type": "last",
+                      "params": []
+                    },
+                    "query": {
+                      "params": [
+                        "B"
+                      ]
+                    },
+                    "type": "query"
+                  }
+                ]
+              }
+            }
+          ],
+          "noDataState": "Alerting",
+          "execErrState": "Alerting",
+          "for": "1m",
+          "annotations": {
+            "summary": "STARKWARE publisher stopped",
+            "description": "STARKWARE has no observed submission for 15 minutes, or its metric is missing. Confirm process health, RPC, STRK gas and last accepted transaction. BTCFi configuration normally permits a 600-second heartbeat."
+          },
+          "labels": {
+            "service": "pragma-oracle",
+            "severity": "critical"
+          },
+          "isPaused": true,
+          "notification_settings": {
+            "receiver": "pragma-oracle-alerts"
+          }
+        },
+        {
+          "uid": "pragma-publisher-avnu",
+          "title": "AVNU publisher stopped",
+          "condition": "B",
+          "data": [
+            {
+              "refId": "A",
+              "queryType": "",
+              "relativeTimeRange": {
+                "from": 1200,
+                "to": 0
+              },
+              "datasourceUid": "eemnwzj4tmubke",
+              "model": {
+                "refId": "A",
+                "expr": "(max by (network,publisher) (pragma_publisher_last_update_seconds{network=\"Mainnet\",publisher=\"AVNU\"}) > bool 900) or absent(pragma_publisher_last_update_seconds{network=\"Mainnet\",publisher=\"AVNU\"})",
+                "instant": true,
+                "range": false,
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "eemnwzj4tmubke"
+                }
+              }
+            },
+            {
+              "refId": "B",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "refId": "B",
+                "type": "threshold",
+                "expression": "A",
+                "conditions": [
+                  {
+                    "evaluator": {
+                      "type": "gt",
+                      "params": [
+                        0.5
+                      ]
+                    },
+                    "operator": {
+                      "type": "and"
+                    },
+                    "reducer": {
+                      "type": "last",
+                      "params": []
+                    },
+                    "query": {
+                      "params": [
+                        "B"
+                      ]
+                    },
+                    "type": "query"
+                  }
+                ]
+              }
+            }
+          ],
+          "noDataState": "Alerting",
+          "execErrState": "Alerting",
+          "for": "1m",
+          "annotations": {
+            "summary": "AVNU publisher stopped",
+            "description": "AVNU has no observed submission for 15 minutes, or its metric is missing. Confirm process health, RPC, STRK gas and last accepted transaction. BTCFi configuration normally permits a 600-second heartbeat."
+          },
+          "labels": {
+            "service": "pragma-oracle",
+            "severity": "critical"
+          },
+          "isPaused": true,
+          "notification_settings": {
+            "receiver": "pragma-oracle-alerts"
+          }
+        },
+        {
+          "uid": "pragma-sources-low",
+          "title": "Major feed source count below four",
+          "condition": "B",
+          "data": [
+            {
+              "refId": "A",
+              "queryType": "",
+              "relativeTimeRange": {
+                "from": 1200,
+                "to": 0
+              },
+              "datasourceUid": "eemnwzj4tmubke",
+              "model": {
+                "refId": "A",
+                "expr": "min by (network,pair,type) (pragma_pair_num_sources{network=\"Mainnet\",pair=~\"BTC/USD|ETH/USD|STRK/USD|WBTC/USD|USDC/USD|USDT/USD\",type=\"spot\"}) < bool 4",
+                "instant": true,
+                "range": false,
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "eemnwzj4tmubke"
+                }
+              }
+            },
+            {
+              "refId": "B",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "refId": "B",
+                "type": "threshold",
+                "expression": "A",
+                "conditions": [
+                  {
+                    "evaluator": {
+                      "type": "gt",
+                      "params": [
+                        0.5
+                      ]
+                    },
+                    "operator": {
+                      "type": "and"
+                    },
+                    "reducer": {
+                      "type": "last",
+                      "params": []
+                    },
+                    "query": {
+                      "params": [
+                        "B"
+                      ]
+                    },
+                    "type": "query"
+                  }
+                ]
+              }
+            }
+          ],
+          "noDataState": "Alerting",
+          "execErrState": "Alerting",
+          "for": "1m",
+          "annotations": {
+            "summary": "Major feed source count below four",
+            "description": "A major spot feed has fewer than four contributing sources. Check individual sources and healthy publishers; consumer source-count safeguards must stay enabled."
+          },
+          "labels": {
+            "service": "pragma-oracle",
+            "severity": "critical"
+          },
+          "isPaused": true,
+          "notification_settings": {
+            "receiver": "pragma-oracle-alerts"
+          }
+        },
+        {
+          "uid": "pragma-source-deviation",
+          "title": "Source deviates more than five percent",
+          "condition": "B",
+          "data": [
+            {
+              "refId": "A",
+              "queryType": "",
+              "relativeTimeRange": {
+                "from": 1200,
+                "to": 0
+              },
+              "datasourceUid": "eemnwzj4tmubke",
+              "model": {
+                "refId": "A",
+                "expr": "max by (network,pair,source,type) (abs(pragma_deviation_vs_median_ratio{network=\"Mainnet\",type=\"spot\"})) > bool 0.05",
+                "instant": true,
+                "range": false,
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "eemnwzj4tmubke"
+                }
+              }
+            },
+            {
+              "refId": "B",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "refId": "B",
+                "type": "threshold",
+                "expression": "A",
+                "conditions": [
+                  {
+                    "evaluator": {
+                      "type": "gt",
+                      "params": [
+                        0.5
+                      ]
+                    },
+                    "operator": {
+                      "type": "and"
+                    },
+                    "reducer": {
+                      "type": "last",
+                      "params": []
+                    },
+                    "query": {
+                      "params": [
+                        "B"
+                      ]
+                    },
+                    "type": "query"
+                  }
+                ]
+              }
+            }
+          ],
+          "noDataState": "Alerting",
+          "execErrState": "Alerting",
+          "for": "2m",
+          "annotations": {
+            "summary": "Source deviates more than five percent",
+            "description": "A source differs from the onchain median by more than 5%. Check observation age, mapping, quote conversion and venue liquidity. Compare an independent reference before changing source policy."
+          },
+          "labels": {
+            "service": "pragma-oracle",
+            "severity": "warning"
+          },
+          "isPaused": true,
+          "notification_settings": {
+            "receiver": "pragma-oracle-alerts"
+          }
+        },
+        {
+          "uid": "pragma-source-extreme",
+          "title": "Source deviates more than twenty-five percent",
+          "condition": "B",
+          "data": [
+            {
+              "refId": "A",
+              "queryType": "",
+              "relativeTimeRange": {
+                "from": 1200,
+                "to": 0
+              },
+              "datasourceUid": "eemnwzj4tmubke",
+              "model": {
+                "refId": "A",
+                "expr": "max by (network,pair,source,type) (abs(pragma_deviation_vs_median_ratio{network=\"Mainnet\",type=\"spot\"})) > bool 0.25",
+                "instant": true,
+                "range": false,
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "eemnwzj4tmubke"
+                }
+              }
+            },
+            {
+              "refId": "B",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "refId": "B",
+                "type": "threshold",
+                "expression": "A",
+                "conditions": [
+                  {
+                    "evaluator": {
+                      "type": "gt",
+                      "params": [
+                        0.5
+                      ]
+                    },
+                    "operator": {
+                      "type": "and"
+                    },
+                    "reducer": {
+                      "type": "last",
+                      "params": []
+                    },
+                    "query": {
+                      "params": [
+                        "B"
+                      ]
+                    },
+                    "type": "query"
+                  }
+                ]
+              }
+            }
+          ],
+          "noDataState": "Alerting",
+          "execErrState": "Alerting",
+          "for": "0s",
+          "annotations": {
+            "summary": "Source deviates more than twenty-five percent",
+            "description": "Extreme source/median discrepancy. Escalate immediately and inspect feed mapping and conversion. There is deliberately no upper bound on the alert."
+          },
+          "labels": {
+            "service": "pragma-oracle",
+            "severity": "critical"
+          },
+          "isPaused": true,
+          "notification_settings": {
+            "receiver": "pragma-oracle-alerts"
+          }
+        },
+        {
+          "uid": "pragma-invalid-price",
+          "title": "Nonpositive source price",
+          "condition": "B",
+          "data": [
+            {
+              "refId": "A",
+              "queryType": "",
+              "relativeTimeRange": {
+                "from": 1200,
+                "to": 0
+              },
+              "datasourceUid": "eemnwzj4tmubke",
+              "model": {
+                "refId": "A",
+                "expr": "min by (network,pair,source,type) (pragma_pair_price_USD{network=\"Mainnet\",type=\"spot\"}) <= bool 0",
+                "instant": true,
+                "range": false,
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "eemnwzj4tmubke"
+                }
+              }
+            },
+            {
+              "refId": "B",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "refId": "B",
+                "type": "threshold",
+                "expression": "A",
+                "conditions": [
+                  {
+                    "evaluator": {
+                      "type": "gt",
+                      "params": [
+                        0.5
+                      ]
+                    },
+                    "operator": {
+                      "type": "and"
+                    },
+                    "reducer": {
+                      "type": "last",
+                      "params": []
+                    },
+                    "query": {
+                      "params": [
+                        "B"
+                      ]
+                    },
+                    "type": "query"
+                  }
+                ]
+              }
+            }
+          ],
+          "noDataState": "Alerting",
+          "execErrState": "Alerting",
+          "for": "0s",
+          "annotations": {
+            "summary": "Nonpositive source price",
+            "description": "A source is reporting a zero or negative price. Inspect the observation and notify affected integrators."
+          },
+          "labels": {
+            "service": "pragma-oracle",
+            "severity": "critical"
+          },
+          "isPaused": true,
+          "notification_settings": {
+            "receiver": "pragma-oracle-alerts"
+          }
+        },
+        {
+          "uid": "pragma-stablecoin-deviation",
+          "title": "Stablecoin source outside two percent",
+          "condition": "B",
+          "data": [
+            {
+              "refId": "A",
+              "queryType": "",
+              "relativeTimeRange": {
+                "from": 1200,
+                "to": 0
+              },
+              "datasourceUid": "eemnwzj4tmubke",
+              "model": {
+                "refId": "A",
+                "expr": "max by (network,pair,source,type) (abs(pragma_pair_price_USD{network=\"Mainnet\",pair=~\"USDT/USD|USDC/USD\",type=\"spot\"} - 1)) > bool 0.02",
+                "instant": true,
+                "range": false,
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "eemnwzj4tmubke"
+                }
+              }
+            },
+            {
+              "refId": "B",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "refId": "B",
+                "type": "threshold",
+                "expression": "A",
+                "conditions": [
+                  {
+                    "evaluator": {
+                      "type": "gt",
+                      "params": [
+                        0.5
+                      ]
+                    },
+                    "operator": {
+                      "type": "and"
+                    },
+                    "reducer": {
+                      "type": "last",
+                      "params": []
+                    },
+                    "query": {
+                      "params": [
+                        "B"
+                      ]
+                    },
+                    "type": "query"
+                  }
+                ]
+              }
+            }
+          ],
+          "noDataState": "Alerting",
+          "execErrState": "Alerting",
+          "for": "1m",
+          "annotations": {
+            "summary": "Stablecoin source outside two percent",
+            "description": "USDC/USD or USDT/USD source differs from $1 by more than 2%. This may be a real depeg or bad data; compare independent liquid venues. Never automatically replace with $1."
+          },
+          "labels": {
+            "service": "pragma-oracle",
+            "severity": "critical"
+          },
+          "isPaused": true,
+          "notification_settings": {
+            "receiver": "pragma-oracle-alerts"
+          }
+        },
+        {
+          "uid": "pragma-reference-deviation",
+          "title": "Onchain price differs from independent reference",
+          "condition": "B",
+          "data": [
+            {
+              "refId": "A",
+              "queryType": "",
+              "relativeTimeRange": {
+                "from": 1200,
+                "to": 0
+              },
+              "datasourceUid": "eemnwzj4tmubke",
+              "model": {
+                "refId": "A",
+                "expr": "max by (network,pair,type) (abs(pragma_deviation_onchain_vs_offchain_ratio{network=\"Mainnet\",type=\"spot\"})) > bool 0.025",
+                "instant": true,
+                "range": false,
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "eemnwzj4tmubke"
+                }
+              }
+            },
+            {
+              "refId": "B",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "refId": "B",
+                "type": "threshold",
+                "expression": "A",
+                "conditions": [
+                  {
+                    "evaluator": {
+                      "type": "gt",
+                      "params": [
+                        0.5
+                      ]
+                    },
+                    "operator": {
+                      "type": "and"
+                    },
+                    "reducer": {
+                      "type": "last",
+                      "params": []
+                    },
+                    "query": {
+                      "params": [
+                        "B"
+                      ]
+                    },
+                    "type": "query"
+                  }
+                ]
+              }
+            }
+          ],
+          "noDataState": "Alerting",
+          "execErrState": "Alerting",
+          "for": "1m",
+          "annotations": {
+            "summary": "Onchain price differs from independent reference",
+            "description": "Onchain median differs from the independent reference by more than 2.5%, with no upper cutoff. If data is missing, restore the reference feed before considering this check operational."
+          },
+          "labels": {
+            "service": "pragma-oracle",
+            "severity": "critical"
+          },
+          "isPaused": true,
+          "notification_settings": {
+            "receiver": "pragma-oracle-alerts"
+          }
+        },
+        {
+          "uid": "pragma-feed-btc",
+          "title": "BTC/USD feed stale or missing",
+          "condition": "B",
+          "data": [
+            {
+              "refId": "A",
+              "queryType": "",
+              "relativeTimeRange": {
+                "from": 1200,
+                "to": 0
+              },
+              "datasourceUid": "eemnwzj4tmubke",
+              "model": {
+                "refId": "A",
+                "expr": "(max by (network,pair,type) (pragma_pair_last_update_seconds{network=\"Mainnet\",pair=\"BTC/USD\",type=\"spot\"}) > bool 900) or absent(pragma_pair_last_update_seconds{network=\"Mainnet\",pair=\"BTC/USD\",type=\"spot\"})",
+                "instant": true,
+                "range": false,
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "eemnwzj4tmubke"
+                }
+              }
+            },
+            {
+              "refId": "B",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "refId": "B",
+                "type": "threshold",
+                "expression": "A",
+                "conditions": [
+                  {
+                    "evaluator": {
+                      "type": "gt",
+                      "params": [
+                        0.5
+                      ]
+                    },
+                    "operator": {
+                      "type": "and"
+                    },
+                    "reducer": {
+                      "type": "last",
+                      "params": []
+                    },
+                    "query": {
+                      "params": [
+                        "B"
+                      ]
+                    },
+                    "type": "query"
+                  }
+                ]
+              }
+            }
+          ],
+          "noDataState": "Alerting",
+          "execErrState": "Alerting",
+          "for": "1m",
+          "annotations": {
+            "summary": "BTC/USD feed stale or missing",
+            "description": "BTC/USD has no observed update within 15 minutes, or its metric is missing. Check RPC and indexer first, then publisher/source observations."
+          },
+          "labels": {
+            "service": "pragma-oracle",
+            "severity": "critical"
+          },
+          "isPaused": true,
+          "notification_settings": {
+            "receiver": "pragma-oracle-alerts"
+          }
+        },
+        {
+          "uid": "pragma-feed-eth",
+          "title": "ETH/USD feed stale or missing",
+          "condition": "B",
+          "data": [
+            {
+              "refId": "A",
+              "queryType": "",
+              "relativeTimeRange": {
+                "from": 1200,
+                "to": 0
+              },
+              "datasourceUid": "eemnwzj4tmubke",
+              "model": {
+                "refId": "A",
+                "expr": "(max by (network,pair,type) (pragma_pair_last_update_seconds{network=\"Mainnet\",pair=\"ETH/USD\",type=\"spot\"}) > bool 900) or absent(pragma_pair_last_update_seconds{network=\"Mainnet\",pair=\"ETH/USD\",type=\"spot\"})",
+                "instant": true,
+                "range": false,
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "eemnwzj4tmubke"
+                }
+              }
+            },
+            {
+              "refId": "B",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "refId": "B",
+                "type": "threshold",
+                "expression": "A",
+                "conditions": [
+                  {
+                    "evaluator": {
+                      "type": "gt",
+                      "params": [
+                        0.5
+                      ]
+                    },
+                    "operator": {
+                      "type": "and"
+                    },
+                    "reducer": {
+                      "type": "last",
+                      "params": []
+                    },
+                    "query": {
+                      "params": [
+                        "B"
+                      ]
+                    },
+                    "type": "query"
+                  }
+                ]
+              }
+            }
+          ],
+          "noDataState": "Alerting",
+          "execErrState": "Alerting",
+          "for": "1m",
+          "annotations": {
+            "summary": "ETH/USD feed stale or missing",
+            "description": "ETH/USD has no observed update within 15 minutes, or its metric is missing. Check RPC and indexer first, then publisher/source observations."
+          },
+          "labels": {
+            "service": "pragma-oracle",
+            "severity": "critical"
+          },
+          "isPaused": true,
+          "notification_settings": {
+            "receiver": "pragma-oracle-alerts"
+          }
+        },
+        {
+          "uid": "pragma-feed-strk",
+          "title": "STRK/USD feed stale or missing",
+          "condition": "B",
+          "data": [
+            {
+              "refId": "A",
+              "queryType": "",
+              "relativeTimeRange": {
+                "from": 1200,
+                "to": 0
+              },
+              "datasourceUid": "eemnwzj4tmubke",
+              "model": {
+                "refId": "A",
+                "expr": "(max by (network,pair,type) (pragma_pair_last_update_seconds{network=\"Mainnet\",pair=\"STRK/USD\",type=\"spot\"}) > bool 900) or absent(pragma_pair_last_update_seconds{network=\"Mainnet\",pair=\"STRK/USD\",type=\"spot\"})",
+                "instant": true,
+                "range": false,
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "eemnwzj4tmubke"
+                }
+              }
+            },
+            {
+              "refId": "B",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "refId": "B",
+                "type": "threshold",
+                "expression": "A",
+                "conditions": [
+                  {
+                    "evaluator": {
+                      "type": "gt",
+                      "params": [
+                        0.5
+                      ]
+                    },
+                    "operator": {
+                      "type": "and"
+                    },
+                    "reducer": {
+                      "type": "last",
+                      "params": []
+                    },
+                    "query": {
+                      "params": [
+                        "B"
+                      ]
+                    },
+                    "type": "query"
+                  }
+                ]
+              }
+            }
+          ],
+          "noDataState": "Alerting",
+          "execErrState": "Alerting",
+          "for": "1m",
+          "annotations": {
+            "summary": "STRK/USD feed stale or missing",
+            "description": "STRK/USD has no observed update within 15 minutes, or its metric is missing. Check RPC and indexer first, then publisher/source observations."
+          },
+          "labels": {
+            "service": "pragma-oracle",
+            "severity": "critical"
+          },
+          "isPaused": true,
+          "notification_settings": {
+            "receiver": "pragma-oracle-alerts"
+          }
+        },
+        {
+          "uid": "pragma-feed-usdc",
+          "title": "USDC/USD feed stale or missing",
+          "condition": "B",
+          "data": [
+            {
+              "refId": "A",
+              "queryType": "",
+              "relativeTimeRange": {
+                "from": 1200,
+                "to": 0
+              },
+              "datasourceUid": "eemnwzj4tmubke",
+              "model": {
+                "refId": "A",
+                "expr": "(max by (network,pair,type) (pragma_pair_last_update_seconds{network=\"Mainnet\",pair=\"USDC/USD\",type=\"spot\"}) > bool 900) or absent(pragma_pair_last_update_seconds{network=\"Mainnet\",pair=\"USDC/USD\",type=\"spot\"})",
+                "instant": true,
+                "range": false,
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "eemnwzj4tmubke"
+                }
+              }
+            },
+            {
+              "refId": "B",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "refId": "B",
+                "type": "threshold",
+                "expression": "A",
+                "conditions": [
+                  {
+                    "evaluator": {
+                      "type": "gt",
+                      "params": [
+                        0.5
+                      ]
+                    },
+                    "operator": {
+                      "type": "and"
+                    },
+                    "reducer": {
+                      "type": "last",
+                      "params": []
+                    },
+                    "query": {
+                      "params": [
+                        "B"
+                      ]
+                    },
+                    "type": "query"
+                  }
+                ]
+              }
+            }
+          ],
+          "noDataState": "Alerting",
+          "execErrState": "Alerting",
+          "for": "1m",
+          "annotations": {
+            "summary": "USDC/USD feed stale or missing",
+            "description": "USDC/USD has no observed update within 15 minutes, or its metric is missing. Check RPC and indexer first, then publisher/source observations."
+          },
+          "labels": {
+            "service": "pragma-oracle",
+            "severity": "critical"
+          },
+          "isPaused": true,
+          "notification_settings": {
+            "receiver": "pragma-oracle-alerts"
+          }
+        },
+        {
+          "uid": "pragma-feed-usdt",
+          "title": "USDT/USD feed stale or missing",
+          "condition": "B",
+          "data": [
+            {
+              "refId": "A",
+              "queryType": "",
+              "relativeTimeRange": {
+                "from": 1200,
+                "to": 0
+              },
+              "datasourceUid": "eemnwzj4tmubke",
+              "model": {
+                "refId": "A",
+                "expr": "(max by (network,pair,type) (pragma_pair_last_update_seconds{network=\"Mainnet\",pair=\"USDT/USD\",type=\"spot\"}) > bool 900) or absent(pragma_pair_last_update_seconds{network=\"Mainnet\",pair=\"USDT/USD\",type=\"spot\"})",
+                "instant": true,
+                "range": false,
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "eemnwzj4tmubke"
+                }
+              }
+            },
+            {
+              "refId": "B",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "refId": "B",
+                "type": "threshold",
+                "expression": "A",
+                "conditions": [
+                  {
+                    "evaluator": {
+                      "type": "gt",
+                      "params": [
+                        0.5
+                      ]
+                    },
+                    "operator": {
+                      "type": "and"
+                    },
+                    "reducer": {
+                      "type": "last",
+                      "params": []
+                    },
+                    "query": {
+                      "params": [
+                        "B"
+                      ]
+                    },
+                    "type": "query"
+                  }
+                ]
+              }
+            }
+          ],
+          "noDataState": "Alerting",
+          "execErrState": "Alerting",
+          "for": "1m",
+          "annotations": {
+            "summary": "USDT/USD feed stale or missing",
+            "description": "USDT/USD has no observed update within 15 minutes, or its metric is missing. Check RPC and indexer first, then publisher/source observations."
+          },
+          "labels": {
+            "service": "pragma-oracle",
+            "severity": "critical"
+          },
+          "isPaused": true,
+          "notification_settings": {
+            "receiver": "pragma-oracle-alerts"
+          }
+        },
+        {
+          "uid": "pragma-feed-wbtc",
+          "title": "WBTC/USD feed stale or missing",
+          "condition": "B",
+          "data": [
+            {
+              "refId": "A",
+              "queryType": "",
+              "relativeTimeRange": {
+                "from": 1200,
+                "to": 0
+              },
+              "datasourceUid": "eemnwzj4tmubke",
+              "model": {
+                "refId": "A",
+                "expr": "(max by (network,pair,type) (pragma_pair_last_update_seconds{network=\"Mainnet\",pair=\"WBTC/USD\",type=\"spot\"}) > bool 900) or absent(pragma_pair_last_update_seconds{network=\"Mainnet\",pair=\"WBTC/USD\",type=\"spot\"})",
+                "instant": true,
+                "range": false,
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "eemnwzj4tmubke"
+                }
+              }
+            },
+            {
+              "refId": "B",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "refId": "B",
+                "type": "threshold",
+                "expression": "A",
+                "conditions": [
+                  {
+                    "evaluator": {
+                      "type": "gt",
+                      "params": [
+                        0.5
+                      ]
+                    },
+                    "operator": {
+                      "type": "and"
+                    },
+                    "reducer": {
+                      "type": "last",
+                      "params": []
+                    },
+                    "query": {
+                      "params": [
+                        "B"
+                      ]
+                    },
+                    "type": "query"
+                  }
+                ]
+              }
+            }
+          ],
+          "noDataState": "Alerting",
+          "execErrState": "Alerting",
+          "for": "1m",
+          "annotations": {
+            "summary": "WBTC/USD feed stale or missing",
+            "description": "WBTC/USD has no observed update within 15 minutes, or its metric is missing. Check RPC and indexer first, then publisher/source observations."
+          },
+          "labels": {
+            "service": "pragma-oracle",
+            "severity": "critical"
+          },
+          "isPaused": true,
+          "notification_settings": {
+            "receiver": "pragma-oracle-alerts"
+          }
+        },
+        {
+          "uid": "pragma-gas-low",
+          "title": "Active publisher STRK balance low",
+          "condition": "B",
+          "data": [
+            {
+              "refId": "A",
+              "queryType": "",
+              "relativeTimeRange": {
+                "from": 1200,
+                "to": 0
+              },
+              "datasourceUid": "eemnwzj4tmubke",
+              "model": {
+                "refId": "A",
+                "expr": "min by (network,publisher) (pragma_publisher_balance_strk_STRK{network=\"Mainnet\",publisher=~\"PRAGMA|ARGENT|STARKWARE|AVNU\"}) < bool 500",
+                "instant": true,
+                "range": false,
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "eemnwzj4tmubke"
+                }
+              }
+            },
+            {
+              "refId": "B",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "refId": "B",
+                "type": "threshold",
+                "expression": "A",
+                "conditions": [
+                  {
+                    "evaluator": {
+                      "type": "gt",
+                      "params": [
+                        0.5
+                      ]
+                    },
+                    "operator": {
+                      "type": "and"
+                    },
+                    "reducer": {
+                      "type": "last",
+                      "params": []
+                    },
+                    "query": {
+                      "params": [
+                        "B"
+                      ]
+                    },
+                    "type": "query"
+                  }
+                ]
+              }
+            }
+          ],
+          "noDataState": "Alerting",
+          "execErrState": "Alerting",
+          "for": "5m",
+          "annotations": {
+            "summary": "Active publisher STRK balance low",
+            "description": "Publisher has less than 500 STRK. Refill before exhaustion; calibrate the threshold against each publisher's actual gas burn."
+          },
+          "labels": {
+            "service": "pragma-oracle",
+            "severity": "warning"
+          },
+          "isPaused": true,
+          "notification_settings": {
+            "receiver": "pragma-oracle-alerts"
+          }
+        }
+      ]
+    }
+  ]
+}

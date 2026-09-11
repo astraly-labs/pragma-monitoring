@@ -119,3 +119,9 @@ DEFILLAMA_API_KEY=
 Database migrations are loaded from the [pragma-node](https://github.com/astraly-labs/pragma-node) repository (`sql/` folder).
 
 The monitoring service includes integrated indexing functionality, so no separate indexer service is needed.
+
+## Alerting
+
+See [the alerting runbook](alerts/README.md) for publisher liveness, feed freshness,
+source deviation, independent-reference coverage, gas, and telemetry-loss rules.
+The provisioning file starts paused until Telegram delivery is configured and tested.
