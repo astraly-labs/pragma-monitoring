@@ -124,4 +124,5 @@ The monitoring service includes integrated indexing functionality, so no separat
 
 See [the alerting runbook](alerts/README.md) for publisher liveness, feed freshness,
 source deviation, independent-reference coverage, gas, and telemetry-loss rules.
-The provisioning file starts paused until Telegram delivery is configured and tested.
+The production rules are enabled and route to the tested Telegram contact point.
+See the runbook before applying this configuration to another installation.

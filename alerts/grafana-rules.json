@@ -4,7 +4,7 @@
     {
       "orgId": 1,
       "name": "pragma-oracle-safety",
-      "folder": "Onchain",
+      "folder": "onchain",
       "interval": 60,
       "rules": [
         {
@@ -81,7 +81,7 @@
             "service": "pragma-oracle",
             "severity": "critical"
           },
-          "isPaused": true,
+          "isPaused": false,
           "notification_settings": {
             "receiver": "pragma-oracle-alerts"
           }
@@ -160,7 +160,7 @@
             "service": "pragma-oracle",
             "severity": "critical"
           },
-          "isPaused": true,
+          "isPaused": false,
           "notification_settings": {
             "receiver": "pragma-oracle-alerts"
           }
@@ -239,7 +239,7 @@
             "service": "pragma-oracle",
             "severity": "critical"
           },
-          "isPaused": true,
+          "isPaused": false,
           "notification_settings": {
             "receiver": "pragma-oracle-alerts"
           }
@@ -318,7 +318,7 @@
             "service": "pragma-oracle",
             "severity": "critical"
           },
-          "isPaused": true,
+          "isPaused": false,
           "notification_settings": {
             "receiver": "pragma-oracle-alerts"
           }
@@ -397,7 +397,7 @@
             "service": "pragma-oracle",
             "severity": "critical"
           },
-          "isPaused": true,
+          "isPaused": false,
           "notification_settings": {
             "receiver": "pragma-oracle-alerts"
           }
@@ -476,7 +476,7 @@
             "service": "pragma-oracle",
             "severity": "critical"
           },
-          "isPaused": true,
+          "isPaused": false,
           "notification_settings": {
             "receiver": "pragma-oracle-alerts"
           }
@@ -555,7 +555,7 @@
             "service": "pragma-oracle",
             "severity": "critical"
           },
-          "isPaused": true,
+          "isPaused": false,
           "notification_settings": {
             "receiver": "pragma-oracle-alerts"
           }
@@ -634,7 +634,7 @@
             "service": "pragma-oracle",
             "severity": "warning"
           },
-          "isPaused": true,
+          "isPaused": false,
           "notification_settings": {
             "receiver": "pragma-oracle-alerts"
           }
@@ -713,7 +713,7 @@
             "service": "pragma-oracle",
             "severity": "critical"
           },
-          "isPaused": true,
+          "isPaused": false,
           "notification_settings": {
             "receiver": "pragma-oracle-alerts"
           }
@@ -792,7 +792,7 @@
             "service": "pragma-oracle",
             "severity": "critical"
           },
-          "isPaused": true,
+          "isPaused": false,
           "notification_settings": {
             "receiver": "pragma-oracle-alerts"
           }
@@ -871,7 +871,7 @@
             "service": "pragma-oracle",
             "severity": "critical"
           },
-          "isPaused": true,
+          "isPaused": false,
           "notification_settings": {
             "receiver": "pragma-oracle-alerts"
           }
@@ -950,7 +950,7 @@
             "service": "pragma-oracle",
             "severity": "critical"
           },
-          "isPaused": true,
+          "isPaused": false,
           "notification_settings": {
             "receiver": "pragma-oracle-alerts"
           }
@@ -1029,7 +1029,7 @@
             "service": "pragma-oracle",
             "severity": "critical"
           },
-          "isPaused": true,
+          "isPaused": false,
           "notification_settings": {
             "receiver": "pragma-oracle-alerts"
           }
@@ -1108,7 +1108,7 @@
             "service": "pragma-oracle",
             "severity": "critical"
           },
-          "isPaused": true,
+          "isPaused": false,
           "notification_settings": {
             "receiver": "pragma-oracle-alerts"
           }
@@ -1187,7 +1187,7 @@
             "service": "pragma-oracle",
             "severity": "critical"
           },
-          "isPaused": true,
+          "isPaused": false,
           "notification_settings": {
             "receiver": "pragma-oracle-alerts"
           }
@@ -1266,7 +1266,7 @@
             "service": "pragma-oracle",
             "severity": "critical"
           },
-          "isPaused": true,
+          "isPaused": false,
           "notification_settings": {
             "receiver": "pragma-oracle-alerts"
           }
@@ -1345,7 +1345,7 @@
             "service": "pragma-oracle",
             "severity": "critical"
           },
-          "isPaused": true,
+          "isPaused": false,
           "notification_settings": {
             "receiver": "pragma-oracle-alerts"
           }
@@ -1424,7 +1424,7 @@
             "service": "pragma-oracle",
             "severity": "critical"
           },
-          "isPaused": true,
+          "isPaused": false,
           "notification_settings": {
             "receiver": "pragma-oracle-alerts"
           }
@@ -1503,7 +1503,7 @@
             "service": "pragma-oracle",
             "severity": "warning"
           },
-          "isPaused": true,
+          "isPaused": false,
           "notification_settings": {
             "receiver": "pragma-oracle-alerts"
           }
