@@ -1,3 +1,4 @@
+use super::price_scale::normalize_price;
 use bigdecimal::ToPrimitive;
 use starknet::{
     core::{
@@ -61,15 +62,15 @@ pub async fn source_deviation<T: Entry>(
             query.pair_id()
         )))?;
 
-    let on_chain_price = data
+    let raw_on_chain_price = data
         .first()
         .ok_or(MonitoringError::OnChain("No data".to_string()))?
         .to_bigint()
         .to_f64()
         .ok_or(MonitoringError::Conversion(
             "Failed to convert to f64".to_string(),
-        ))?
-        / 10u32.pow(*decimals as u32) as f64;
+        ))?;
+    let on_chain_price = normalize_price(raw_on_chain_price, *decimals as u32);
 
     let deviation = (normalized_price - on_chain_price) / on_chain_price;
     let num_sources_aggregated = try_felt_to_u32(data.get(3).unwrap()).map_err(|e| {

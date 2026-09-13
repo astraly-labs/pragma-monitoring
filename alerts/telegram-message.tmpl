@@ -1,0 +1,7 @@
+PRAGMA / ORACLE REPORT
+{{ len .Alerts.Firing }} active · {{ len .Alerts.Resolved }} recovered
+{{ range $i, $a := .Alerts.Firing }}{{ if lt $i 16 }}
+• {{ $a.Labels.alertname }}{{ if $a.Labels.pair }} · {{ $a.Labels.pair }}{{ end }}{{ if $a.Labels.publisher }} · {{ $a.Labels.publisher }}{{ end }}{{ if $a.Labels.source }} · {{ $a.Labels.source }}{{ end }}{{ end }}{{ end }}
+{{ if gt (len .Alerts.Firing) 16 }}Additional affected observations are listed in Grafana.{{ end }}
+Review and acknowledge: https://grafana.production.pragma.build/alerting/list?search=pragma-oracle
+Grouped updates six hours apart; unchanged incidents repeat daily. Checks run every minute.

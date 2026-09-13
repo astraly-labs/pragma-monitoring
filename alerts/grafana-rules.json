@@ -72,7 +72,7 @@
           ],
           "noDataState": "Alerting",
           "execErrState": "Alerting",
-          "for": "1m",
+          "for": "5m",
           "annotations": {
             "summary": "Monitoring telemetry missing",
             "description": "The oracle monitor has stopped reporting. Check the process, OTEL collector, Mimir and indexer; do not interpret missing data as healthy."
@@ -81,10 +81,7 @@
             "service": "pragma-oracle",
             "severity": "critical"
           },
-          "isPaused": false,
-          "notification_settings": {
-            "receiver": "pragma-oracle-alerts"
-          }
+          "isPaused": false
         },
         {
           "uid": "pragma-indexer-stalled",
@@ -151,7 +148,7 @@
           ],
           "noDataState": "Alerting",
           "execErrState": "Alerting",
-          "for": "1m",
+          "for": "5m",
           "annotations": {
             "summary": "Oracle indexer stopped advancing",
             "description": "No indexed-block progress for 20 minutes. Check Starknet head and indexer lag before trusting freshness gauges."
@@ -160,10 +157,7 @@
             "service": "pragma-oracle",
             "severity": "critical"
           },
-          "isPaused": false,
-          "notification_settings": {
-            "receiver": "pragma-oracle-alerts"
-          }
+          "isPaused": false
         },
         {
           "uid": "pragma-publisher-pragma",
@@ -180,7 +174,7 @@
               "datasourceUid": "eemnwzj4tmubke",
               "model": {
                 "refId": "A",
-                "expr": "(max by (network,publisher) (pragma_publisher_last_update_seconds{network=\"Mainnet\",publisher=\"PRAGMA\"}) > bool 900) or absent(pragma_publisher_last_update_seconds{network=\"Mainnet\",publisher=\"PRAGMA\"})",
+                "expr": "(max by (network,publisher) (pragma_publisher_last_update_seconds{network=\"Mainnet\",publisher=\"PRAGMA\"}) > bool 1200) or absent(pragma_publisher_last_update_seconds{network=\"Mainnet\",publisher=\"PRAGMA\"})",
                 "instant": true,
                 "range": false,
                 "intervalMs": 1000,
@@ -230,19 +224,16 @@
           ],
           "noDataState": "Alerting",
           "execErrState": "Alerting",
-          "for": "1m",
+          "for": "5m",
           "annotations": {
             "summary": "PRAGMA publisher stopped",
-            "description": "PRAGMA has no observed submission for 15 minutes, or its metric is missing. Confirm process health, RPC, STRK gas and last accepted transaction. BTCFi configuration normally permits a 600-second heartbeat."
+            "description": "PRAGMA has no observed submission for 20 minutes, or its metric is missing. Confirm process health, RPC, STRK gas and last accepted transaction. BTCFi configuration normally permits a 600-second heartbeat. Confirm sustained failure for five minutes. Target publisher heartbeat remains 600 seconds."
           },
           "labels": {
             "service": "pragma-oracle",
             "severity": "critical"
           },
-          "isPaused": false,
-          "notification_settings": {
-            "receiver": "pragma-oracle-alerts"
-          }
+          "isPaused": false
         },
         {
           "uid": "pragma-publisher-argent",
@@ -259,7 +250,7 @@
               "datasourceUid": "eemnwzj4tmubke",
               "model": {
                 "refId": "A",
-                "expr": "(max by (network,publisher) (pragma_publisher_last_update_seconds{network=\"Mainnet\",publisher=\"ARGENT\"}) > bool 900) or absent(pragma_publisher_last_update_seconds{network=\"Mainnet\",publisher=\"ARGENT\"})",
+                "expr": "(max by (network,publisher) (pragma_publisher_last_update_seconds{network=\"Mainnet\",publisher=\"ARGENT\"}) > bool 1200) or absent(pragma_publisher_last_update_seconds{network=\"Mainnet\",publisher=\"ARGENT\"})",
                 "instant": true,
                 "range": false,
                 "intervalMs": 1000,
@@ -309,19 +300,16 @@
           ],
           "noDataState": "Alerting",
           "execErrState": "Alerting",
-          "for": "1m",
+          "for": "5m",
           "annotations": {
             "summary": "ARGENT publisher stopped",
-            "description": "ARGENT has no observed submission for 15 minutes, or its metric is missing. Confirm process health, RPC, STRK gas and last accepted transaction. BTCFi configuration normally permits a 600-second heartbeat."
+            "description": "ARGENT has no observed submission for 20 minutes, or its metric is missing. Confirm process health, RPC, STRK gas and last accepted transaction. BTCFi configuration normally permits a 600-second heartbeat. Confirm sustained failure for five minutes. Target publisher heartbeat remains 600 seconds."
           },
           "labels": {
             "service": "pragma-oracle",
             "severity": "critical"
           },
-          "isPaused": false,
-          "notification_settings": {
-            "receiver": "pragma-oracle-alerts"
-          }
+          "isPaused": false
         },
         {
           "uid": "pragma-publisher-starkware",
@@ -338,7 +326,7 @@
               "datasourceUid": "eemnwzj4tmubke",
               "model": {
                 "refId": "A",
-                "expr": "(max by (network,publisher) (pragma_publisher_last_update_seconds{network=\"Mainnet\",publisher=\"STARKWARE\"}) > bool 900) or absent(pragma_publisher_last_update_seconds{network=\"Mainnet\",publisher=\"STARKWARE\"})",
+                "expr": "(max by (network,publisher) (pragma_publisher_last_update_seconds{network=\"Mainnet\",publisher=\"STARKWARE\"}) > bool 1200) or absent(pragma_publisher_last_update_seconds{network=\"Mainnet\",publisher=\"STARKWARE\"})",
                 "instant": true,
                 "range": false,
                 "intervalMs": 1000,
@@ -388,19 +376,16 @@
           ],
           "noDataState": "Alerting",
           "execErrState": "Alerting",
-          "for": "1m",
+          "for": "5m",
           "annotations": {
             "summary": "STARKWARE publisher stopped",
-            "description": "STARKWARE has no observed submission for 15 minutes, or its metric is missing. Confirm process health, RPC, STRK gas and last accepted transaction. BTCFi configuration normally permits a 600-second heartbeat."
+            "description": "STARKWARE has no observed submission for 20 minutes, or its metric is missing. Confirm process health, RPC, STRK gas and last accepted transaction. BTCFi configuration normally permits a 600-second heartbeat. Confirm sustained failure for five minutes. Target publisher heartbeat remains 600 seconds."
           },
           "labels": {
             "service": "pragma-oracle",
             "severity": "critical"
           },
-          "isPaused": false,
-          "notification_settings": {
-            "receiver": "pragma-oracle-alerts"
-          }
+          "isPaused": false
         },
         {
           "uid": "pragma-publisher-avnu",
@@ -417,7 +402,7 @@
               "datasourceUid": "eemnwzj4tmubke",
               "model": {
                 "refId": "A",
-                "expr": "(max by (network,publisher) (pragma_publisher_last_update_seconds{network=\"Mainnet\",publisher=\"AVNU\"}) > bool 900) or absent(pragma_publisher_last_update_seconds{network=\"Mainnet\",publisher=\"AVNU\"})",
+                "expr": "(max by (network,publisher) (pragma_publisher_last_update_seconds{network=\"Mainnet\",publisher=\"AVNU\"}) > bool 1200) or absent(pragma_publisher_last_update_seconds{network=\"Mainnet\",publisher=\"AVNU\"})",
                 "instant": true,
                 "range": false,
                 "intervalMs": 1000,
@@ -467,19 +452,16 @@
           ],
           "noDataState": "Alerting",
           "execErrState": "Alerting",
-          "for": "1m",
+          "for": "5m",
           "annotations": {
             "summary": "AVNU publisher stopped",
-            "description": "AVNU has no observed submission for 15 minutes, or its metric is missing. Confirm process health, RPC, STRK gas and last accepted transaction. BTCFi configuration normally permits a 600-second heartbeat."
+            "description": "AVNU has no observed submission for 20 minutes, or its metric is missing. Confirm process health, RPC, STRK gas and last accepted transaction. BTCFi configuration normally permits a 600-second heartbeat. Confirm sustained failure for five minutes. Target publisher heartbeat remains 600 seconds."
           },
           "labels": {
             "service": "pragma-oracle",
             "severity": "critical"
           },
-          "isPaused": false,
-          "notification_settings": {
-            "receiver": "pragma-oracle-alerts"
-          }
+          "isPaused": false
         },
         {
           "uid": "pragma-sources-low",
@@ -546,7 +528,7 @@
           ],
           "noDataState": "Alerting",
           "execErrState": "Alerting",
-          "for": "1m",
+          "for": "5m",
           "annotations": {
             "summary": "Major feed source count below four",
             "description": "A major spot feed has fewer than four contributing sources. Check individual sources and healthy publishers; consumer source-count safeguards must stay enabled."
@@ -555,10 +537,7 @@
             "service": "pragma-oracle",
             "severity": "critical"
           },
-          "isPaused": false,
-          "notification_settings": {
-            "receiver": "pragma-oracle-alerts"
-          }
+          "isPaused": false
         },
         {
           "uid": "pragma-source-deviation",
@@ -625,7 +604,7 @@
           ],
           "noDataState": "Alerting",
           "execErrState": "Alerting",
-          "for": "2m",
+          "for": "5m",
           "annotations": {
             "summary": "Source deviates more than five percent",
             "description": "A source differs from the onchain median by more than 5%. Check observation age, mapping, quote conversion and venue liquidity. Compare an independent reference before changing source policy."
@@ -634,10 +613,7 @@
             "service": "pragma-oracle",
             "severity": "warning"
           },
-          "isPaused": false,
-          "notification_settings": {
-            "receiver": "pragma-oracle-alerts"
-          }
+          "isPaused": false
         },
         {
           "uid": "pragma-source-extreme",
@@ -713,10 +689,7 @@
             "service": "pragma-oracle",
             "severity": "critical"
           },
-          "isPaused": false,
-          "notification_settings": {
-            "receiver": "pragma-oracle-alerts"
-          }
+          "isPaused": false
         },
         {
           "uid": "pragma-invalid-price",
@@ -792,10 +765,7 @@
             "service": "pragma-oracle",
             "severity": "critical"
           },
-          "isPaused": false,
-          "notification_settings": {
-            "receiver": "pragma-oracle-alerts"
-          }
+          "isPaused": false
         },
         {
           "uid": "pragma-stablecoin-deviation",
@@ -862,7 +832,7 @@
           ],
           "noDataState": "Alerting",
           "execErrState": "Alerting",
-          "for": "1m",
+          "for": "5m",
           "annotations": {
             "summary": "Stablecoin source outside two percent",
             "description": "USDC/USD or USDT/USD source differs from $1 by more than 2%. This may be a real depeg or bad data; compare independent liquid venues. Never automatically replace with $1."
@@ -871,14 +841,11 @@
             "service": "pragma-oracle",
             "severity": "critical"
           },
-          "isPaused": false,
-          "notification_settings": {
-            "receiver": "pragma-oracle-alerts"
-          }
+          "isPaused": false
         },
         {
           "uid": "pragma-reference-deviation",
-          "title": "Onchain price differs from independent reference",
+          "title": "Independent reference missing or deviating",
           "condition": "B",
           "data": [
             {
@@ -941,19 +908,16 @@
           ],
           "noDataState": "Alerting",
           "execErrState": "Alerting",
-          "for": "1m",
+          "for": "5m",
           "annotations": {
-            "summary": "Onchain price differs from independent reference",
+            "summary": "Independent reference missing or deviating",
             "description": "Onchain median differs from the independent reference by more than 2.5%, with no upper cutoff. If data is missing, restore the reference feed before considering this check operational."
           },
           "labels": {
             "service": "pragma-oracle",
             "severity": "critical"
           },
-          "isPaused": false,
-          "notification_settings": {
-            "receiver": "pragma-oracle-alerts"
-          }
+          "isPaused": false
         },
         {
           "uid": "pragma-feed-btc",
@@ -970,7 +934,7 @@
               "datasourceUid": "eemnwzj4tmubke",
               "model": {
                 "refId": "A",
-                "expr": "(max by (network,pair,type) (pragma_pair_last_update_seconds{network=\"Mainnet\",pair=\"BTC/USD\",type=\"spot\"}) > bool 900) or absent(pragma_pair_last_update_seconds{network=\"Mainnet\",pair=\"BTC/USD\",type=\"spot\"})",
+                "expr": "(max by (network,pair,type) (pragma_pair_last_update_seconds{network=\"Mainnet\",pair=\"BTC/USD\",type=\"spot\"}) > bool 1200) or absent(pragma_pair_last_update_seconds{network=\"Mainnet\",pair=\"BTC/USD\",type=\"spot\"})",
                 "instant": true,
                 "range": false,
                 "intervalMs": 1000,
@@ -1020,19 +984,16 @@
           ],
           "noDataState": "Alerting",
           "execErrState": "Alerting",
-          "for": "1m",
+          "for": "5m",
           "annotations": {
             "summary": "BTC/USD feed stale or missing",
-            "description": "BTC/USD has no observed update within 15 minutes, or its metric is missing. Check RPC and indexer first, then publisher/source observations."
+            "description": "BTC/USD has no observed update within 20 minutes, or its metric is missing. Check RPC and indexer first, then publisher/source observations. Confirm sustained failure for five minutes. Target publisher heartbeat remains 600 seconds."
           },
           "labels": {
             "service": "pragma-oracle",
             "severity": "critical"
           },
-          "isPaused": false,
-          "notification_settings": {
-            "receiver": "pragma-oracle-alerts"
-          }
+          "isPaused": false
         },
         {
           "uid": "pragma-feed-eth",
@@ -1049,7 +1010,7 @@
               "datasourceUid": "eemnwzj4tmubke",
               "model": {
                 "refId": "A",
-                "expr": "(max by (network,pair,type) (pragma_pair_last_update_seconds{network=\"Mainnet\",pair=\"ETH/USD\",type=\"spot\"}) > bool 900) or absent(pragma_pair_last_update_seconds{network=\"Mainnet\",pair=\"ETH/USD\",type=\"spot\"})",
+                "expr": "(max by (network,pair,type) (pragma_pair_last_update_seconds{network=\"Mainnet\",pair=\"ETH/USD\",type=\"spot\"}) > bool 1200) or absent(pragma_pair_last_update_seconds{network=\"Mainnet\",pair=\"ETH/USD\",type=\"spot\"})",
                 "instant": true,
                 "range": false,
                 "intervalMs": 1000,
@@ -1099,19 +1060,16 @@
           ],
           "noDataState": "Alerting",
           "execErrState": "Alerting",
-          "for": "1m",
+          "for": "5m",
           "annotations": {
             "summary": "ETH/USD feed stale or missing",
-            "description": "ETH/USD has no observed update within 15 minutes, or its metric is missing. Check RPC and indexer first, then publisher/source observations."
+            "description": "ETH/USD has no observed update within 20 minutes, or its metric is missing. Check RPC and indexer first, then publisher/source observations. Confirm sustained failure for five minutes. Target publisher heartbeat remains 600 seconds."
           },
           "labels": {
             "service": "pragma-oracle",
             "severity": "critical"
           },
-          "isPaused": false,
-          "notification_settings": {
-            "receiver": "pragma-oracle-alerts"
-          }
+          "isPaused": false
         },
         {
           "uid": "pragma-feed-strk",
@@ -1128,7 +1086,7 @@
               "datasourceUid": "eemnwzj4tmubke",
               "model": {
                 "refId": "A",
-                "expr": "(max by (network,pair,type) (pragma_pair_last_update_seconds{network=\"Mainnet\",pair=\"STRK/USD\",type=\"spot\"}) > bool 900) or absent(pragma_pair_last_update_seconds{network=\"Mainnet\",pair=\"STRK/USD\",type=\"spot\"})",
+                "expr": "(max by (network,pair,type) (pragma_pair_last_update_seconds{network=\"Mainnet\",pair=\"STRK/USD\",type=\"spot\"}) > bool 1200) or absent(pragma_pair_last_update_seconds{network=\"Mainnet\",pair=\"STRK/USD\",type=\"spot\"})",
                 "instant": true,
                 "range": false,
                 "intervalMs": 1000,
@@ -1178,19 +1136,16 @@
           ],
           "noDataState": "Alerting",
           "execErrState": "Alerting",
-          "for": "1m",
+          "for": "5m",
           "annotations": {
             "summary": "STRK/USD feed stale or missing",
-            "description": "STRK/USD has no observed update within 15 minutes, or its metric is missing. Check RPC and indexer first, then publisher/source observations."
+            "description": "STRK/USD has no observed update within 20 minutes, or its metric is missing. Check RPC and indexer first, then publisher/source observations. Confirm sustained failure for five minutes. Target publisher heartbeat remains 600 seconds."
           },
           "labels": {
             "service": "pragma-oracle",
             "severity": "critical"
           },
-          "isPaused": false,
-          "notification_settings": {
-            "receiver": "pragma-oracle-alerts"
-          }
+          "isPaused": false
         },
         {
           "uid": "pragma-feed-usdc",
@@ -1207,7 +1162,7 @@
               "datasourceUid": "eemnwzj4tmubke",
               "model": {
                 "refId": "A",
-                "expr": "(max by (network,pair,type) (pragma_pair_last_update_seconds{network=\"Mainnet\",pair=\"USDC/USD\",type=\"spot\"}) > bool 900) or absent(pragma_pair_last_update_seconds{network=\"Mainnet\",pair=\"USDC/USD\",type=\"spot\"})",
+                "expr": "(max by (network,pair,type) (pragma_pair_last_update_seconds{network=\"Mainnet\",pair=\"USDC/USD\",type=\"spot\"}) > bool 1200) or absent(pragma_pair_last_update_seconds{network=\"Mainnet\",pair=\"USDC/USD\",type=\"spot\"})",
                 "instant": true,
                 "range": false,
                 "intervalMs": 1000,
@@ -1257,19 +1212,16 @@
           ],
           "noDataState": "Alerting",
           "execErrState": "Alerting",
-          "for": "1m",
+          "for": "5m",
           "annotations": {
             "summary": "USDC/USD feed stale or missing",
-            "description": "USDC/USD has no observed update within 15 minutes, or its metric is missing. Check RPC and indexer first, then publisher/source observations."
+            "description": "USDC/USD has no observed update within 20 minutes, or its metric is missing. Check RPC and indexer first, then publisher/source observations. Confirm sustained failure for five minutes. Target publisher heartbeat remains 600 seconds."
           },
           "labels": {
             "service": "pragma-oracle",
             "severity": "critical"
           },
-          "isPaused": false,
-          "notification_settings": {
-            "receiver": "pragma-oracle-alerts"
-          }
+          "isPaused": false
         },
         {
           "uid": "pragma-feed-usdt",
@@ -1286,7 +1238,7 @@
               "datasourceUid": "eemnwzj4tmubke",
               "model": {
                 "refId": "A",
-                "expr": "(max by (network,pair,type) (pragma_pair_last_update_seconds{network=\"Mainnet\",pair=\"USDT/USD\",type=\"spot\"}) > bool 900) or absent(pragma_pair_last_update_seconds{network=\"Mainnet\",pair=\"USDT/USD\",type=\"spot\"})",
+                "expr": "(max by (network,pair,type) (pragma_pair_last_update_seconds{network=\"Mainnet\",pair=\"USDT/USD\",type=\"spot\"}) > bool 1200) or absent(pragma_pair_last_update_seconds{network=\"Mainnet\",pair=\"USDT/USD\",type=\"spot\"})",
                 "instant": true,
                 "range": false,
                 "intervalMs": 1000,
@@ -1336,19 +1288,16 @@
           ],
           "noDataState": "Alerting",
           "execErrState": "Alerting",
-          "for": "1m",
+          "for": "5m",
           "annotations": {
             "summary": "USDT/USD feed stale or missing",
-            "description": "USDT/USD has no observed update within 15 minutes, or its metric is missing. Check RPC and indexer first, then publisher/source observations."
+            "description": "USDT/USD has no observed update within 20 minutes, or its metric is missing. Check RPC and indexer first, then publisher/source observations. Confirm sustained failure for five minutes. Target publisher heartbeat remains 600 seconds."
           },
           "labels": {
             "service": "pragma-oracle",
             "severity": "critical"
           },
-          "isPaused": false,
-          "notification_settings": {
-            "receiver": "pragma-oracle-alerts"
-          }
+          "isPaused": false
         },
         {
           "uid": "pragma-feed-wbtc",
@@ -1365,7 +1314,7 @@
               "datasourceUid": "eemnwzj4tmubke",
               "model": {
                 "refId": "A",
-                "expr": "(max by (network,pair,type) (pragma_pair_last_update_seconds{network=\"Mainnet\",pair=\"WBTC/USD\",type=\"spot\"}) > bool 900) or absent(pragma_pair_last_update_seconds{network=\"Mainnet\",pair=\"WBTC/USD\",type=\"spot\"})",
+                "expr": "(max by (network,pair,type) (pragma_pair_last_update_seconds{network=\"Mainnet\",pair=\"WBTC/USD\",type=\"spot\"}) > bool 1200) or absent(pragma_pair_last_update_seconds{network=\"Mainnet\",pair=\"WBTC/USD\",type=\"spot\"})",
                 "instant": true,
                 "range": false,
                 "intervalMs": 1000,
@@ -1415,19 +1364,16 @@
           ],
           "noDataState": "Alerting",
           "execErrState": "Alerting",
-          "for": "1m",
+          "for": "5m",
           "annotations": {
             "summary": "WBTC/USD feed stale or missing",
-            "description": "WBTC/USD has no observed update within 15 minutes, or its metric is missing. Check RPC and indexer first, then publisher/source observations."
+            "description": "WBTC/USD has no observed update within 20 minutes, or its metric is missing. Check RPC and indexer first, then publisher/source observations. Confirm sustained failure for five minutes. Target publisher heartbeat remains 600 seconds."
           },
           "labels": {
             "service": "pragma-oracle",
             "severity": "critical"
           },
-          "isPaused": false,
-          "notification_settings": {
-            "receiver": "pragma-oracle-alerts"
-          }
+          "isPaused": false
         },
         {
           "uid": "pragma-gas-low",
@@ -1503,10 +1449,7 @@
             "service": "pragma-oracle",
             "severity": "warning"
           },
-          "isPaused": false,
-          "notification_settings": {
-            "receiver": "pragma-oracle-alerts"
-          }
+          "isPaused": false
         }
       ]
     }

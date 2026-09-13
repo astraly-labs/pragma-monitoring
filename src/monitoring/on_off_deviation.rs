@@ -1,3 +1,4 @@
+use super::price_scale::normalize_price;
 use bigdecimal::ToPrimitive;
 use moka::future::Cache;
 use starknet::{
@@ -86,15 +87,15 @@ pub async fn on_off_price_deviation(
                 pair_id
             )))?;
 
-    let on_chain_price = data
+    let raw_on_chain_price = data
         .first()
         .ok_or(MonitoringError::OnChain("No data".to_string()))?
         .to_bigint()
         .to_f64()
         .ok_or(MonitoringError::Conversion(
             "Failed to convert to f64".to_string(),
-        ))?
-        / 10u64.pow(*decimals as u32) as f64;
+        ))?;
+    let on_chain_price = normalize_price(raw_on_chain_price, *decimals as u32);
 
     let (deviation, num_sources_aggregated) = match data_type {
         DataType::Spot => {

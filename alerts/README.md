@@ -11,7 +11,7 @@ and a Grafana test notification was independently read back from the destination
 group before activation. Live source-deviation, stopped-publisher, stale-feed and
 missing-reference notifications were also read back after activation; all 19 rules
 evaluated without execution errors. The bot credential is stored in Grafana secret
-settings. Recovery delivery remains to be observed when incidents resolve.
+settings. Recovery delivery was observed in the 13 September Telegram audit.
 
 This file reflects the enabled production state. For another installation, set
 `isPaused` to true until its datasource, recipient group and delivery are verified.
@@ -28,11 +28,65 @@ This file reflects the enabled production state. For another installation, set
   investigation; a depeg is not permission to hardcode a peg.
 - Independent-reference divergence and low STRK gas balances.
 
-The current BTCFi publisher config allows a 600-second heartbeat. Publisher and
-major-feed staleness thresholds are therefore 900 seconds plus one minute pending.
-They are starting operational thresholds, not an agreed SLA. Calibrate gas warnings
-against actual spend. Conversion-rate feeds, other assets and Miden need their own
-cadence/source policy before extending the six-feed source-count check.
+## Notification budget and thresholds (13 September 2026)
+
+Telegram delivery now groups all `service=pragma-oracle` alerts together, waits five
+minutes initially, sends changed groups six hours apart, and repeats unchanged
+incidents every 24 hours. This targets at most four routine reports per day.
+Underlying rules still evaluate every minute; Telegram can delay a new issue by
+up to six hours. It is a summary channel, not a timely paging channel. A primary
+and backup responder must actively monitor Grafana or have a separate pager.
+
+`telegram-policy.json` is a child route to merge into the existing policy tree.
+Remove each rule's direct `notification_settings` so all 19 rules use this route.
+Preserve unrelated routes. Policies already provisioned as `api` must be updated
+without `X-Disable-Provenance`; that header changes provenance and is rejected.
+`telegram-message.tmpl` produces compact reports, capped at 16 affected
+observations with an explicit link to the complete alert list.
+
+| Check | Trigger | Persistence |
+| --- | --- | --- |
+| Expected publisher / major feed | Age > 20 minutes or missing | 5 minutes |
+| Source versus median | Absolute deviation > 5% | 5 minutes |
+| Extreme source deviation | Absolute deviation > 25% | Immediate |
+| Nonpositive source price | Price <= 0 | Immediate |
+| USDC / USDT source price | Absolute deviation from $1 > 2% | 5 minutes |
+| Independent reference | Absolute deviation > 2.5%, missing or failed | 5 minutes |
+| Major feed source count | Fewer than 4 sources | 5 minutes |
+| Publisher gas | Less than 500 STRK | 5 minutes |
+| Telemetry / indexer | No telemetry for 5m / no progress for 20m | 5 minutes |
+
+The publisher heartbeat target remains 600 seconds. Alert persistence is a noise
+filter and does not redefine acceptable publishing cadence. Observed core feed
+ages reached 31–32 minutes during the 24-hour review. These breaches still need
+investigation and repair; raising the threshold alone is not compliance.
+
+A Telegram audit found 614 messages in 24 hours: 320 firing and 294 recovered,
+mostly repeated PRAGMA and core-feed freshness transitions. Ready and StarkWare
+were approximately 5.3 days stale. Independent reference metrics remained absent.
+
+The source monitor used `10u32.pow(decimals)`, which overflows at 18 decimals and
+explains the near-100% BROTHER/USDPLUS deviation. `price_scale.rs` replaces integer
+powers across source, reference and event normalization. Its tests cover matching
+18-decimal prices, a real >25% deviation, and 0/8/27 decimal scaling. Deploy this
+code fix before treating the current BROTHER deviation as a market discrepancy;
+verify its actual quote mapping separately. Do not raise the deviation threshold
+to conceal this arithmetic bug. LORDS/DefiLlama showed approximately 7% disagreement
+and still needs source and timestamp comparison.
+
+### Actions to meet the operating rules
+
+- Restore Ready and StarkWare publishing; add and verify the Foundation publisher.
+- Restore the 600-second heartbeat on required feeds and investigate indexer lag
+  versus actual submission gaps. Confirm maximum feed age stays below 20 minutes.
+- Deploy the normalization fix and verify 18-decimal feeds against raw contract
+  outputs, including BROTHER/USDPLUS and its quote currency.
+- Restore independent reference ingestion; verify all six required assets produce
+  fresh reference comparisons, with a test that detects a >2.5% mismatch.
+- Nominate a primary and backup responder, invite them to the alerts group, and
+  establish acknowledgement/escalation ownership. The six-hour summary is not
+  sufficient for fast incident response on its own.
+- Validate recovery and the notification budget over the next complete 24 hours.
 
 ## Existing gap found during validation
 
@@ -46,8 +100,8 @@ making the same conversion error.
 
 ARGENT and STARKWARE had not reported for approximately 3.5 days at the initial
 check. BROTHER/USDPLUS showed an extreme source/median discrepancy requiring
-mapping/decimal investigation. These are observations, not diagnoses or authority
-to change feeds automatically.
+mapping/decimal investigation. The arithmetic cause of the BROTHER source-monitor discrepancy was identified on
+13 September; the code correction still requires a production rollout.
 
 ## Deployment and verification
 
