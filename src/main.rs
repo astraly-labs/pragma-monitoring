@@ -533,6 +533,8 @@ async fn detailed_health_check(
         "components": {
             "indexer": {
                 "running": indexer_status.is_running,
+                "synced": indexer_status.is_synced,
+                "resync_target_block": indexer_status.resync_target_block,
                 "last_processed_block": indexer_status.last_processed_block,
                 "events_processed": indexer_status.events_processed,
                 "error_count": indexer_status.error_count,

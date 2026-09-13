@@ -368,6 +368,11 @@ impl DatabaseHandler {
 
                                     self.update_time_metrics(&spot_event, &network_name).await;
 
+                                    // Re-enable metrics on the event that completes reorg replay.
+                                    INTERNAL_INDEXER_TRACKER
+                                        .update_processed_block(block_number)
+                                        .await;
+
                                     if INTERNAL_INDEXER_TRACKER.is_synced().await {
                                         self.spawn_spot_metrics_task(
                                             spot_event.clone(),
@@ -375,11 +380,6 @@ impl DatabaseHandler {
                                             network_name.clone(),
                                         );
                                     }
-
-                                    // Update status tracker
-                                    INTERNAL_INDEXER_TRACKER
-                                        .update_processed_block(block_number)
-                                        .await;
                                 }
                                 Err(e) => {
                                     failed_events += 1;
