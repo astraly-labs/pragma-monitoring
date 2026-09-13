@@ -8,6 +8,7 @@ pub struct InternalIndexerStatus {
     pub is_running: bool,
     pub is_synced: bool,
     pub last_processed_block: Option<u64>,
+    pub resync_target_block: Option<u64>,
     pub events_processed: u64,
     #[serde(skip)]
     pub last_activity: Option<Instant>,
@@ -40,6 +41,7 @@ impl InternalIndexerTracker {
         status.is_running = running;
         if !running {
             status.is_synced = false;
+            status.resync_target_block = None;
         }
         if running {
             status.last_activity = Some(Instant::now());
@@ -49,6 +51,7 @@ impl InternalIndexerTracker {
     pub async fn set_synced(&self, synced: bool) {
         let mut status = self.status.write().await;
         status.is_synced = synced;
+        status.resync_target_block = None;
         status.last_activity = Some(Instant::now());
     }
 
@@ -60,6 +63,17 @@ impl InternalIndexerTracker {
         let mut status = self.status.write().await;
         status.last_processed_block = Some(block_number);
         status.last_activity = Some(Instant::now());
+        if status
+            .resync_target_block
+            .is_some_and(|target| block_number >= target)
+        {
+            status.is_synced = true;
+            status.resync_target_block = None;
+            tracing::info!(
+                "[REORG] Caught up to block {}; resuming deviation metrics",
+                block_number
+            );
+        }
     }
 
     pub async fn increment_events_processed(&self, count: u64) {
@@ -77,6 +91,13 @@ impl InternalIndexerTracker {
     pub async fn handle_reorg(&self, invalidated_block: u64) {
         let mut status = self.status.write().await;
 
+        // Evian emits Synced only once per stream. Preserve the previous live
+        // tip until replacement events catch up, including repeated reorgs.
+        if status.is_synced {
+            status.resync_target_block = status.last_processed_block;
+            status.is_synced = status.resync_target_block.is_none();
+        }
+
         // Update the last processed block to be one less than the invalidated block
         // This represents the last valid block after the reorg
         if let Some(current_last_block) = status.last_processed_block
@@ -90,7 +111,6 @@ impl InternalIndexerTracker {
             );
         }
 
-        status.is_synced = false;
         status.last_activity = Some(Instant::now());
     }
 
@@ -132,6 +152,56 @@ pub static INTERNAL_INDEXER_TRACKER: LazyLock<InternalIndexerTracker> =
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn reorg_resumes_metrics_only_after_replaying_the_previous_tip() {
+        let tracker = InternalIndexerTracker::new();
+        tracker.set_running(true).await;
+        tracker.update_processed_block(100).await;
+        tracker.set_synced(true).await;
+
+        tracker.handle_reorg(98).await;
+        assert_eq!(tracker.get_status().await.last_processed_block, Some(97));
+        assert!(!tracker.is_synced().await);
+        tracker.update_processed_block(99).await;
+        assert!(!tracker.is_synced().await);
+
+        // A second invalidation must not lower the original recovery target.
+        tracker.handle_reorg(97).await;
+        tracker.update_processed_block(99).await;
+        assert!(!tracker.is_synced().await);
+        tracker.update_processed_block(100).await;
+        assert!(tracker.is_synced().await);
+    }
+
+    #[tokio::test]
+    async fn reorg_does_not_bypass_initial_sync_or_stream_restart() {
+        let tracker = InternalIndexerTracker::new();
+        tracker.set_running(true).await;
+        tracker.update_processed_block(100).await;
+        tracker.handle_reorg(98).await;
+        tracker.update_processed_block(101).await;
+        assert!(!tracker.is_synced().await);
+
+        tracker.set_synced(true).await;
+        tracker.handle_reorg(100).await;
+        tracker.set_running(false).await;
+        tracker.set_running(true).await;
+        tracker.update_processed_block(102).await;
+        assert!(!tracker.is_synced().await);
+        tracker.set_synced(true).await;
+        assert!(tracker.is_synced().await);
+    }
+
+    #[tokio::test]
+    async fn reorg_before_the_first_live_event_has_nothing_to_replay() {
+        let tracker = InternalIndexerTracker::new();
+        tracker.set_running(true).await;
+        tracker.set_synced(true).await;
+        tracker.handle_reorg(100).await;
+        tracker.update_processed_block(101).await;
+        assert!(tracker.is_synced().await);
+    }
 
     #[tokio::test]
     async fn health_allows_the_publisher_heartbeat_but_detects_stalls() {
