@@ -814,7 +814,7 @@
               "datasourceUid": "eemnwzj4tmubke",
               "model": {
                 "refId": "A",
-                "expr": "max by (network,pair,type) (abs(pragma_deviation_onchain_vs_offchain_ratio{network=\"Mainnet\",type=\"spot\"})) > bool 0.025",
+                "expr": "(max by (network,pair,type) (abs(pragma_deviation_onchain_vs_offchain_ratio{network=\"Mainnet\",type=\"spot\"})) > bool 0.025) or absent(pragma_deviation_onchain_vs_offchain_ratio{network=\"Mainnet\",pair=\"BTC/USD\",type=\"spot\"}) or absent(pragma_deviation_onchain_vs_offchain_ratio{network=\"Mainnet\",pair=\"ETH/USD\",type=\"spot\"}) or absent(pragma_deviation_onchain_vs_offchain_ratio{network=\"Mainnet\",pair=\"STRK/USD\",type=\"spot\"}) or absent(pragma_deviation_onchain_vs_offchain_ratio{network=\"Mainnet\",pair=\"USDC/USD\",type=\"spot\"}) or absent(pragma_deviation_onchain_vs_offchain_ratio{network=\"Mainnet\",pair=\"USDT/USD\",type=\"spot\"}) or absent(pragma_deviation_onchain_vs_offchain_ratio{network=\"Mainnet\",pair=\"WBTC/USD\",type=\"spot\"})",
                 "instant": true,
                 "range": false,
                 "intervalMs": 1000,
@@ -863,7 +863,7 @@
           "for": "5m",
           "annotations": {
             "summary": "Independent reference missing or deviating",
-            "description": "Onchain median differs from the independent reference by more than 2.5%, with no upper cutoff. If data is missing, restore the reference feed before considering this check operational."
+            "description": "Independent onchain/offchain comparison exceeds 2.5%, or a reference comparison is missing for a required core feed. Check reference ingestion, timestamps and source quality. Confirm sustained failure for five minutes."
           },
           "labels": {
             "service": "pragma-oracle",

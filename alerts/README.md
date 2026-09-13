@@ -78,6 +78,9 @@ verify its actual quote mapping separately. Do not raise the deviation threshold
 to conceal this arithmetic bug. LORDS/DefiLlama showed approximately 7% disagreement
 and still needs source and timestamp comparison.
 
+The reference rule checks missing comparisons for each of the six core feeds
+individually, so one recovered asset cannot hide missing coverage on another.
+
 ### Actions to meet the operating rules
 
 - Restore Ready and StarkWare publishing; add and verify the Foundation publisher.
