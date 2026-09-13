@@ -106,9 +106,10 @@ impl InternalIndexerTracker {
             return false;
         }
 
-        // Check if we've had recent activity (within last 5 minutes)
+        // Activity follows oracle events, which may be 30 minutes apart.
+        // Match the 40-minute feed freshness allowance before declaring a stall.
         if let Some(last_activity) = status.last_activity {
-            if last_activity.elapsed() > Duration::from_secs(300) {
+            if last_activity.elapsed() > Duration::from_secs(40 * 60) {
                 return false;
             }
         } else {
@@ -127,3 +128,33 @@ impl InternalIndexerTracker {
 // Global instance
 pub static INTERNAL_INDEXER_TRACKER: LazyLock<InternalIndexerTracker> =
     LazyLock::new(InternalIndexerTracker::new);
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn health_allows_the_publisher_heartbeat_but_detects_stalls() {
+        let tracker = InternalIndexerTracker::new();
+        tracker.set_running(true).await;
+        tracker.status.write().await.last_activity =
+            Some(Instant::now() - Duration::from_secs(31 * 60));
+        assert!(tracker.is_healthy().await);
+
+        tracker.status.write().await.last_activity =
+            Some(Instant::now() - Duration::from_secs(41 * 60));
+        assert!(!tracker.is_healthy().await);
+    }
+
+    #[tokio::test]
+    async fn recent_activity_does_not_hide_a_stopped_or_failing_indexer() {
+        let tracker = InternalIndexerTracker::new();
+        tracker.set_running(true).await;
+        tracker.set_running(false).await;
+        assert!(!tracker.is_healthy().await);
+
+        tracker.set_running(true).await;
+        tracker.status.write().await.error_count = 11;
+        assert!(!tracker.is_healthy().await);
+    }
+}

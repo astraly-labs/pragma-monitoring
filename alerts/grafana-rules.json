@@ -88,13 +88,13 @@
               "refId": "A",
               "queryType": "",
               "relativeTimeRange": {
-                "from": 1200,
+                "from": 2400,
                 "to": 0
               },
               "datasourceUid": "eemnwzj4tmubke",
               "model": {
                 "refId": "A",
-                "expr": "((max_over_time(pragma_indexer_latest_block{network=\"Mainnet\"}[20m]) - min_over_time(pragma_indexer_latest_block{network=\"Mainnet\"}[20m])) == bool 0)",
+                "expr": "((max_over_time(pragma_indexer_latest_block{network=\"Mainnet\"}[40m]) - min_over_time(pragma_indexer_latest_block{network=\"Mainnet\"}[40m])) == bool 0)",
                 "instant": true,
                 "range": false,
                 "intervalMs": 1000,
@@ -143,7 +143,7 @@
           "for": "5m",
           "annotations": {
             "summary": "Oracle indexer stopped advancing",
-            "description": "No indexed-block progress for 20 minutes. Check Starknet head and indexer lag before trusting freshness gauges."
+            "description": "No indexed-event block progress for 40 minutes. Oracle events can be 30 minutes apart; check Starknet head and indexer lag before trusting freshness gauges."
           },
           "labels": {
             "service": "pragma-oracle",

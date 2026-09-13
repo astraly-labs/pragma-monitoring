@@ -54,7 +54,7 @@ observations with an explicit link to the complete alert list.
 | Independent reference           | Absolute deviation > 2.5%, missing or failed | 5 minutes   |
 | Major feed source count         | Fewer than 4 sources                         | 5 minutes   |
 | Publisher gas                   | Less than 500 STRK                           | 5 minutes   |
-| Telemetry / indexer             | No telemetry for 5m / no progress for 20m    | 5 minutes   |
+| Telemetry / indexer             | No telemetry for 5m / no progress for 40m    | 5 minutes   |
 
 The deployed price-pusher v2.14.4 mainnet configuration uses an 1800-second
 heartbeat. Observed core feed ages of 31–32 minutes are consistent with that
@@ -135,3 +135,5 @@ The Telegram group created during this work is recorded in the private operation
 handoff, not in this public repository. Rule summaries identify the affected
 publisher/pair/source through Grafana labels; descriptions contain the first
 response steps. Alerts never execute ownership changes, source removals or trades.
+
+The indexer health endpoint measures time since an oracle event, not a transport heartbeat. It allows 40 minutes without events to accommodate the deployed 30-minute publisher heartbeat; the Grafana stalled-indexer rule uses the same window plus five minutes persistence. A stopped indexer or excessive processing errors remains unhealthy immediately.
