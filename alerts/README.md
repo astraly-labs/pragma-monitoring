@@ -46,7 +46,7 @@ observations with an explicit link to the complete alert list.
 
 | Check                           | Trigger                                      | Persistence |
 | ------------------------------- | -------------------------------------------- | ----------- |
-| Expected publisher / major feed | Age > 20 minutes or missing                  | 5 minutes   |
+| Expected publisher / major feed | Age > 40 minutes or missing                  | 5 minutes   |
 | Source versus median            | Absolute deviation > 5%                      | 5 minutes   |
 | Extreme source deviation        | Absolute deviation > 25%                     | Immediate   |
 | Nonpositive source price        | Price <= 0                                   | Immediate   |
@@ -56,10 +56,14 @@ observations with an explicit link to the complete alert list.
 | Publisher gas                   | Less than 500 STRK                           | 5 minutes   |
 | Telemetry / indexer             | No telemetry for 5m / no progress for 20m    | 5 minutes   |
 
-The publisher heartbeat target remains 600 seconds. Alert persistence is a noise
-filter and does not redefine acceptable publishing cadence. Observed core feed
-ages reached 31–32 minutes during the 24-hour review. These breaches still need
-investigation and repair; raising the threshold alone is not compliance.
+The deployed price-pusher v2.14.4 mainnet configuration uses an 1800-second
+heartbeat. Observed core feed ages of 31–32 minutes are consistent with that
+cadence plus ingestion delay; the initial 20-minute alert cutoff was too short.
+The 40-minute cutoff plus five minutes of persistence leaves room for normal
+submission and indexing, while detecting sustained misses. A 600-second heartbeat
+appears in the BTCFi onboarding example, but it is not the deployed mainnet
+configuration or an agreed service level. Tightening publishing cadence requires
+an explicit operational decision and rechecking the corresponding alert cutoff.
 
 A Telegram audit found 614 messages in 24 hours: 320 firing and 294 recovered,
 mostly repeated PRAGMA and core-feed freshness transitions. Ready and StarkWare
@@ -77,8 +81,9 @@ and still needs source and timestamp comparison.
 ### Actions to meet the operating rules
 
 - Restore Ready and StarkWare publishing; add and verify the Foundation publisher.
-- Restore the 600-second heartbeat on required feeds and investigate indexer lag
-  versus actual submission gaps. Confirm maximum feed age stays below 20 minutes.
+- Keep required feeds within the deployed 30-minute heartbeat plus indexing delay;
+  investigate sustained age over 40 minutes. Agree any tighter publishing cadence
+  with operators and consumers before treating it as an operating rule.
 - Deploy the normalization fix and verify 18-decimal feeds against raw contract
   outputs, including BROTHER/USDPLUS and its quote currency.
 - Restore independent reference ingestion; verify all six required assets produce
