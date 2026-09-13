@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile-upstream:master
 
-FROM lukemathwalker/cargo-chef:latest-rust-slim-bullseye AS cargo-chef
+FROM lukemathwalker/cargo-chef:latest-rust-slim-bookworm AS cargo-chef
 WORKDIR /app
 
 FROM cargo-chef AS planner
@@ -36,10 +36,10 @@ COPY . .
 
 RUN cargo build --locked --release --workspace --exclude tests
 
-FROM debian:bullseye-slim AS final
+FROM debian:bookworm-slim AS final
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
     libpq-dev \
-    libssl1.1 \
+    libssl3 \
     procps \
     && rm -rf /var/lib/apt/lists/*
 
