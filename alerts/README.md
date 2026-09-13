@@ -44,17 +44,17 @@ without `X-Disable-Provenance`; that header changes provenance and is rejected.
 `telegram-message.tmpl` produces compact reports, capped at 16 affected
 observations with an explicit link to the complete alert list.
 
-| Check | Trigger | Persistence |
-| --- | --- | --- |
-| Expected publisher / major feed | Age > 20 minutes or missing | 5 minutes |
-| Source versus median | Absolute deviation > 5% | 5 minutes |
-| Extreme source deviation | Absolute deviation > 25% | Immediate |
-| Nonpositive source price | Price <= 0 | Immediate |
-| USDC / USDT source price | Absolute deviation from $1 > 2% | 5 minutes |
-| Independent reference | Absolute deviation > 2.5%, missing or failed | 5 minutes |
-| Major feed source count | Fewer than 4 sources | 5 minutes |
-| Publisher gas | Less than 500 STRK | 5 minutes |
-| Telemetry / indexer | No telemetry for 5m / no progress for 20m | 5 minutes |
+| Check                           | Trigger                                      | Persistence |
+| ------------------------------- | -------------------------------------------- | ----------- |
+| Expected publisher / major feed | Age > 20 minutes or missing                  | 5 minutes   |
+| Source versus median            | Absolute deviation > 5%                      | 5 minutes   |
+| Extreme source deviation        | Absolute deviation > 25%                     | Immediate   |
+| Nonpositive source price        | Price <= 0                                   | Immediate   |
+| USDC / USDT source price        | Absolute deviation from $1 > 2%              | 5 minutes   |
+| Independent reference           | Absolute deviation > 2.5%, missing or failed | 5 minutes   |
+| Major feed source count         | Fewer than 4 sources                         | 5 minutes   |
+| Publisher gas                   | Less than 500 STRK                           | 5 minutes   |
+| Telemetry / indexer             | No telemetry for 5m / no progress for 20m    | 5 minutes   |
 
 The publisher heartbeat target remains 600 seconds. Alert persistence is a noise
 filter and does not redefine acceptable publishing cadence. Observed core feed
