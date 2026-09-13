@@ -166,7 +166,7 @@
               "datasourceUid": "eemnwzj4tmubke",
               "model": {
                 "refId": "A",
-                "expr": "(max by (network,publisher) (pragma_publisher_last_update_seconds{network=\"Mainnet\",publisher=\"PRAGMA\"}) > bool 1200) or absent(pragma_publisher_last_update_seconds{network=\"Mainnet\",publisher=\"PRAGMA\"})",
+                "expr": "(max by (network,publisher) (pragma_publisher_last_update_seconds{network=\"Mainnet\",publisher=\"PRAGMA\"}) > bool 2400) or absent(pragma_publisher_last_update_seconds{network=\"Mainnet\",publisher=\"PRAGMA\"})",
                 "instant": true,
                 "range": false,
                 "intervalMs": 1000,
@@ -215,7 +215,7 @@
           "for": "5m",
           "annotations": {
             "summary": "PRAGMA publisher stopped",
-            "description": "PRAGMA has no observed submission for 20 minutes, or its metric is missing. Confirm process health, RPC, STRK gas and last accepted transaction. BTCFi configuration normally permits a 600-second heartbeat. Confirm sustained failure for five minutes. Target publisher heartbeat remains 600 seconds."
+            "description": "PRAGMA has no observed submission for 40 minutes, or its metric is missing. Confirm process health, RPC, STRK gas and last accepted transaction. Confirm sustained failure for five minutes. The deployed mainnet configuration uses an 1800-second heartbeat."
           },
           "labels": {
             "service": "pragma-oracle",
@@ -238,7 +238,7 @@
               "datasourceUid": "eemnwzj4tmubke",
               "model": {
                 "refId": "A",
-                "expr": "(max by (network,publisher) (pragma_publisher_last_update_seconds{network=\"Mainnet\",publisher=\"ARGENT\"}) > bool 1200) or absent(pragma_publisher_last_update_seconds{network=\"Mainnet\",publisher=\"ARGENT\"})",
+                "expr": "(max by (network,publisher) (pragma_publisher_last_update_seconds{network=\"Mainnet\",publisher=\"ARGENT\"}) > bool 2400) or absent(pragma_publisher_last_update_seconds{network=\"Mainnet\",publisher=\"ARGENT\"})",
                 "instant": true,
                 "range": false,
                 "intervalMs": 1000,
@@ -287,7 +287,7 @@
           "for": "5m",
           "annotations": {
             "summary": "ARGENT publisher stopped",
-            "description": "ARGENT has no observed submission for 20 minutes, or its metric is missing. Confirm process health, RPC, STRK gas and last accepted transaction. BTCFi configuration normally permits a 600-second heartbeat. Confirm sustained failure for five minutes. Target publisher heartbeat remains 600 seconds."
+            "description": "ARGENT has no observed submission for 40 minutes, or its metric is missing. Confirm process health, RPC, STRK gas and last accepted transaction. Confirm sustained failure for five minutes. The deployed mainnet configuration uses an 1800-second heartbeat."
           },
           "labels": {
             "service": "pragma-oracle",
@@ -310,7 +310,7 @@
               "datasourceUid": "eemnwzj4tmubke",
               "model": {
                 "refId": "A",
-                "expr": "(max by (network,publisher) (pragma_publisher_last_update_seconds{network=\"Mainnet\",publisher=\"STARKWARE\"}) > bool 1200) or absent(pragma_publisher_last_update_seconds{network=\"Mainnet\",publisher=\"STARKWARE\"})",
+                "expr": "(max by (network,publisher) (pragma_publisher_last_update_seconds{network=\"Mainnet\",publisher=\"STARKWARE\"}) > bool 2400) or absent(pragma_publisher_last_update_seconds{network=\"Mainnet\",publisher=\"STARKWARE\"})",
                 "instant": true,
                 "range": false,
                 "intervalMs": 1000,
@@ -359,7 +359,7 @@
           "for": "5m",
           "annotations": {
             "summary": "STARKWARE publisher stopped",
-            "description": "STARKWARE has no observed submission for 20 minutes, or its metric is missing. Confirm process health, RPC, STRK gas and last accepted transaction. BTCFi configuration normally permits a 600-second heartbeat. Confirm sustained failure for five minutes. Target publisher heartbeat remains 600 seconds."
+            "description": "STARKWARE has no observed submission for 40 minutes, or its metric is missing. Confirm process health, RPC, STRK gas and last accepted transaction. Confirm sustained failure for five minutes. The deployed mainnet configuration uses an 1800-second heartbeat."
           },
           "labels": {
             "service": "pragma-oracle",
@@ -382,7 +382,7 @@
               "datasourceUid": "eemnwzj4tmubke",
               "model": {
                 "refId": "A",
-                "expr": "(max by (network,publisher) (pragma_publisher_last_update_seconds{network=\"Mainnet\",publisher=\"AVNU\"}) > bool 1200) or absent(pragma_publisher_last_update_seconds{network=\"Mainnet\",publisher=\"AVNU\"})",
+                "expr": "(max by (network,publisher) (pragma_publisher_last_update_seconds{network=\"Mainnet\",publisher=\"AVNU\"}) > bool 2400) or absent(pragma_publisher_last_update_seconds{network=\"Mainnet\",publisher=\"AVNU\"})",
                 "instant": true,
                 "range": false,
                 "intervalMs": 1000,
@@ -431,7 +431,7 @@
           "for": "5m",
           "annotations": {
             "summary": "AVNU publisher stopped",
-            "description": "AVNU has no observed submission for 20 minutes, or its metric is missing. Confirm process health, RPC, STRK gas and last accepted transaction. BTCFi configuration normally permits a 600-second heartbeat. Confirm sustained failure for five minutes. Target publisher heartbeat remains 600 seconds."
+            "description": "AVNU has no observed submission for 40 minutes, or its metric is missing. Confirm process health, RPC, STRK gas and last accepted transaction. Confirm sustained failure for five minutes. The deployed mainnet configuration uses an 1800-second heartbeat."
           },
           "labels": {
             "service": "pragma-oracle",
@@ -886,7 +886,7 @@
               "datasourceUid": "eemnwzj4tmubke",
               "model": {
                 "refId": "A",
-                "expr": "(max by (network,pair,type) (pragma_pair_last_update_seconds{network=\"Mainnet\",pair=\"BTC/USD\",type=\"spot\"}) > bool 1200) or absent(pragma_pair_last_update_seconds{network=\"Mainnet\",pair=\"BTC/USD\",type=\"spot\"})",
+                "expr": "(max by (network,pair,type) (pragma_pair_last_update_seconds{network=\"Mainnet\",pair=\"BTC/USD\",type=\"spot\"}) > bool 2400) or absent(pragma_pair_last_update_seconds{network=\"Mainnet\",pair=\"BTC/USD\",type=\"spot\"})",
                 "instant": true,
                 "range": false,
                 "intervalMs": 1000,
@@ -935,7 +935,7 @@
           "for": "5m",
           "annotations": {
             "summary": "BTC/USD feed stale or missing",
-            "description": "BTC/USD has no observed update within 20 minutes, or its metric is missing. Check RPC and indexer first, then publisher/source observations. Confirm sustained failure for five minutes. Target publisher heartbeat remains 600 seconds."
+            "description": "BTC/USD has no observed update within 40 minutes, or its metric is missing. Check RPC and indexer first, then publisher/source observations. Confirm sustained failure for five minutes. The deployed mainnet configuration uses an 1800-second heartbeat."
           },
           "labels": {
             "service": "pragma-oracle",
@@ -958,7 +958,7 @@
               "datasourceUid": "eemnwzj4tmubke",
               "model": {
                 "refId": "A",
-                "expr": "(max by (network,pair,type) (pragma_pair_last_update_seconds{network=\"Mainnet\",pair=\"ETH/USD\",type=\"spot\"}) > bool 1200) or absent(pragma_pair_last_update_seconds{network=\"Mainnet\",pair=\"ETH/USD\",type=\"spot\"})",
+                "expr": "(max by (network,pair,type) (pragma_pair_last_update_seconds{network=\"Mainnet\",pair=\"ETH/USD\",type=\"spot\"}) > bool 2400) or absent(pragma_pair_last_update_seconds{network=\"Mainnet\",pair=\"ETH/USD\",type=\"spot\"})",
                 "instant": true,
                 "range": false,
                 "intervalMs": 1000,
@@ -1007,7 +1007,7 @@
           "for": "5m",
           "annotations": {
             "summary": "ETH/USD feed stale or missing",
-            "description": "ETH/USD has no observed update within 20 minutes, or its metric is missing. Check RPC and indexer first, then publisher/source observations. Confirm sustained failure for five minutes. Target publisher heartbeat remains 600 seconds."
+            "description": "ETH/USD has no observed update within 40 minutes, or its metric is missing. Check RPC and indexer first, then publisher/source observations. Confirm sustained failure for five minutes. The deployed mainnet configuration uses an 1800-second heartbeat."
           },
           "labels": {
             "service": "pragma-oracle",
@@ -1030,7 +1030,7 @@
               "datasourceUid": "eemnwzj4tmubke",
               "model": {
                 "refId": "A",
-                "expr": "(max by (network,pair,type) (pragma_pair_last_update_seconds{network=\"Mainnet\",pair=\"STRK/USD\",type=\"spot\"}) > bool 1200) or absent(pragma_pair_last_update_seconds{network=\"Mainnet\",pair=\"STRK/USD\",type=\"spot\"})",
+                "expr": "(max by (network,pair,type) (pragma_pair_last_update_seconds{network=\"Mainnet\",pair=\"STRK/USD\",type=\"spot\"}) > bool 2400) or absent(pragma_pair_last_update_seconds{network=\"Mainnet\",pair=\"STRK/USD\",type=\"spot\"})",
                 "instant": true,
                 "range": false,
                 "intervalMs": 1000,
@@ -1079,7 +1079,7 @@
           "for": "5m",
           "annotations": {
             "summary": "STRK/USD feed stale or missing",
-            "description": "STRK/USD has no observed update within 20 minutes, or its metric is missing. Check RPC and indexer first, then publisher/source observations. Confirm sustained failure for five minutes. Target publisher heartbeat remains 600 seconds."
+            "description": "STRK/USD has no observed update within 40 minutes, or its metric is missing. Check RPC and indexer first, then publisher/source observations. Confirm sustained failure for five minutes. The deployed mainnet configuration uses an 1800-second heartbeat."
           },
           "labels": {
             "service": "pragma-oracle",
@@ -1102,7 +1102,7 @@
               "datasourceUid": "eemnwzj4tmubke",
               "model": {
                 "refId": "A",
-                "expr": "(max by (network,pair,type) (pragma_pair_last_update_seconds{network=\"Mainnet\",pair=\"USDC/USD\",type=\"spot\"}) > bool 1200) or absent(pragma_pair_last_update_seconds{network=\"Mainnet\",pair=\"USDC/USD\",type=\"spot\"})",
+                "expr": "(max by (network,pair,type) (pragma_pair_last_update_seconds{network=\"Mainnet\",pair=\"USDC/USD\",type=\"spot\"}) > bool 2400) or absent(pragma_pair_last_update_seconds{network=\"Mainnet\",pair=\"USDC/USD\",type=\"spot\"})",
                 "instant": true,
                 "range": false,
                 "intervalMs": 1000,
@@ -1151,7 +1151,7 @@
           "for": "5m",
           "annotations": {
             "summary": "USDC/USD feed stale or missing",
-            "description": "USDC/USD has no observed update within 20 minutes, or its metric is missing. Check RPC and indexer first, then publisher/source observations. Confirm sustained failure for five minutes. Target publisher heartbeat remains 600 seconds."
+            "description": "USDC/USD has no observed update within 40 minutes, or its metric is missing. Check RPC and indexer first, then publisher/source observations. Confirm sustained failure for five minutes. The deployed mainnet configuration uses an 1800-second heartbeat."
           },
           "labels": {
             "service": "pragma-oracle",
@@ -1174,7 +1174,7 @@
               "datasourceUid": "eemnwzj4tmubke",
               "model": {
                 "refId": "A",
-                "expr": "(max by (network,pair,type) (pragma_pair_last_update_seconds{network=\"Mainnet\",pair=\"USDT/USD\",type=\"spot\"}) > bool 1200) or absent(pragma_pair_last_update_seconds{network=\"Mainnet\",pair=\"USDT/USD\",type=\"spot\"})",
+                "expr": "(max by (network,pair,type) (pragma_pair_last_update_seconds{network=\"Mainnet\",pair=\"USDT/USD\",type=\"spot\"}) > bool 2400) or absent(pragma_pair_last_update_seconds{network=\"Mainnet\",pair=\"USDT/USD\",type=\"spot\"})",
                 "instant": true,
                 "range": false,
                 "intervalMs": 1000,
@@ -1223,7 +1223,7 @@
           "for": "5m",
           "annotations": {
             "summary": "USDT/USD feed stale or missing",
-            "description": "USDT/USD has no observed update within 20 minutes, or its metric is missing. Check RPC and indexer first, then publisher/source observations. Confirm sustained failure for five minutes. Target publisher heartbeat remains 600 seconds."
+            "description": "USDT/USD has no observed update within 40 minutes, or its metric is missing. Check RPC and indexer first, then publisher/source observations. Confirm sustained failure for five minutes. The deployed mainnet configuration uses an 1800-second heartbeat."
           },
           "labels": {
             "service": "pragma-oracle",
@@ -1246,7 +1246,7 @@
               "datasourceUid": "eemnwzj4tmubke",
               "model": {
                 "refId": "A",
-                "expr": "(max by (network,pair,type) (pragma_pair_last_update_seconds{network=\"Mainnet\",pair=\"WBTC/USD\",type=\"spot\"}) > bool 1200) or absent(pragma_pair_last_update_seconds{network=\"Mainnet\",pair=\"WBTC/USD\",type=\"spot\"})",
+                "expr": "(max by (network,pair,type) (pragma_pair_last_update_seconds{network=\"Mainnet\",pair=\"WBTC/USD\",type=\"spot\"}) > bool 2400) or absent(pragma_pair_last_update_seconds{network=\"Mainnet\",pair=\"WBTC/USD\",type=\"spot\"})",
                 "instant": true,
                 "range": false,
                 "intervalMs": 1000,
@@ -1295,7 +1295,7 @@
           "for": "5m",
           "annotations": {
             "summary": "WBTC/USD feed stale or missing",
-            "description": "WBTC/USD has no observed update within 20 minutes, or its metric is missing. Check RPC and indexer first, then publisher/source observations. Confirm sustained failure for five minutes. Target publisher heartbeat remains 600 seconds."
+            "description": "WBTC/USD has no observed update within 40 minutes, or its metric is missing. Check RPC and indexer first, then publisher/source observations. Confirm sustained failure for five minutes. The deployed mainnet configuration uses an 1800-second heartbeat."
           },
           "labels": {
             "service": "pragma-oracle",
