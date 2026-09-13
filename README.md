@@ -14,6 +14,7 @@
 ```
 
 **Flow:**
+
 1. **Apibara Indexer** streams oracle events from Starknet
 2. Events are stored in **TimescaleDB** for persistence with time-series optimizations
 3. **Metrics** are computed on-the-fly and exported to OTEL
@@ -21,18 +22,18 @@
 
 ## OTEL Metrics
 
-| Metric | Labels | Unit | Description |
-|--------|--------|------|-------------|
-| `pragma.pair.price` | network, pair, source, type | USD | Current price from source |
-| `pragma.pair.last_update_seconds` | network, pair, type | s | Seconds since pair updated |
-| `pragma.pair.num_sources` | network, pair, type | - | Sources aggregated for median |
-| `pragma.publisher.last_update_seconds` | network, publisher, type | s | Seconds since publisher submitted |
-| `pragma.publisher.balance_eth` | network, publisher | ETH | Publisher ETH balance |
-| `pragma.deviation.vs_defillama` | network, pair, source, type | ratio | Deviation vs DefiLlama (0.01 = 1%) |
-| `pragma.deviation.vs_median` | network, pair, source, type | ratio | Source vs on-chain median |
-| `pragma.deviation.onchain_vs_offchain` | network, pair, type | ratio | On-chain vs off-chain reference |
-| `pragma.indexer.events_count` | network, pair, event_type | - | Total events indexed |
-| `pragma.indexer.latest_block` | network | - | Latest block indexed |
+| Metric                                 | Labels                      | Unit  | Description                        |
+| -------------------------------------- | --------------------------- | ----- | ---------------------------------- |
+| `pragma.pair.price`                    | network, pair, source, type | USD   | Current price from source          |
+| `pragma.pair.last_update_seconds`      | network, pair, type         | s     | Seconds since pair updated         |
+| `pragma.pair.num_sources`              | network, pair, type         | -     | Sources aggregated for median      |
+| `pragma.publisher.last_update_seconds` | network, publisher, type    | s     | Seconds since publisher submitted  |
+| `pragma.publisher.balance_eth`         | network, publisher          | ETH   | Publisher ETH balance              |
+| `pragma.deviation.vs_defillama`        | network, pair, source, type | ratio | Deviation vs DefiLlama (0.01 = 1%) |
+| `pragma.deviation.vs_median`           | network, pair, source, type | ratio | Source vs on-chain median          |
+| `pragma.deviation.onchain_vs_offchain` | network, pair, type         | ratio | On-chain vs off-chain reference    |
+| `pragma.indexer.events_count`          | network, pair, event_type   | -     | Total events indexed               |
+| `pragma.indexer.latest_block`          | network                     | -     | Latest block indexed               |
 
 ## Shared Public Access
 
@@ -58,12 +59,14 @@ cargo run
 ```
 
 **Available Services:**
+
 - TimescaleDB: `localhost:5432`
 - Grafana: `http://localhost:3000` (admin/admin)
 - OTLP gRPC: `localhost:4317`
 - OTLP HTTP: `localhost:4318`
 
 **View logs in Grafana:**
+
 1. Open http://localhost:3000
 2. Go to Explore > Select 'Loki' data source
 3. Query: `{service_name="pragma-monitoring"}`
@@ -119,3 +122,10 @@ DEFILLAMA_API_KEY=
 Database migrations are loaded from the [pragma-node](https://github.com/astraly-labs/pragma-node) repository (`sql/` folder).
 
 The monitoring service includes integrated indexing functionality, so no separate indexer service is needed.
+
+## Alerting
+
+See [the alerting runbook](alerts/README.md) for publisher liveness, feed freshness,
+source deviation, independent-reference coverage, gas, and telemetry-loss rules.
+The production rules are enabled and route to the tested Telegram contact point.
+See the runbook before applying this configuration to another installation.

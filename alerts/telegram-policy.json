@@ -1,0 +1,8 @@
+{
+  "receiver": "pragma-oracle-alerts",
+  "object_matchers": [["service", "=", "pragma-oracle"]],
+  "group_by": ["service"],
+  "group_wait": "5m",
+  "group_interval": "6h",
+  "repeat_interval": "24h"
+}

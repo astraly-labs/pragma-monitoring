@@ -134,7 +134,7 @@ async fn compute_spot_metrics(
         ));
     };
 
-    let normalized_price = raw_price / (10_u64.pow(decimals) as f64);
+    let normalized_price = crate::monitoring::price_scale::normalize_price(raw_price, decimals);
 
     MONITORING_METRICS.monitoring_metrics.set_pair_price(
         normalized_price,

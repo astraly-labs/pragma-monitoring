@@ -68,13 +68,6 @@ impl InternalIndexerTracker {
         status.last_activity = Some(Instant::now());
     }
 
-    /// Update last_activity to indicate the indexer is still receiving events
-    /// This should be called even when events are filtered out (non-target assets)
-    pub async fn touch_activity(&self) {
-        let mut status = self.status.write().await;
-        status.last_activity = Some(Instant::now());
-    }
-
     pub async fn record_error(&self, error: String) {
         let mut status = self.status.write().await;
         status.error_count += 1;
