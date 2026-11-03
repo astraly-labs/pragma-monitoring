@@ -1,0 +1,11 @@
+{
+  "receiver": "pragma-validator-alerts",
+  "object_matchers": [
+    ["service", "=", "pragma-oracle"],
+    ["component", "=", "starknet-validator"]
+  ],
+  "group_by": ["service", "component", "alertname"],
+  "group_wait": "0s",
+  "group_interval": "30s",
+  "repeat_interval": "15m"
+}
