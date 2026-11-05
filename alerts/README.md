@@ -138,12 +138,20 @@ response steps. Alerts never execute ownership changes, source removals or trade
 
 The indexer health endpoint measures time since an oracle event, not a transport heartbeat. It allows 40 minutes without events to accommodate the deployed 30-minute publisher heartbeat; the Grafana stalled-indexer rule uses the same window plus five minutes persistence. A stopped indexer or excessive processing errors remains unhealthy immediately.
 
-## Validator paging
+## Validator monitoring
 
 `validator-rules.json` manages the existing `starknet-validator` group in `onchain`
 using the validator Prometheus datasource `cffjiwjazlvy8b`. It preserves the three
 existing rule UIDs and adds service health and reported attestation failures.
-All five rules evaluate every 30 seconds and alert on query errors or missing data.
+All five rules evaluate every 30 seconds. Query errors and empty results use
+Grafana's separate `DatasourceError` and `DatasourceNoData` alerts, so a lost
+monitoring connection does not claim the validator stopped or its disk is full.
+
+The datasource uses `http://10.220.0.11:9090` over the production VPC. Prometheus
+listens on that private address and localhost; public port 9090 remains blocked.
+The binding is maintained in `astraly-labs/pathfinder/docker-compose.yaml`.
+The 5 November localhost-only deployment broke the old public datasource URL
+and caused all five rules to fire despite healthy local metrics.
 
 Enabled on 3 November 2026. A synthetic firing alert and its recovery were both
 read back from Telegram, and all five production rules evaluated normally after
@@ -158,8 +166,8 @@ activation. The temporary test rule was removed.
 | Root disk              | More than 85% used                                                                                       | 2 minutes      |
 
 The three-hour confirmation window accommodates epoch timing. Service failures
-page independently, without waiting for the next attestation. Counter resets and
-old failures do not page. A reported failure can subsequently succeed on retry;
+notify independently, without waiting for the next attestation. Counter resets and
+old failures do not notify. A reported failure can subsequently succeed on retry;
 inspect the attestor logs before concluding that an epoch was missed.
 
 Merge `validator-telegram-policy.json` **before** the broader `service=pragma-oracle`
@@ -169,11 +177,20 @@ digest route, preserving all other routes. This sends validator alerts to the
 allows a different failure to notify without waiting for an existing group.
 The oracle's six-hour digest remains unchanged.
 
+The nested monitoring-error route groups errors by datasource and alert type,
+waits two minutes before sending, and repeats every six hours. Its message says
+`MONITORING UNAVAILABLE`, not that the validator has failed. Short query outages
+can recover before the first notification. Real validator conditions retain
+the thresholds and timing above.
+
 The validator contact uses the existing oracle bot and Telegram group. Use
-`validator-telegram-message.tmpl`, prefixed with the designated responder's Telegram
-mention. Enable notifications and resolved messages, and use an empty parse mode.
-Keep the responder, group ID and bot token in the private operational configuration;
-store the token only in Grafana secret settings.
+`validator-telegram-message.tmpl` without any responder mention. Set
+`disable_notifications=true` (plural), keep resolved messages enabled, and use
+`parse_mode=None`. Grafana 12.0.2's Telegram sender reads the plural key even though
+its UI schema advertises the singular `disable_notification`; the latter is ignored.
+Read back Telegram's `silent` flag to verify delivery. Keep the group ID
+and bot token in the private operational configuration; store the token only in
+Grafana secret settings.
 
 For API deployment, PUT the group to
 `/api/v1/provisioning/folder/bfdt3p63tx4w0d/rule-groups/starknet-validator`, setting
@@ -182,7 +199,11 @@ and `ruleGroup` to each rule. This replaces only this evaluation group. Preserve
 the existing policy provenance when updating the notification tree.
 
 Before activation, run `python3 alerts/test_validator_rules.py /path/to/promtool`
-and execute all five queries against the live datasource. The test reads the actual
+and, with `GRAFANA_URL` and `GRAFANA_API_KEY` set,
+`python3 alerts/test_validator_notifications.py`. The latter checks error routing
+and renders query-error, missing-data, real-failure and recovery messages through
+Grafana's template-test API without saving or sending alerts.
+Execute all five queries against the live datasource. The PromQL test reads the actual
 Grafana expressions and covers healthy, stopped, absent and stale services, each
 stalled head, attestation failures, counter resets, recovery and disk thresholds.
 Use a temporary, clearly labelled `vector(1)` rule with the same routing labels to
@@ -190,7 +211,7 @@ verify Telegram delivery, change it to `vector(0)` to verify recovery, then dele
 it. Do not stop a production service for this test. Read back the final rules,
 their evaluation health and the preserved notification routes.
 
-A failed scrape normally pages within the next 30-second evaluation after
+A failed scrape normally alerts within the next 30-second evaluation after
 Prometheus detects it. Stale samples can take 45 seconds plus one evaluation;
 query timeouts and Telegram delivery can add delay. This monitoring runs in
 Grafana, outside the validator VM, but it still depends on Grafana and Telegram.

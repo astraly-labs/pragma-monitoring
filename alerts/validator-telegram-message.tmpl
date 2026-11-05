@@ -1,4 +1,11 @@
 PRAGMA / VALIDATOR
+{{ if or (eq .CommonLabels.alertname "DatasourceError") (eq .CommonLabels.alertname "DatasourceNoData") }}
+{{ if gt (len .Alerts.Firing) 0 }}MONITORING UNAVAILABLE
+Grafana cannot evaluate validator health. This does not establish a validator failure.
+{{ range .Alerts.Firing }}
+{{ .Labels.rulename }}{{ if .Annotations.Error }}: {{ .Annotations.Error }}{{ end }}
+{{ end }}{{ else }}MONITORING RESTORED{{ end }}
+{{ else }}
 {{ if gt (len .Alerts.Firing) 0 }}ALERT: {{ len .Alerts.Firing }} active{{ else }}RECOVERED{{ end }}
 {{ range .Alerts.Firing }}
 {{ .Labels.alertname }}{{ if .Labels.job }} ({{ .Labels.job }}){{ end }}
@@ -6,5 +13,6 @@ PRAGMA / VALIDATOR
 {{ .Annotations.description }}
 {{ end }}{{ range .Alerts.Resolved }}
 Recovered: {{ .Labels.alertname }}{{ if .Labels.job }} ({{ .Labels.job }}){{ end }}
+{{ end }}
 {{ end }}
 https://grafana.production.pragma.build/d/starknet-validator-attestation

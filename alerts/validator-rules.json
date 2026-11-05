@@ -60,7 +60,7 @@
               }
             }
           ],
-          "execErrState": "Alerting",
+          "execErrState": "Error",
           "for": "0s",
           "isPaused": false,
           "labels": {
@@ -68,7 +68,7 @@
             "service": "pragma-oracle",
             "severity": "critical"
           },
-          "noDataState": "Alerting",
+          "noDataState": "NoData",
           "title": "Starknet validator: service down or telemetry missing",
           "uid": "starknet-validator-component-down"
         },
@@ -125,7 +125,7 @@
               }
             }
           ],
-          "execErrState": "Alerting",
+          "execErrState": "Error",
           "for": "0s",
           "isPaused": false,
           "labels": {
@@ -133,13 +133,13 @@
             "service": "pragma-oracle",
             "severity": "critical"
           },
-          "noDataState": "Alerting",
+          "noDataState": "NoData",
           "title": "Starknet validator: chain head stalled for 2m",
           "uid": "starknet-validator-head-stale"
         },
         {
           "annotations": {
-            "description": "No confirmed attestation in 3h (epoch ~62 min), or the VM Prometheus (rpc.node.pragma.build:9090) is unreachable. Check VM starknet-validator (prod-pragma, europe-west1-b): `df -h /`, `docker ps`, `docker logs validator-attestation`, pathfinder sync. Incident 2026-10-16: disk full.",
+            "description": "No confirmed attestation in 3h (epoch ~62 min). Check VM starknet-validator (prod-pragma, europe-west1-b): `df -h /`, `docker ps`, `docker logs validator-attestation`, pathfinder sync. Incident 2026-10-16: disk full.",
             "summary": "Starknet validator has not had an attestation confirmed in 3h"
           },
           "condition": "B",
@@ -190,7 +190,7 @@
               }
             }
           ],
-          "execErrState": "Alerting",
+          "execErrState": "Error",
           "for": "0s",
           "isPaused": false,
           "labels": {
@@ -198,7 +198,7 @@
             "service": "pragma-oracle",
             "severity": "critical"
           },
-          "noDataState": "Alerting",
+          "noDataState": "NoData",
           "title": "Starknet validator: no confirmed attestation in 3h",
           "uid": "starknet-validator-no-attestation"
         },
@@ -255,7 +255,7 @@
               }
             }
           ],
-          "execErrState": "Alerting",
+          "execErrState": "Error",
           "for": "0s",
           "isPaused": false,
           "labels": {
@@ -263,7 +263,7 @@
             "service": "pragma-oracle",
             "severity": "critical"
           },
-          "noDataState": "Alerting",
+          "noDataState": "NoData",
           "title": "Starknet validator: attestation failure or missed epoch",
           "uid": "starknet-validator-attestation-failed"
         },
@@ -320,7 +320,7 @@
               }
             }
           ],
-          "execErrState": "Alerting",
+          "execErrState": "Error",
           "for": "2m",
           "isPaused": false,
           "labels": {
@@ -328,7 +328,7 @@
             "service": "pragma-oracle",
             "severity": "warning"
           },
-          "noDataState": "Alerting",
+          "noDataState": "NoData",
           "title": "Starknet validator: disk usage above 85%",
           "uid": "starknet-validator-disk-usage"
         }
