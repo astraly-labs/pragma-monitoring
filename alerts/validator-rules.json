@@ -1,0 +1,338 @@
+{
+  "apiVersion": 1,
+  "groups": [
+    {
+      "orgId": 1,
+      "name": "starknet-validator",
+      "folder": "onchain",
+      "interval": 30,
+      "rules": [
+        {
+          "annotations": {
+            "summary": "Validator service is down or telemetry is missing/stale ({{ $labels.job }})",
+            "description": "Check VM reachability, Prometheus targets, docker ps, and df -h / on starknet-validator (prod-pragma, europe-west1-b). Expected jobs: pathfinder, validator-attestation and node-exporter. Samples older than 45 seconds also trigger this alert."
+          },
+          "condition": "B",
+          "data": [
+            {
+              "datasourceUid": "cffjiwjazlvy8b",
+              "model": {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "cffjiwjazlvy8b"
+                },
+                "expr": "max by (job) (clamp_max((1 - up{job=~\"pathfinder|validator-attestation|node-exporter\"}) + (time() - timestamp(up{job=~\"pathfinder|validator-attestation|node-exporter\"}) > bool 45), 1)) or absent(up{job=\"pathfinder\"}) or absent(up{job=\"validator-attestation\"}) or absent(up{job=\"node-exporter\"})",
+                "instant": true,
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "range": false,
+                "refId": "A"
+              },
+              "queryType": "",
+              "refId": "A",
+              "relativeTimeRange": {
+                "from": 300,
+                "to": 0
+              }
+            },
+            {
+              "datasourceUid": "__expr__",
+              "model": {
+                "conditions": [
+                  {
+                    "evaluator": {
+                      "params": [0.5],
+                      "type": "gt"
+                    }
+                  }
+                ],
+                "expression": "A",
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "refId": "B",
+                "type": "threshold"
+              },
+              "queryType": "",
+              "refId": "B",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              }
+            }
+          ],
+          "execErrState": "Error",
+          "for": "0s",
+          "isPaused": false,
+          "labels": {
+            "component": "starknet-validator",
+            "service": "pragma-oracle",
+            "severity": "critical"
+          },
+          "noDataState": "NoData",
+          "title": "Starknet validator: service down or telemetry missing",
+          "uid": "starknet-validator-component-down"
+        },
+        {
+          "annotations": {
+            "description": "Check Pathfinder sync, validator-attestation logs and root disk usage on VM starknet-validator (prod-pragma, europe-west1-b). Both the local node and the attestor's RPC view are monitored.",
+            "summary": "No new block for 2 minutes, or missing head telemetry ({{ $labels.job }})"
+          },
+          "condition": "B",
+          "data": [
+            {
+              "datasourceUid": "cffjiwjazlvy8b",
+              "model": {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "cffjiwjazlvy8b"
+                },
+                "expr": "(max by (job) (changes(validator_attestation_starknet_latest_block_number{network=\"SN_MAIN\",job=\"validator-attestation\"}[2m])) < bool 1) or (max by (job) (changes(current_block{job=\"pathfinder\"}[2m])) < bool 1) or max by (job) (absent(validator_attestation_starknet_latest_block_number{network=\"SN_MAIN\",job=\"validator-attestation\"})) or absent(current_block{job=\"pathfinder\"})",
+                "instant": true,
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "range": false,
+                "refId": "A"
+              },
+              "queryType": "",
+              "refId": "A",
+              "relativeTimeRange": {
+                "from": 120,
+                "to": 0
+              }
+            },
+            {
+              "datasourceUid": "__expr__",
+              "model": {
+                "conditions": [
+                  {
+                    "evaluator": {
+                      "params": [0.5],
+                      "type": "gt"
+                    }
+                  }
+                ],
+                "expression": "A",
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "refId": "B",
+                "type": "threshold"
+              },
+              "queryType": "",
+              "refId": "B",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              }
+            }
+          ],
+          "execErrState": "Error",
+          "for": "0s",
+          "isPaused": false,
+          "labels": {
+            "component": "starknet-validator",
+            "service": "pragma-oracle",
+            "severity": "critical"
+          },
+          "noDataState": "NoData",
+          "title": "Starknet validator: chain head stalled for 2m",
+          "uid": "starknet-validator-head-stale"
+        },
+        {
+          "annotations": {
+            "description": "No confirmed attestation in 3h (epoch ~62 min). Check VM starknet-validator (prod-pragma, europe-west1-b): `df -h /`, `docker ps`, `docker logs validator-attestation`, pathfinder sync. Incident 2026-10-16: disk full.",
+            "summary": "Starknet validator has not had an attestation confirmed in 3h"
+          },
+          "condition": "B",
+          "data": [
+            {
+              "datasourceUid": "cffjiwjazlvy8b",
+              "model": {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "cffjiwjazlvy8b"
+                },
+                "expr": "(sum(increase(validator_attestation_attestation_confirmed_count{network=\"SN_MAIN\"}[3h])) < bool 0.5) or (absent(up{job=\"validator-attestation\"} == 1))",
+                "instant": true,
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "range": false,
+                "refId": "A"
+              },
+              "queryType": "",
+              "refId": "A",
+              "relativeTimeRange": {
+                "from": 10800,
+                "to": 0
+              }
+            },
+            {
+              "datasourceUid": "__expr__",
+              "model": {
+                "conditions": [
+                  {
+                    "evaluator": {
+                      "params": [0.5],
+                      "type": "gt"
+                    }
+                  }
+                ],
+                "expression": "A",
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "refId": "B",
+                "type": "threshold"
+              },
+              "queryType": "",
+              "refId": "B",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              }
+            }
+          ],
+          "execErrState": "Error",
+          "for": "0s",
+          "isPaused": false,
+          "labels": {
+            "component": "starknet-validator",
+            "service": "pragma-oracle",
+            "severity": "critical"
+          },
+          "noDataState": "NoData",
+          "title": "Starknet validator: no confirmed attestation in 3h",
+          "uid": "starknet-validator-no-attestation"
+        },
+        {
+          "annotations": {
+            "summary": "Validator reported a new attestation failure or missed epoch",
+            "description": "Inspect validator-attestation logs, RPC sync and the operational account balance. A failure can be retried; verify that an attestation is subsequently confirmed. This alert clears after five minutes without another counter increase."
+          },
+          "condition": "B",
+          "data": [
+            {
+              "datasourceUid": "cffjiwjazlvy8b",
+              "model": {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "cffjiwjazlvy8b"
+                },
+                "expr": "sum(increase(validator_attestation_attestation_failure_count{network=\"SN_MAIN\"}[5m])) + sum(increase(validator_attestation_missed_epochs_count{network=\"SN_MAIN\"}[5m]))",
+                "instant": true,
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "range": false,
+                "refId": "A"
+              },
+              "queryType": "",
+              "refId": "A",
+              "relativeTimeRange": {
+                "from": 300,
+                "to": 0
+              }
+            },
+            {
+              "datasourceUid": "__expr__",
+              "model": {
+                "conditions": [
+                  {
+                    "evaluator": {
+                      "params": [0],
+                      "type": "gt"
+                    }
+                  }
+                ],
+                "expression": "A",
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "refId": "B",
+                "type": "threshold"
+              },
+              "queryType": "",
+              "refId": "B",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              }
+            }
+          ],
+          "execErrState": "Error",
+          "for": "0s",
+          "isPaused": false,
+          "labels": {
+            "component": "starknet-validator",
+            "service": "pragma-oracle",
+            "severity": "critical"
+          },
+          "noDataState": "NoData",
+          "title": "Starknet validator: attestation failure or missed epoch",
+          "uid": "starknet-validator-attestation-failed"
+        },
+        {
+          "annotations": {
+            "description": "Root disk of VM starknet-validator (pathfinder DB + WAL + docker logs) is above 85%. At 100% pathfinder crashes and attestations stop (incident 2026-10-16). Grow it online: `gcloud compute disks resize starknet-validator --size=<N>GB --zone europe-west1-b --project prod-pragma`, then `sudo growpart /dev/sda 1 && sudo resize2fs /dev/sda1`, and update size in pragma-infra (branch gcp) production/compute/starknet-validator.tf.",
+            "summary": "Starknet validator VM disk above 85%"
+          },
+          "condition": "B",
+          "data": [
+            {
+              "datasourceUid": "cffjiwjazlvy8b",
+              "model": {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "cffjiwjazlvy8b"
+                },
+                "expr": "max(1 - node_filesystem_avail_bytes{job=\"node-exporter\",mountpoint=\"/\",fstype!=\"rootfs\"} / node_filesystem_size_bytes{job=\"node-exporter\",mountpoint=\"/\",fstype!=\"rootfs\"})",
+                "instant": true,
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "range": false,
+                "refId": "A"
+              },
+              "queryType": "",
+              "refId": "A",
+              "relativeTimeRange": {
+                "from": 600,
+                "to": 0
+              }
+            },
+            {
+              "datasourceUid": "__expr__",
+              "model": {
+                "conditions": [
+                  {
+                    "evaluator": {
+                      "params": [0.85],
+                      "type": "gt"
+                    }
+                  }
+                ],
+                "expression": "A",
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "refId": "B",
+                "type": "threshold"
+              },
+              "queryType": "",
+              "refId": "B",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              }
+            }
+          ],
+          "execErrState": "Error",
+          "for": "2m",
+          "isPaused": false,
+          "labels": {
+            "component": "starknet-validator",
+            "service": "pragma-oracle",
+            "severity": "warning"
+          },
+          "noDataState": "NoData",
+          "title": "Starknet validator: disk usage above 85%",
+          "uid": "starknet-validator-disk-usage"
+        }
+      ]
+    }
+  ]
+}
