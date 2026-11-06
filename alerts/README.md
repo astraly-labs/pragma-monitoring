@@ -1,6 +1,6 @@
 # Oracle alerting
 
-`grafana-rules.json` contains 19 Grafana rules for the production Mimir datasource
+`grafana-rules.json` contains 20 Grafana rules for the production Mimir datasource
 `eemnwzj4tmubke`. Queries were executed against live data on 11 and 12 September 2026.
 The metric suffixes and `network="Mainnet"` label match the actual OTEL export.
 
@@ -13,14 +13,18 @@ missing-reference notifications were also read back after activation; all 19 rul
 evaluated without execution errors. The bot credential is stored in Grafana secret
 settings. Recovery delivery was observed in the 13 September Telegram audit.
 
+Foundation gas and stopped/missing-publisher coverage was added on 6 November 2026
+after its omission caused a missed low-gas warning. Thresholds and the six-hour
+Telegram notification schedule are unchanged.
+
 This file reflects the enabled production state. For another installation, set
 `isPaused` to true until its datasource, recipient group and delivery are verified.
 
 ## Coverage
 
-- Individually track PRAGMA, ARGENT (Ready), STARKWARE and AVNU, including a
-  publisher disappearing completely from telemetry. Add the Foundation explicitly
-  after its registry name is agreed; do not infer required publishers from activity.
+- Individually track PRAGMA, ARGENT (Ready), STARKWARE, AVNU and
+  STARKNET_FOUNDATION, including a publisher disappearing completely from telemetry.
+  Keep required publishers explicit rather than inferring them from activity.
 - Missing monitor metrics, a stalled indexer, and missing/error query results.
 - BTC, ETH, STRK, WBTC, USDC and USDT feed freshness and minimum source count.
 - Signed source/median deviations in either direction, with no upper cutoff.
@@ -38,7 +42,7 @@ up to six hours. It is a summary channel, not a timely paging channel. A primary
 and backup responder must actively monitor Grafana or have a separate pager.
 
 `telegram-policy.json` is a child route to merge into the existing policy tree.
-Remove each rule's direct `notification_settings` so all 19 rules use this route.
+Remove each rule's direct `notification_settings` so all 20 rules use this route.
 Preserve unrelated routes. Policies already provisioned as `api` must be updated
 without `X-Disable-Provenance`; that header changes provenance and is rejected.
 `telegram-message.tmpl` produces compact reports, capped at 16 affected
@@ -83,7 +87,7 @@ individually, so one recovered asset cannot hide missing coverage on another.
 
 ### Actions to meet the operating rules
 
-- Restore Ready and StarkWare publishing; add and verify the Foundation publisher.
+- Restore Ready and StarkWare publishing; verify Foundation publishing remains healthy.
 - Keep required feeds within the deployed 30-minute heartbeat plus indexing delay;
   investigate sustained age over 40 minutes. Agree any tighter publishing cadence
   with operators and consumers before treating it as an operating rule.
@@ -121,7 +125,7 @@ mapping/decimal investigation. The arithmetic cause of the BROTHER source-monito
    name and datasource UID must match the target installation. Enable only after
    testing delivery. The API deployment uses the existing folder UID above;
    file provisioning uses its case-sensitive name `onchain`.
-4. Check ARGENT and STARKWARE fire, and PRAGMA and AVNU evaluate against their actual
+4. Check ARGENT and STARKWARE fire, and PRAGMA, AVNU and STARKNET_FOUNDATION evaluate against their actual
    timestamps. Check that an absent expected publisher also fires. Restore the
    stopped publishers and confirm the recovery notification reaches Telegram.
 5. Verify a 50% deviation triggers the extreme rule; verify both signs. Confirm
@@ -137,3 +141,7 @@ publisher/pair/source through Grafana labels; descriptions contain the first
 response steps. Alerts never execute ownership changes, source removals or trades.
 
 The indexer health endpoint measures time since an oracle event, not a transport heartbeat. It allows 40 minutes without events to accommodate the deployed 30-minute publisher heartbeat; the Grafana stalled-indexer rule uses the same window plus five minutes persistence. A stopped indexer or excessive processing errors remains unhealthy immediately.
+
+Run the Foundation gas, freshness and missing-telemetry regression scenarios with
+`python3 alerts/test_publisher_rules.py /path/to/promtool`. They evaluate the actual
+Grafana queries and thresholds, including the five-minute pending period.
