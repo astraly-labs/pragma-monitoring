@@ -440,6 +440,78 @@
           "isPaused": false
         },
         {
+          "uid": "pragma-publisher-foundation",
+          "title": "STARKNET_FOUNDATION publisher stopped",
+          "condition": "B",
+          "data": [
+            {
+              "refId": "A",
+              "queryType": "",
+              "relativeTimeRange": {
+                "from": 1200,
+                "to": 0
+              },
+              "datasourceUid": "eemnwzj4tmubke",
+              "model": {
+                "refId": "A",
+                "expr": "(max by (network,publisher) (pragma_publisher_last_update_seconds{network=\"Mainnet\",publisher=\"STARKNET_FOUNDATION\"}) > bool 2400) or absent(pragma_publisher_last_update_seconds{network=\"Mainnet\",publisher=\"STARKNET_FOUNDATION\"})",
+                "instant": true,
+                "range": false,
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "eemnwzj4tmubke"
+                }
+              }
+            },
+            {
+              "refId": "B",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "refId": "B",
+                "type": "threshold",
+                "expression": "A",
+                "conditions": [
+                  {
+                    "evaluator": {
+                      "type": "gt",
+                      "params": [0.5]
+                    },
+                    "operator": {
+                      "type": "and"
+                    },
+                    "reducer": {
+                      "type": "last",
+                      "params": []
+                    },
+                    "query": {
+                      "params": ["B"]
+                    },
+                    "type": "query"
+                  }
+                ]
+              }
+            }
+          ],
+          "noDataState": "Alerting",
+          "execErrState": "Alerting",
+          "for": "5m",
+          "annotations": {
+            "summary": "STARKNET_FOUNDATION publisher stopped",
+            "description": "STARKNET_FOUNDATION has no observed submission for 40 minutes, or its metric is missing. Confirm process health, RPC, STRK gas and last accepted transaction. Confirm sustained failure for five minutes. The deployed mainnet configuration uses an 1800-second heartbeat."
+          },
+          "labels": {
+            "service": "pragma-oracle",
+            "severity": "critical"
+          },
+          "isPaused": false
+        },
+        {
           "uid": "pragma-sources-low",
           "title": "Major feed source count below four",
           "condition": "B",
@@ -1318,7 +1390,7 @@
               "datasourceUid": "eemnwzj4tmubke",
               "model": {
                 "refId": "A",
-                "expr": "min by (network,publisher) (pragma_publisher_balance_strk_STRK{network=\"Mainnet\",publisher=~\"PRAGMA|ARGENT|STARKWARE|AVNU\"}) < bool 500",
+                "expr": "min by (network,publisher) (pragma_publisher_balance_strk_STRK{network=\"Mainnet\",publisher=~\"PRAGMA|ARGENT|STARKWARE|AVNU|STARKNET_FOUNDATION\"}) < bool 500",
                 "instant": true,
                 "range": false,
                 "intervalMs": 1000,
